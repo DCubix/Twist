@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 #include <cstring>
+#include <algorithm>
 
 using NkRect = struct nk_rect;
 using NkContext = struct nk_context;
@@ -90,7 +91,7 @@ public:
 
 	void _gui(NkContext* ctx, NkCanvas* canvas) {
 		nk_layout_row_dynamic(ctx, 22, 1);
-		value = nk_propertyf(ctx, "#Value", -9999.0f, value, 9999.0f, 0.1f, 0.1f);
+		value = nk_propertyf(ctx, "#Value", -9999.0f, value, 9999.0f, 0.01f, 0.01f);
 	}
 
 	void solve() {
@@ -111,10 +112,10 @@ public:
 
 	void _gui(NkContext* ctx, NkCanvas* canvas) {
 		nk_layout_row_dynamic(ctx, 18, 1);
-		x = nk_propertyf(ctx, "#X", -9999.0f, x, 9999.0f, 0.1f, 0.1f);
-		y = nk_propertyf(ctx, "#Y", -9999.0f, y, 9999.0f, 0.1f, 0.1f);
-		z = nk_propertyf(ctx, "#Z", -9999.0f, z, 9999.0f, 0.1f, 0.1f);
-		w = nk_propertyf(ctx, "#W", -9999.0f, w, 9999.0f, 0.1f, 0.1f);
+		x = nk_propertyf(ctx, "#X", -9999.0f, x, 9999.0f, 0.01f, 0.01f);
+		y = nk_propertyf(ctx, "#Y", -9999.0f, y, 9999.0f, 0.01f, 0.01f);
+		z = nk_propertyf(ctx, "#Z", -9999.0f, z, 9999.0f, 0.01f, 0.01f);
+		w = nk_propertyf(ctx, "#W", -9999.0f, w, 9999.0f, 0.01f, 0.01f);
 	}
 
 	void solve() {
@@ -362,10 +363,11 @@ public:
 	};
 
 	TFilterNode(float sampleRate)
-		: TNode("Filter", 120, 105), cutOff(0.0f),
+		: TNode("Filter", 120, 90),
 		filter(TFilter::LowPass), sampleRate(sampleRate), out(0.0f)
 	{
 		addInput("In");
+		addInput("CutOff");
 		addOutput("Out");
 	}
 
@@ -376,10 +378,10 @@ public:
 			"High-Pass\0"
 		};
 		filter = (TFilter) nk_combo(ctx, OPS, NK_LEN(OPS), (int) filter, 18, nk_vec2(120, 120));
-		cutOff = nk_slide_float(ctx, 20.0f, cutOff, 20000.0f, 0.01f);
 	}
 
 	void solve() {
+		float cutOff = std::min(std::max(getInput(1), 20.0f), 20000.0f);
 		float in = getInput(0);
 		switch (filter) {
 			case LowPass: {
@@ -405,7 +407,7 @@ public:
 	}
 
 	TFilter filter;
-	float cutOff, sampleRate, out, prev;
+	float sampleRate, out, prev;
 };
 
 class TButtonNode : public TNode {
@@ -427,6 +429,84 @@ public:
 	}
 
 	bool enabled;
+};
+
+#define SEQUENCER_SIZE 8
+class TSequencerNode : public TNode {
+public:
+	TSequencerNode(float sampleRate)
+		: TNode("Sequencer", 410, 150),
+			gate(false), noteIndex(0),
+			stime(0.0f), sampleRate(sampleRate),
+			bpm(120), out(0.0f)
+	{
+		addInput("Mod");
+		addOutput("Freq");
+		addOutput("Gate");
+		std::memset(notes, 0, sizeof(Notes) * SEQUENCER_SIZE);
+		std::memset(octs, 0, sizeof(float) * SEQUENCER_SIZE);
+	}
+
+	void _gui(NkContext* ctx, NkCanvas* canvas) {
+		static const char* NOTES[] = {
+			"C\0",
+			"C#\0",
+			"D\0",
+			"D#\0",
+			"E\0",
+			"F\0",
+			"F#\0",
+			"G\0",
+			"G#\0",
+			"A\0",
+			"A#\0",
+			"B\0"
+		};
+		nk_layout_row_dynamic(ctx, 18, SEQUENCER_SIZE);
+		for (int i = 0; i < SEQUENCER_SIZE; i++) {
+			if (i != (noteIndex % SEQUENCER_SIZE)) {
+				if (nk_button_symbol(ctx, NK_SYMBOL_RECT_OUTLINE)) {
+					noteIndex = i;
+				}
+			} else {
+				nk_button_symbol(ctx, NK_SYMBOL_RECT_SOLID);
+			}
+		}
+		nk_layout_row_dynamic(ctx, 18, SEQUENCER_SIZE);
+		for (int i = 0; i < SEQUENCER_SIZE; i++) {
+			notes[i] = (Notes) nk_combo(ctx, NOTES, NK_LEN(NOTES), (int) notes[i], 18, nk_vec2(42, 100));
+		}
+		nk_layout_row_dynamic(ctx, 22, SEQUENCER_SIZE);
+		for (int i = 0; i < SEQUENCER_SIZE; i++) {
+			octs[i] = nk_propertyi(ctx, "#", -8, octs[i], 8, 1, 1);
+		}
+		nk_layout_row_dynamic(ctx, 22, 1);
+		bpm = nk_propertyf(ctx, "BPM", 40.0f, bpm, 240.0f, 0.5f, 0.5f);
+	}
+
+	void solve() {
+		const float step = (1.0f / sampleRate) * 4;
+		float delay = (60000.0f / bpm) / 1000.0f;
+		stime += step;
+		if (stime >= delay) {
+			int ni = noteIndex;
+			out = NOTE(notes[ni % SEQUENCER_SIZE]) * std::pow(2, octs[ni % SEQUENCER_SIZE]);
+			noteIndex++;
+			gate = false;
+			stime = 0.0f;
+		} else {
+			gate = true;
+		}
+
+		setOutput(0, getInput(0) + out);
+		setOutput(1, gate ? 1.0f : 0.0f);
+	}
+
+	int noteIndex;
+	bool gate;
+	float bpm, stime, sampleRate, out;
+	Notes notes[SEQUENCER_SIZE];
+	float octs[SEQUENCER_SIZE];
 };
 
 class TNodeEditor {

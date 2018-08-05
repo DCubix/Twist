@@ -278,6 +278,9 @@ void TNodeEditor::draw(NkContext* ctx) {
 				if (nk_contextual_item_label(ctx, "Note", NK_TEXT_ALIGN_LEFT)) {
 					addNode(x, y, new TNoteNode());
 				}
+				if (nk_contextual_item_label(ctx, "Sequencer", NK_TEXT_ALIGN_LEFT)) {
+					addNode(x, y, new TSequencerNode(sampleRate));
+				}
 				if (nk_contextual_item_label(ctx, "Filter", NK_TEXT_ALIGN_LEFT)) {
 					addNode(x, y, new TFilterNode(sampleRate));
 				}
