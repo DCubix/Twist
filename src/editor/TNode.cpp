@@ -41,8 +41,10 @@ void TNodeEditor::draw(NkContext* ctx) {
 		{
 			/// Draw links
 			for (TLink* link : m_links) {
-				TNode* ni = m_nodes[link->inputID];
-				TNode* no = m_nodes[link->outputID];
+				TNode* ni = getNode(link->inputID);
+				TNode* no = getNode(link->outputID);
+				if (ni == nullptr || no == nullptr) continue;
+
 				float spacei = ni->m_bounds.h / float(ni->outputs().size() + 1);
 				float spaceo = no->m_bounds.h / float(no->inputs().size() + 1);
 				NkVec2 l0 = nk_layout_space_to_screen(ctx,
@@ -104,7 +106,7 @@ void TNodeEditor::draw(NkContext* ctx) {
 					node->draw(ctx, canvas);
 
 					nk_group_end(ctx);
-				}
+				} else { continue; }
 
 				if (panel == nullptr) continue;
 
@@ -209,7 +211,12 @@ void TNodeEditor::draw(NkContext* ctx) {
 							}
 							j++;
 						}
-						if (eid != -1) m_links.erase(m_links.begin() + eid);
+						if (eid != -1) {
+							TLink* lnk = m_links[eid];
+							getNode(lnk->outputID)->inputs()[lnk->outputSlot].connected = false;
+							m_links.erase(m_links.begin() + eid);
+							delete lnk;
+						}
 					}
 
 					if (nk_input_is_mouse_released(in, NK_BUTTON_LEFT) &&
@@ -284,8 +291,14 @@ void TNodeEditor::draw(NkContext* ctx) {
 				if (nk_contextual_item_label(ctx, "Filter", NK_TEXT_ALIGN_LEFT)) {
 					addNode(x, y, new TFilterNode(sampleRate));
 				}
+				if (nk_contextual_item_label(ctx, "Chorus", NK_TEXT_ALIGN_LEFT)) {
+					addNode(x, y, new TChorusNode(sampleRate));
+				}
 				if (nk_contextual_item_label(ctx, "Button", NK_TEXT_ALIGN_LEFT)) {
 					addNode(x, y, new TButtonNode());
+				}
+				if (nk_contextual_item_label(ctx, "Remap", NK_TEXT_ALIGN_LEFT)) {
+					addNode(x, y, new TRemapNode());
 				}
 				nk_contextual_end(ctx);
 			}
@@ -327,7 +340,10 @@ void TNodeEditor::deleteNode(TNode* node) {
 		delete link;
 	}
 
-	m_nodes[node->id()] = nullptr;
+	auto pos = std::find(m_nodes.begin(), m_nodes.end(), node);
+	if (pos != m_nodes.end()) {
+		m_nodes.erase(pos);
+	}
 	delete node;
 	node = nullptr;
 	solveNodes();
@@ -339,6 +355,12 @@ void TNodeEditor::link(int inID, int inSlot, int outID, int outSlot) {
 	link->inputSlot = inSlot;
 	link->outputID = outID;
 	link->outputSlot = outSlot;
+
+	std::cout << "Connected from: " << getNode(inID)->outputs()[inSlot].label << " to: " <<
+										getNode(outID)->inputs()[outSlot].label << std::endl;
+
+	getNode(outID)->inputs()[outSlot].connected = true;
+
 	m_links.push_back(link);
 }
 
@@ -383,8 +405,9 @@ std::vector<TLink*> TNodeEditor::getNodeLinks(TNode* node) {
 std::vector<TNode*> TNodeEditor::getNodeInputs(TNode* node) {
 	std::vector<TNode*> ins;
 	for (TLink* lnk : m_links) {
-		if (lnk->outputID == node->id() && m_nodes[lnk->inputID] != nullptr) {
-			ins.push_back(m_nodes[lnk->inputID]);
+		TNode* nd = getNode(lnk->inputID);
+		if (lnk->outputID == node->id() && nd != nullptr) {
+			ins.push_back(nd);
 		}
 	}
 	return ins;
@@ -416,6 +439,15 @@ std::vector<TNode*> TNodeEditor::buildNodes(TNode* out) {
 	std::reverse(nodes.begin(), nodes.end());
 
 	return nodes;
+}
+
+TNode* TNodeEditor::getNode(int id) {
+	for (TNode* node : m_nodes) {
+		if (node->id() == id) {
+			return node;
+		}
+	}
+	return nullptr;
 }
 
 void TNodeEditor::solve() {	

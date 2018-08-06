@@ -65,7 +65,7 @@ public:
 	}
 
 private:
-	float m_sampleRate, m_phase, m_amplitude, m_frequency;
+	float m_sampleRate, m_phase, m_amplitude, m_frequency, m_noise;
 	TWave m_waveform;
 
 	TSampler* m_modulator;
