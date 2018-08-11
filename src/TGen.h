@@ -6,10 +6,11 @@
 #include <cmath>
 
 #define NOTE_RATIO 1.059463094f
-#define NOTE(x) (261.63f * std::pow(NOTE_RATIO, x))
+#define NOTE(x) ((x-1) != -1 ? (261.63f * std::pow(NOTE_RATIO, (x-1))) : 0)
 
 enum Notes {
-	C = 0,
+	Silence = 0,
+	C,
 	Cs,
 	D,
 	Ds,
@@ -59,6 +60,8 @@ public:
 
 	float frequency() const { return m_frequency; }
 	void frequency(float freq) { m_frequency = freq; }
+
+	float sampleRate() const { return m_sampleRate; }
 
 	void modulator(TSampler* s) {
 		m_modulator = s;
@@ -166,7 +169,7 @@ private:
 
 };
 
-#define T_WAVE_GUIDE_SAMPLES 22050
+#define T_WAVE_GUIDE_SAMPLES 44100
 class TWaveGuide {
 public:
 	TWaveGuide();

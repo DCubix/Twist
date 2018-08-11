@@ -4,7 +4,7 @@
 
 #include "TAudio.h"
 #include "TGen.h"
-#include "editor/TNode.h"
+#include "editor/TNodeEditor.h"
 
 TNodeEditor* g_Editor;
 
@@ -15,7 +15,8 @@ void audioCallback(void* audio, Uint8* stream, int length) {
 
 	g_Editor->solveNodes();
 	for (int i = 0; i < flen; i++) {
-		fstream[i] = g_Editor->output();
+		if (!g_Editor->rendering())
+			fstream[i] = g_Editor->output();
 	}
 
 	std::memcpy(g_Editor->outNode()->waveForm, fstream, WAVEFORM_LENGTH * sizeof(float));
@@ -30,8 +31,8 @@ int main() {
 	g_Editor = new TNodeEditor();
 	g_Editor->sampleRate = sr;
 	
-	aud.guiCallback([&](TAudio* au) {
-		g_Editor->draw(au->ctx());
+	aud.guiCallback([&](TAudio* au, int w, int h) {
+		g_Editor->draw(w, h);
 	});
 
 	while (!aud.shouldClose()) {

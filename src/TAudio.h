@@ -3,7 +3,9 @@
 
 #include "SDL2/SDL.h"
 #include "SDL2/SDL_audio.h"
-#include "nuk.h"
+
+#include "editor/imgui/imgui.h"
+#include "editor/imgui/imgui_impl.h"
 
 #include <functional>
 #include <iostream>
@@ -17,7 +19,7 @@
 #define FBUFFER(x) ((float*)x)
 
 class TAudio;
-using GUICallback = std::function<void(TAudio*)>;
+using GUICallback = std::function<void(TAudio*, int, int)>;
 
 class TAudio {
 public:
@@ -37,12 +39,9 @@ public:
 	void sync();
 
 	SDL_AudioSpec spec() const { return m_spec; }
-
-	struct nk_context* ctx() { return m_ctx; }
+	SDL_Window* window() { return m_window; }
 
 private:
-	struct nk_context* m_ctx;
-
 	SDL_GLContext m_context;
 	SDL_Window* m_window;
 

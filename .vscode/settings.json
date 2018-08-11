@@ -38,7 +38,24 @@
 		"cstring": "cpp",
 		"cinttypes": "cpp",
 		"deque": "cpp",
-		"algorithm": "cpp"
+		"algorithm": "cpp",
+		"forward_list": "cpp",
+		"numeric": "cpp",
+		"typeindex": "cpp",
+		"valarray": "cpp",
+		"ctime": "cpp",
+		"atomic": "cpp",
+		"strstream": "cpp",
+		"bitset": "cpp",
+		"chrono": "cpp",
+		"list": "cpp",
+		"iomanip": "cpp",
+		"ratio": "cpp",
+		"thread": "cpp",
+		"variant": "cpp",
+		"map": "cpp",
+		"complex": "cpp"
 	},
-	"C_Cpp.default.configurationProvider": "vector-of-bool.cmake-tools"
+	"C_Cpp.default.configurationProvider": "vector-of-bool.cmake-tools",
+	"C_Cpp.configurationWarnings": "Disabled"
 }

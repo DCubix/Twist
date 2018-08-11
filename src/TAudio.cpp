@@ -1,21 +1,6 @@
 #include "TAudio.h"
 
-#define MAX_VERTEX_MEMORY 512 * 1024
-#define MAX_ELEMENT_MEMORY 128 * 1024
-
 #include "glad/glad.h"
-
-#define NK_INCLUDE_FIXED_TYPES
-#define NK_INCLUDE_STANDARD_IO
-#define NK_INCLUDE_STANDARD_VARARGS
-#define NK_INCLUDE_DEFAULT_ALLOCATOR
-#define NK_INCLUDE_VERTEX_BUFFER_OUTPUT
-#define NK_INCLUDE_FONT_BAKING
-#define NK_INCLUDE_DEFAULT_FONT
-#define NK_IMPLEMENTATION
-#define NK_SDL_GL3_IMPLEMENTATION
-#include "nuklear.h"
-#include "nuklear_sdl_gl3.h"
 
 TAudio::TAudio(SDL_AudioCallback callback, int sampleRate, int samples, int channels) {
 	SDL_SetHint(SDL_HINT_VIDEO_HIGHDPI_DISABLED, "0");
@@ -51,7 +36,7 @@ TAudio::TAudio(SDL_AudioCallback callback, int sampleRate, int samples, int chan
 		"TAudio",
 		SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
 		1024, 640, 
-		SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL
+		SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
 	);
 
 	m_context = SDL_GL_CreateContext(m_window);
@@ -61,19 +46,15 @@ TAudio::TAudio(SDL_AudioCallback callback, int sampleRate, int samples, int chan
 		return;
 	}
 
-	m_ctx = nk_sdl_init(m_window);
-
-	struct nk_font_atlas *atlas;
-	nk_sdl_font_stash_begin(&atlas);
-	nk_sdl_font_stash_end();
-
 	m_shouldClose = false;
 
 	SDL_PauseAudioDevice(m_device, 0);
+
+	ImGuiSystem::Init(m_window);
 }
 
 void TAudio::destroy() {
-	nk_sdl_shutdown();
+	ImGuiSystem::Shutdown();
 	SDL_GL_DeleteContext(m_context);
 	SDL_DestroyWindow(m_window);
 	SDL_CloseAudioDevice(m_device);
@@ -83,26 +64,25 @@ void TAudio::destroy() {
 void TAudio::sync() {
 	SDL_Event e;
 
-	nk_input_begin(m_ctx);
 	while (SDL_PollEvent(&e)) {
 		if (e.type == SDL_QUIT) {
 			m_shouldClose = true;
 		}
-
-		nk_sdl_handle_event(&e);
+		ImGuiSystem::ProcessEvent(&e);
 	}
-	nk_input_end(m_ctx);
 
+	int ww, wh;
+	SDL_GetWindowSize(m_window, &ww, &wh);
+
+	ImGuiSystem::NewFrame();
 	// GUI
 	if (m_guiCallback) {
-		m_guiCallback(this);
+		m_guiCallback(this, ww, wh);
 	}
 
 	// Draw
-	int ww, wh;
-	SDL_GetWindowSize(m_window, &ww, &wh);
 	glViewport(0, 0, ww, wh);
 	glClear(GL_COLOR_BUFFER_BIT);
-	nk_sdl_render(NK_ANTI_ALIASING_ON, MAX_VERTEX_MEMORY, MAX_ELEMENT_MEMORY);
+	ImGuiSystem::Render();
 	SDL_GL_SwapWindow(m_window);
 }
