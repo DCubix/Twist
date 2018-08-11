@@ -11,6 +11,7 @@ public:
 	{
 		addInput("Mod");
 		addOutput("Out");
+		addOutput("Nt");
 	}
 
 	void gui() {
@@ -35,6 +36,7 @@ public:
 
 	void solve() {
 		setOutput(0, getInput(0) + NOTE(note) * std::pow(2, oct));
+		setOutput(1, (int)note);
 	}
 
 	virtual void save(JSON& json) {

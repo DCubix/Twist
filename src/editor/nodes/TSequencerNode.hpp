@@ -6,14 +6,15 @@
 #define SEQUENCER_SIZE 8
 class TSequencerNode : public TNode {
 public:
-	TSequencerNode(float sampleRate, float bpm, float swing)
+	TSequencerNode()
 		: TNode("Sequencer", 410, 150),
-			gate(false), noteIndex(0),
-			stime(0.0f), sampleRate(sampleRate),
-			bpm(120), out(0.0f), swing(swing)
+			noteIndex(0), out(0.0f), key(Notes::C)
 	{
 		addInput("Mod");
 		addInput("Reset");
+		addInput("Index");
+		addInput("Gate");
+		addInput("Key");
 		addOutput("Freq");
 		addOutput("Gate");
 		std::memset(notes, 0, sizeof(Notes) * SEQUENCER_SIZE);
@@ -41,7 +42,7 @@ public:
 		ImGui::BeginHorizontal(this);
 			for (int i = 0; i < SEQUENCER_SIZE; i++) {
 				bool pushed = false;
-				if (i == noteIndex) {
+				if (i == (noteIndex % SEQUENCER_SIZE)) {
 					pushed = true;
 					ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(120, 250, 120, 255));
 				}
@@ -74,36 +75,30 @@ public:
 			ImGui::PopItemWidth();
 		ImGui::EndHorizontal();
 
-		ImGui::DragFloat("Swing##sw", &swing, 0.1f, 0.0f, 1.0f);
-		ImGui::SameLine();
-		ImGui::DragFloat("BPM##bpm", &bpm, 0.5f, 40.0f, 256.0f);
+		ImGui::Combo("##key_note", (int*) &key, NOTES, 13);
 	}
 
 	void solve() {
 		if (getInputOr(1, 0.0f) > 0.0f) {
 			noteIndex = 0;
 		}
-		const float step = (1.0f / sampleRate) * 4;
 
-		float delay = (60000.0f / bpm) / 1000.0f;
-		stime += step;
+		int ni = noteIndex = (int) getInputOr(2, 0);
+		bool gate = getInputOr(3, 0) > 0.0f ? true : false;
 
-		float sw = swing * delay;
-
-		int ni = noteIndex;
 		Notes note = notes[ni % SEQUENCER_SIZE];
 
-		float delaySw = ni % 2 == 0 ? delay - sw * 0.5f : delay + sw * 0.5f;
-		if (stime >= delaySw) {
-			out = NOTE(note) * std::pow(2, octs[ni % SEQUENCER_SIZE]);
-			noteIndex++;
-			noteIndex = noteIndex % SEQUENCER_SIZE;
-			stime = 0.0f;
-			if (note != Notes::Silence) {
-				gate = false;
-			}
+		// Transpose note
+		int nkey = (int) getInputOr(4, (int)key);
+		int fnote = (int) notes[0];
+		int noteDiff = std::abs(nkey - fnote);
+		int nnote = ((int)note + noteDiff);
+
+		if (gate) {
+			if (note != Notes::Silence)
+				out = NOTE(nnote) * std::pow(2, octs[ni % SEQUENCER_SIZE]);
 		} else {
-			gate = true;
+			out = 0.0f;
 		}
 
 		setOutput(0, getInput(0) + out);
@@ -113,9 +108,7 @@ public:
 	virtual void save(JSON& json) {
 		TNode::save(json);
 		json["type"] = type();
-		json["sampleRate"] = sampleRate;
-		json["bpm"] = bpm;
-		json["swing"] = swing;
+		json["key"] = (int)key;
 
 		std::array<int, SEQUENCER_SIZE> notes_;
 		std::array<int, SEQUENCER_SIZE> octs_;
@@ -126,10 +119,11 @@ public:
 	}
 
 	int noteIndex;
-	bool gate;
-	float bpm, stime, sampleRate, out, swing = 0.0f;
+	float out;
 	Notes notes[SEQUENCER_SIZE];
 	int octs[SEQUENCER_SIZE];
+
+	Notes key;
 
 	static std::string type() { return "Sequencer"; }
 };

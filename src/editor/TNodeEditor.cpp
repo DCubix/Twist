@@ -16,6 +16,7 @@
 #include "nodes/TRemapNode.hpp"
 #include "nodes/TSequencerNode.hpp"
 #include "nodes/TValueNode.hpp"
+#include "nodes/TTimerNode.hpp"
 
 #include "tinyfiledialogs.h"
 #include "tinywav.h"
@@ -91,11 +92,10 @@ TNodeEditor::TNodeEditor() {
 		};
 	};
 	REGISTER_NODE(TSequencerNode) {
-		TSequencerNode* seq = new TSequencerNode{
-			GET(float, "sampleRate", 44100),
-			GET(float, "bpm", 120),
-			GET(float, "swing", 0)
-		};
+		TSequencerNode* seq = new TSequencerNode{};
+		if (json["key"].is_number_integer()) {
+			seq->key = json["key"];
+		}
 		if (json["notes"].is_array()) {
 			for (int i = 0; i < json["notes"].size(); i++) {
 				seq->notes[i] = json["notes"][i];
@@ -134,8 +134,15 @@ TNodeEditor::TNodeEditor() {
 			GET(float, "r", 0)
 		};
 	};
+	REGISTER_NODE(TTimerNode) {
+		return new TTimerNode{
+			GET(float, "sampleRate", 44100),
+			GET(float, "bpm", 120),
+			GET(float, "swing", 0)
+		};
+	};
 
-	addNode(10, 10, new TOutNode());
+	addNode(0, 0, new TOutNode());
 	m_outputNode = (TOutNode*) m_nodes[0];
 }
 
@@ -154,7 +161,20 @@ void TNodeEditor::draw(int w, int h) {
 	if (ImGui::BeginMainMenuBar()) {
 		if (ImGui::BeginMenu("File")) {
 			if (ImGui::MenuItem("New")) {
+				for (TNode* node : m_nodes) {
+					delete node;
+				}
+				m_nodes.clear();
 
+				for (TLink* link : m_links) {
+					delete link;
+				}
+				m_links.clear();
+
+				addNode(0, 0, new TOutNode());
+				m_outputNode = (TOutNode*) m_nodes[0];
+				m_scrolling.x = 0;
+				m_scrolling.y = 0;
 			}
 			ImGui::Separator();
 			if (ImGui::MenuItem("Open (*.tng)", "Ctrl+O")) {
@@ -357,6 +377,7 @@ void TNodeEditor::draw(int w, int h) {
 					}
 
 					if (node->open) {
+						ImGui::Spacing();
 						ImGui::BeginGroup();
 							node->gui();
 						ImGui::EndGroup();
@@ -519,300 +540,6 @@ void TNodeEditor::draw(int w, int h) {
 
 	ImGui::PopStyleVar();
 }
-
-// void TNodeEditor::draw(NkContext* ctx) {
-// 	const struct nk_input *in = &ctx->input;
-
-// 	if (nk_begin(ctx, "Node Editor", nk_rect(0, 0, 1024, 640), NK_WINDOW_NO_SCROLLBAR)) {
-// 		nk_menubar_begin(ctx);
-// 		nk_layout_row_dynamic(ctx, 22, 4);
-// 		if (nk_menu_begin_label(ctx, "File", NK_TEXT_ALIGN_LEFT, nk_vec2(200, 200))) {
-// 			nk_layout_row_dynamic(ctx, 22, 1);
-// 			const static char* FILTERS[] = { "*.tng\0" };
-// 			if (nk_menu_item_label(ctx, "Save node graph (*.tng)", NK_TEXT_ALIGN_LEFT)) {
-// 				const char* filePath = tinyfd_saveFileDialog(
-// 					"Save node graph",
-// 					"",
-// 					1,
-// 					FILTERS,
-// 					"Twist Node-Graph"
-// 				);
-// 				if (filePath) {
-// 					saveTNG(std::string(filePath));
-// 				}
-// 			}
-// 			if (nk_menu_item_label(ctx, "Load node graph (*.tng)", NK_TEXT_ALIGN_LEFT)) {
-// 				const char* filePath = tinyfd_openFileDialog(
-// 					"Load node graph",
-// 					"",
-// 					1,
-// 					FILTERS,
-// 					"Twist Node-Graph",
-// 					0
-// 				);
-// 				if (filePath) {
-// 					loadTNG(std::string(filePath));
-// 				}
-// 			}
-// 			if (nk_menu_item_label(ctx, "Render audio (*.wav)", NK_TEXT_ALIGN_LEFT)) {
-// 				const static char* F[] = { "*.wav\0" };
-// 				const char* filePath = tinyfd_saveFileDialog(
-// 					"Render to file",
-// 					"",
-// 					1,
-// 					F,
-// 					"WAV File"
-// 				);
-// 				if (filePath) {
-// 					renderToFile(std::string(filePath), m_outDuration);
-// 				}
-// 			}
-// 			nk_menu_end(ctx);
-// 		}
-// 		m_outDuration = nk_propertyf(ctx, "#Out Duration", 0.1f, m_outDuration, 60.0f, 0.1f, 0.1f);
-// 		nk_menubar_end(ctx);
-
-// 		nk_layout_row_dynamic(ctx, 24, 1);
-
-// 		NkRect totalSpace = nk_window_get_content_region(ctx);
-// 		NkCanvas* canvas = nk_window_get_canvas(ctx);
-
-// 		nk_layout_space_begin(ctx, NK_STATIC, totalSpace.h, m_nodes.size());
-// 		{
-// 			/// Draw links
-// 			for (TLink* link : m_links) {
-// 				TNode* ni = getNode(link->inputID);
-// 				TNode* no = getNode(link->outputID);
-// 				if (ni == nullptr || no == nullptr) continue;
-
-// 				float spacei = ni->m_bounds.h / float(ni->outputs().size() + 1);
-// 				float spaceo = no->m_bounds.h / float(no->inputs().size() + 1);
-// 				NkVec2 l0 = nk_layout_space_to_screen(ctx,
-// 					nk_vec2(
-// 						ni->m_bounds.x + ni->m_bounds.w,
-// 						ni->m_bounds.y + 5.0f + spacei * (link->inputSlot + 1)
-// 					)
-// 				);
-// 				NkVec2 l1 = nk_layout_space_to_screen(ctx,
-// 					nk_vec2(
-// 						no->m_bounds.x,
-// 						no->m_bounds.y + 5.0f + spaceo * (link->outputSlot + 1)
-// 					)
-// 				);
-
-// 				l0.x -= m_scrolling.x;
-// 				l0.y -= m_scrolling.y;
-// 				l1.x -= m_scrolling.x;
-// 				l1.y -= m_scrolling.y;
-// 				nk_stroke_curve(canvas, l0.x, l0.y, l0.x + 50.0f, l0.y,
-// 					l1.x - 50.0f, l1.y, l1.x, l1.y, 3.0f, nk_rgb(100, 100, 100));
-// 			}
-
-// 			NkRect size = nk_layout_space_bounds(ctx);
-// 			struct nk_panel *panel = nullptr;
-
-// 			float x, y;
-// 			const float gridSize = 48.0f;
-// 			const NkColor gridColor = nk_rgb(60, 60, 60);
-// 			for (x = std::fmod(size.x - m_scrolling.x, gridSize); x < size.w; x += gridSize)
-// 				nk_stroke_line(canvas, x+size.x, size.y, x+size.x, size.y+size.h, 1.0f, gridColor);
-// 			for (y = std::fmod(size.y - m_scrolling.y, gridSize); y < size.h; y += gridSize)
-// 				nk_stroke_line(canvas, size.x, y+size.y, size.x+size.w, y+size.y, 1.0f, gridColor);
-
-// 			for (TNode* node : m_nodes) {
-// 				if (node == nullptr) continue;
-				
-// 				nk_layout_space_push(ctx,
-// 						nk_rect(
-// 							node->m_bounds.x - m_scrolling.x,
-// 							node->m_bounds.y - m_scrolling.y,
-// 							node->m_bounds.w, node->m_bounds.h
-// 						)
-// 				);
-				
-// 				int flags = NK_WINDOW_MOVABLE | NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BORDER | NK_WINDOW_TITLE;
-// 				if (nk_group_begin(ctx, node->m_title.c_str(), flags)) {
-// 					panel = nk_window_get_panel(ctx);
-
-// 					if (node != m_outputNode) {
-// 						nk_layout_row_dynamic(ctx, 12, 1);
-// 						if (nk_button_label(ctx, "Delete")) {
-// 							deleteNode(node);
-// 							m_selected = nullptr;
-// 							break;
-// 						}
-// 					}
-// 					// Node content
-// 					node->draw(ctx, canvas);
-
-// 					nk_group_end(ctx);
-// 				} else { continue; }
-
-// 				if (panel == nullptr) continue;
-
-// 				/// Connection and Linking
-// 				float space;
-// 				NkRect bounds = nk_layout_space_rect_to_local(ctx, panel->bounds);
-// 				bounds.x += m_scrolling.x;
-// 				bounds.y += m_scrolling.y;
-// 				node->m_bounds = bounds;
-
-// 				const struct nk_color TEXT = nk_rgb(180, 180, 180);
-// 				const struct nk_color TEXT_S = nk_rgb(50, 50, 50);
-
-// 				/// Outputs
-// 				space = panel->bounds.h / float(node->outputs().size() + 1);
-// 				for (int i = 0; i < node->outputs().size(); i++) {
-// 					NkRect circle;
-// 					circle.x = panel->bounds.x + panel->bounds.w - 5;
-// 					circle.y = panel->bounds.y + space * (i + 1);
-// 					circle.w = 10; circle.h = 10;
-// 					nk_fill_circle(canvas, circle, nk_rgb(170, 100, 100));
-
-// 					const struct nk_style* style = &ctx->style;
-// 					nk_draw_text(
-// 						canvas,
-// 						nk_rect(circle.x + 12, circle.y+1, 100, 12),
-// 						node->outputs()[i].label.c_str(),
-// 						node->outputs()[i].label.size(),
-// 						style->font,
-// 						TEXT_S, TEXT_S
-// 					);
-// 					nk_draw_text(
-// 						canvas,
-// 						nk_rect(circle.x + 12, circle.y, 100, 12),
-// 						node->outputs()[i].label.c_str(),
-// 						node->outputs()[i].label.size(),
-// 						style->font,
-// 						TEXT, TEXT
-// 					);
-
-// 					/// Start linking process
-// 					if (nk_input_has_mouse_click_down_in_rect(in, NK_BUTTON_LEFT, circle, nk_true)) {
-// 						m_linking.active = true;
-// 						m_linking.node = node;
-// 						m_linking.inputID = node->id();
-// 						m_linking.inputSlot = i;
-// 					}
-
-// 					/// Draw curve from linked node slot to mouse position
-// 					if (m_linking.active && m_linking.node == node && m_linking.inputSlot == i) {
-// 						NkVec2 l0 = nk_vec2(circle.x + 5, circle.y + 5);
-// 						NkVec2 l1 = in->mouse.pos;
-// 						nk_stroke_curve(canvas, l0.x, l0.y, l0.x + 50.0f, l0.y,
-// 							l1.x - 50.0f, l1.y, l1.x, l1.y, 3.0f, nk_rgb(120, 120, 120));
-// 					}
-// 				}
-
-// 				/// Inputs
-// 				space = panel->bounds.h / float(node->inputs().size() + 1);
-// 				for (int i = 0; i < node->inputs().size(); i++) {
-// 					NkRect circle;
-// 					circle.x = panel->bounds.x - 5;
-// 					circle.y = panel->bounds.y + space * (i + 1);
-// 					circle.w = 10; circle.h = 10;
-// 					nk_fill_circle(canvas, circle, nk_rgb(100, 170, 100));
-
-// 					const char* text = node->inputs()[i].label.c_str();
-// 					int len = node->inputs()[i].label.size();
-
-// 					const struct nk_style* style = &ctx->style;
-// 					const struct nk_user_font* f = style->font;
-					
-// 					int tw = f->width(f->userdata, f->height, text, len);
-// 						tw += (2.0f);
-
-// 					nk_draw_text(
-// 						canvas,
-// 						nk_rect(circle.x - tw, circle.y+1, 100, 12),
-// 						text, len,
-// 						style->font,
-// 						TEXT_S, TEXT_S
-// 					);
-// 					nk_draw_text(
-// 						canvas,
-// 						nk_rect(circle.x - tw, circle.y, 100, 12),
-// 						text, len,
-// 						style->font,
-// 						TEXT, TEXT
-// 					);
-
-// 					/// Unlink
-// 					if (nk_input_is_mouse_released(in, NK_BUTTON_LEFT) &&
-// 						nk_input_is_mouse_hovering_rect(in, circle) &&
-// 						!m_linking.active)
-// 					{
-// 						int eid = -1;
-// 						int j = 0;
-// 						for (TLink* link : m_links) {
-// 							if (link->outputID == node->id() && link->outputSlot == i) {
-// 								eid = j;
-// 								break;
-// 							}
-// 							j++;
-// 						}
-// 						if (eid != -1) {
-// 							TLink* lnk = m_links[eid];
-// 							getNode(lnk->outputID)->inputs()[lnk->outputSlot].connected = false;
-// 							m_links.erase(m_links.begin() + eid);
-// 							delete lnk;
-// 						}
-// 					}
-
-// 					if (nk_input_is_mouse_released(in, NK_BUTTON_LEFT) &&
-// 						nk_input_is_mouse_hovering_rect(in, circle) &&
-// 						m_linking.active && m_linking.node != node)
-// 					{
-// 						m_linking.active = false;
-// 						link(m_linking.inputID, m_linking.inputSlot, node->id(), i);
-// 					}
-// 				}
-// 			}
-
-// 			/// Reset linking connection
-// 			if (m_linking.active && nk_input_is_mouse_released(in, NK_BUTTON_LEFT)) {
-// 				m_linking.active = false;
-// 				m_linking.node = nullptr;
-// 			}
-
-// 			/// Selection
-// 			if (nk_input_mouse_clicked(in, NK_BUTTON_LEFT, nk_layout_space_bounds(ctx))) {
-// 				m_selected = nullptr;
-// 				for (TNode* node : m_nodes) {
-// 					if (node == nullptr) continue;
-// 					NkRect b = nk_layout_space_rect_to_screen(ctx, node->m_bounds);
-// 					b.x -= m_scrolling.x;
-// 					b.y -= m_scrolling.y;
-// 					if (nk_input_is_mouse_hovering_rect(in, b))
-// 						m_selected = node;
-// 				}
-// 			}
-
-// 			// Add menu
-// 			if (nk_contextual_begin(ctx, 0, nk_vec2(100, 500), nk_window_get_bounds(ctx))) {
-// 				nk_layout_row_dynamic(ctx, 24, 1);
-// 				int x = in->mouse.pos.x + m_scrolling.x;
-// 				int y = in->mouse.pos.y + m_scrolling.y;
-// 				JSON djson;
-// 				for (auto e : m_nodeFactories) {
-// 					if (nk_menu_item_label(ctx, e.first.c_str(), NK_TEXT_ALIGN_LEFT)) {
-// 						addNode(x, y, e.second(djson));
-// 					}
-// 				}
-// 				nk_contextual_end(ctx);
-// 			}
-// 		}
-// 		nk_layout_space_end(ctx);
-
-// 		/// Window content scrolling
-// 		if (nk_input_is_mouse_hovering_rect(in, nk_window_get_bounds(ctx)) &&
-// 			nk_input_is_mouse_down(in, NK_BUTTON_MIDDLE)) {
-// 			m_scrolling.x -= in->mouse.delta.x;
-// 			m_scrolling.y -= in->mouse.delta.y;
-// 		}
-// 	}
-// 	nk_end(ctx);
-// }
 
 void TNodeEditor::addNode(int x, int y, TNode* node) {
 	if (node == nullptr) return;
