@@ -6,13 +6,14 @@
 #include "../json.hpp"
 using JSON = nlohmann::json;
 
+#define IMGUI_INCLUDE_IMGUI_USER_H
 #include "imgui.h"
 
 namespace tmath {
 	static float lerp(float a, float b, float t) {
 		return (1.0f - t) * a + b * t;
 	}
-	
+
 	static float remap(float value, float from1, float to1, float from2, float to2) {
 		return (value - from1) / (to1 - from1) * (to2 - from2) + from2;
 	}
@@ -39,9 +40,11 @@ public:
 	TNode(const std::string& title, int width, int height)
 		 : m_bounds(ImVec4(0, 0, width, height)), m_title(title)
 	{}
-	virtual ~TNode() {}
 
-	virtual void gui() {};
+	virtual ~TNode() {}
+	virtual void gui() {}
+	virtual void solve() {}
+
 	virtual void save(JSON& json);
 
 	const ImVec4& bounds() const { return m_bounds; }
@@ -62,7 +65,7 @@ public:
 		return m_inputs[id].value;
 	}
 
-	ImVec2 inputSlotPos(int s, float x=1) const { 
+	ImVec2 inputSlotPos(int s, float x=1) const {
 		return ImVec2(m_bounds.x*x, m_bounds.y*x + m_bounds.w * ((float)s + 1) / ((float)m_inputs.size() + 1));
 	}
 	ImVec2 outputSlotPos(int s, float x=1) const {
@@ -70,8 +73,6 @@ public:
 	}
 
 	ImVec2 size() const { return ImVec2(m_bounds.z, m_bounds.w); }
-
-	virtual void solve() {};
 
 	int id() const { return m_id; }
 

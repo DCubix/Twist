@@ -5,12 +5,29 @@
 #include <memory>
 #include <cmath>
 
-#define NOTE_RATIO 1.059463094f
-#define NOTE(x) ((x-1) != -1 ? (261.63f * std::pow(NOTE_RATIO, (x-1))) : 0)
+static const float NOTE[] = {
+	32.70320f,
+	34.64783f,
+	36.70810f,
+	38.89087f,
+	41.20344f,
+	43.65353f,
+	46.24930f,
+	48.99943f,
+	51.91309f,
+	55.00000f,
+	58.27047f,
+	61.73541f
+};
+
+namespace tgen {
+	float note(int index);
+	float note(int index, int octave);
+	int octave(int note);
+}
 
 enum Notes {
-	Silence = 0,
-	C,
+	C = 0,
 	Cs,
 	D,
 	Ds,
@@ -21,7 +38,8 @@ enum Notes {
 	Gs,
 	A,
 	As,
-	B
+	B,
+	Count
 };
 
 class TSampler {

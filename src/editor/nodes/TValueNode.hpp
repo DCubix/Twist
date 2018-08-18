@@ -18,7 +18,7 @@ public:
 		setOutput(0, value);
 	}
 
-	virtual void save(JSON& json) {
+	void save(JSON& json) {
 		TNode::save(json);
 		json["type"] = type();
 		json["value"] = value;

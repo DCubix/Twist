@@ -16,7 +16,6 @@ public:
 
 	void gui() {
 		static const char* NOTES[] = {
-			"---\0",
 			"C\0",
 			"C#\0",
 			"D\0",
@@ -28,18 +27,19 @@ public:
 			"G#\0",
 			"A\0",
 			"A#\0",
-			"B\0"
+			"B\0",
+			0
 		};
-		ImGui::Combo("Note", (int*)&note, NOTES, 13, -1);
-		ImGui::InputInt("Oct", &oct);
+		ImGui::Combo("Note", (int*)&note, NOTES, 12, -1);
+		ImGui::DragInt("Oct", &oct, 1, -7, 7);
 	}
 
 	void solve() {
-		setOutput(0, getInput(0) + NOTE(note) * std::pow(2, oct));
-		setOutput(1, (int)note);
+		setOutput(0, getInput(0) + tgen::note(note, oct));
+		setOutput(1, (int)note + (oct * 12));
 	}
 
-	virtual void save(JSON& json) {
+	void save(JSON& json) {
 		TNode::save(json);
 		json["type"] = type();
 		json["note"] = (int) note;

@@ -17,6 +17,7 @@
 #include "nodes/TSequencerNode.hpp"
 #include "nodes/TValueNode.hpp"
 #include "nodes/TTimerNode.hpp"
+#include "nodes/TReverbNode.hpp"
 
 #include "tinyfiledialogs.h"
 #include "tinywav.h"
@@ -32,7 +33,9 @@ static std::vector<TLink*> getAllLinksRelatedToNode(const std::vector<TLink*>& l
 	std::vector<TLink*> links;
 	if (node == nullptr) return links;
 	for (TLink* lnk : lnks) {
+		auto pos = std::find(links.begin(), links.end(), lnk);
 		if (lnk->inputID == node->id() || lnk->outputID == node->id()) {
+			if (pos != links.end()) continue;
 			links.push_back(lnk);
 		}
 	}
@@ -106,6 +109,11 @@ TNodeEditor::TNodeEditor() {
 				seq->octs[i] = json["octs"][i];
 			}
 		}
+		if (json["enabled"].is_array()) {
+			for (int i = 0; i < json["enabled"].size(); i++) {
+				seq->enabled[i] = json["enabled"][i].get<bool>();
+			}
+		}
 		return seq;
 	};
 	REGISTER_NODE(TButtonNode) {
@@ -122,7 +130,9 @@ TNodeEditor::TNodeEditor() {
 	};
 	REGISTER_NODE(TMathNode) {
 		return new TMathNode{
-			(TMathNode::TMathNodeOp) GET(int, "op", 0)
+			(TMathNode::TMathNodeOp) GET(int, "op", 0),
+			GET(float, "a", 0),
+			GET(float, "b", 0)
 		};
 	};
 	REGISTER_NODE(TADSRNode) {
@@ -140,6 +150,32 @@ TNodeEditor::TNodeEditor() {
 			GET(float, "bpm", 120),
 			GET(float, "swing", 0)
 		};
+	};
+	REGISTER_NODE(TReverbNode) {
+		TReverbNode* rv = new TReverbNode{
+			GET(float, "sampleRate", 44100)
+		};
+		if (json["preset"].is_array()) {
+			auto preset = json["preset"];
+			rv->pset.osf = preset[0];
+			rv->pset.p1 = preset[1];
+			rv->pset.p2 = preset[2];
+			rv->pset.p3 = preset[3];
+			rv->pset.p4 = preset[4];
+			rv->pset.p5 = preset[5];
+			rv->pset.p6 = preset[6];
+			rv->pset.p7 = preset[7];
+			rv->pset.p8 = preset[8];
+			rv->pset.p9 = preset[9];
+			rv->pset.p10 = preset[10];
+			rv->pset.p11 = preset[11];
+			rv->pset.p12 = preset[12];
+			rv->pset.p13 = preset[13];
+			rv->pset.p14 = preset[14];
+			rv->pset.p15 = preset[15];
+			rv->pset.p16 = preset[16];
+		}
+		return rv;
 	};
 
 	addNode(0, 0, new TOutNode());
@@ -170,6 +206,7 @@ void TNodeEditor::draw(int w, int h) {
 					delete link;
 				}
 				m_links.clear();
+				m_solvedNodes.clear();
 
 				addNode(0, 0, new TOutNode());
 				m_outputNode = (TOutNode*) m_nodes[0];
@@ -378,6 +415,7 @@ void TNodeEditor::draw(int w, int h) {
 
 					if (node->open) {
 						ImGui::Spacing();
+						ImGui::Spacing();
 						ImGui::BeginGroup();
 							node->gui();
 						ImGui::EndGroup();
@@ -418,7 +456,9 @@ void TNodeEditor::draw(int w, int h) {
 					ImVec2 pos = offset + node->inputSlotPos(i, currentFontWindowScale);
 					ImVec2 tsz = ImGui::CalcTextSize(label);
 					ImVec2 off = ImVec2(-(tsz.x + NODE_SLOT_RADIUS + 3), -tsz.y * 0.5f);
+					ImVec2 off1 = ImVec2(-(tsz.x + NODE_SLOT_RADIUS + 3), -tsz.y * 0.5f + 1);
 
+					draw_list->AddText(pos + off1, IM_COL32(0, 0, 0, 220), label);
 					draw_list->AddText(pos + off, IM_COL32(255, 255, 255, 220), label);
 					draw_list->AddCircleFilled(pos, NODE_SLOT_RADIUS, IM_COL32(150, 200, 150, 210));
 
@@ -460,7 +500,9 @@ void TNodeEditor::draw(int w, int h) {
 					ImVec2 pos = offset + node->outputSlotPos(i, currentFontWindowScale);
 					ImVec2 tsz = ImGui::CalcTextSize(label);
 					ImVec2 off = ImVec2(NODE_SLOT_RADIUS + 3, -tsz.y * 0.5f);
+					ImVec2 off1 = ImVec2(NODE_SLOT_RADIUS + 3, -tsz.y * 0.5f + 1);
 
+					draw_list->AddText(pos + off1, IM_COL32(0, 0, 0, 220), label);
 					draw_list->AddText(pos + off, IM_COL32(255, 255, 255, 220), label);
 					draw_list->AddCircleFilled(pos, NODE_SLOT_RADIUS, IM_COL32(200, 150, 150, 210));
 
@@ -561,6 +603,7 @@ void TNodeEditor::deleteNode(TNode* node) {
 	}
 	delete node;
 	node = nullptr;
+
 	solveNodes();
 }
 
@@ -574,6 +617,8 @@ void TNodeEditor::link(int inID, int inSlot, int outID, int outSlot) {
 	getNode(outID)->inputs()[outSlot].connected = true;
 
 	m_links.push_back(link);
+
+	solveNodes();
 }
 
 std::vector<TLink*> TNodeEditor::getNodeLinks(TNode* node) {
@@ -607,6 +652,7 @@ std::vector<TNode*> TNodeEditor::buildNodes(TNode* out) {
 
 	std::vector<TNode*> nodes;
 	nodes.push_back(out);
+
 	for (TNode* in : getNodeInputs(out)) {
 		if (in == nullptr) continue;
 		nodes.push_back(in);
@@ -634,7 +680,9 @@ TNode* TNodeEditor::getNode(int id) {
 	return nullptr;
 }
 
-void TNodeEditor::solve() {	
+void TNodeEditor::solve() {
+	if (m_loading) return;
+
 	for (TNode* node : m_solvedNodes) {
 		if (node == nullptr) continue;
 		node->solve();
@@ -646,6 +694,8 @@ void TNodeEditor::solve() {
 }
 
 float TNodeEditor::output() {
+	if (m_loading) return 0.0f;
+
 	solve();
 
 	const float ATTACK_TIME  = 5.0f / 1000.0f;
@@ -719,6 +769,8 @@ void TNodeEditor::saveTNG(const std::string& fileName) {
 }
 
 void TNodeEditor::loadTNG(const std::string& fileName) {
+	m_loading = true;
+
 	JSON json;
 	std::ifstream fp(fileName);
 	fp >> json;
@@ -733,6 +785,7 @@ void TNodeEditor::loadTNG(const std::string& fileName) {
 		delete link;
 	}
 	m_links.clear();
+	m_solvedNodes.clear();
 
 	addNode(json["outPos"][0], json["outPos"][1], new TOutNode());
 	m_outputNode = (TOutNode*) m_nodes[0];
@@ -741,6 +794,8 @@ void TNodeEditor::loadTNG(const std::string& fileName) {
 		JSON& node = json["nodes"][i];
 		TNode* nd = m_nodeFactories[node["type"]](node);
 		addNode(node["pos"][0], node["pos"][1], nd);
+		if (node["id"].is_number_integer())
+			nd->m_id = node["id"];
 	}
 
 	for (int i = 0; i < json["links"].size(); i++) {
@@ -748,4 +803,8 @@ void TNodeEditor::loadTNG(const std::string& fileName) {
 		if (lnk.is_null()) continue;
 		link(lnk["inID"], lnk["inSlot"], lnk["outID"], lnk["outSlot"]);
 	}
+
+	solveNodes();
+
+	m_loading = false;
 }

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.7)
-project(twist VERSION 1.0 LANGUAGES CXX)
+project(twist VERSION 1.0 LANGUAGES C CXX)
 
-set(CMAKE_BUILD_TYPE "Release")
+set(CMAKE_BUILD_TYPE "Debug")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -27,6 +27,7 @@ file(GLOB SRC
 	"src/editor/imgui/*.h"
 	"src/editor/imgui/*.cpp"
 	"src/editor/nodes/*.h"
+	"src/editor/nodes/*.c"
 	"src/editor/nodes/*.cpp"
 	"src/editor/nodes/*.hpp"
 	"src/editor/*.cpp"

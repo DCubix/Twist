@@ -18,7 +18,7 @@ public:
 		addInput("Gate");
 	}
 
-	virtual ~TADSRNode() override {
+	~TADSRNode() {
 		delete m_adsr;
 		m_adsr = nullptr;
 	}
@@ -51,7 +51,7 @@ public:
 		setOutput(0, value);
 	}
 
-	virtual void save(JSON& json) {
+	void save(JSON& json) {
 		TNode::save(json);
 		json["type"] = type();
 		json["a"] = a;

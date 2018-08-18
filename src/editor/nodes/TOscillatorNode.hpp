@@ -17,7 +17,7 @@ public:
 		addOutput("Out");
 	}
 
-	virtual ~TOscillatorNode() override {
+	~TOscillatorNode() {
 		delete m_osc;
 		m_osc = nullptr;
 	}
@@ -39,7 +39,7 @@ public:
 	void solve() {
 		float freq = getInputOr(0, frequency);
 		float amp = getInputOr(1, amplitude);
-		
+
 		m_osc->amplitude(amp);
 		m_osc->frequency(freq);
 		m_osc->waveForm((TOsc::TWave) wf);
@@ -49,7 +49,7 @@ public:
 		setOutput(0, value);
 	}
 
-	virtual void save(JSON& json) {
+	void save(JSON& json) {
 		TNode::save(json);
 		json["type"] = type();
 		json["sampleRate"] = m_osc->sampleRate();

@@ -19,8 +19,8 @@ using TNodeCtor = TNode*(JSON&);
 class TNodeEditor {
 public:
 	TNodeEditor();
-	virtual ~TNodeEditor();
-	
+	~TNodeEditor();
+
 	void draw(int w, int h);
 
 	void addNode(int x, int y, TNode* node);
@@ -28,6 +28,7 @@ public:
 	void link(int inID, int inSlot, int outID, int outSlot);
 
 	bool rendering() const { return m_rendering; }
+	bool loading() const { return m_loading; }
 
 	float output();
 
@@ -39,6 +40,7 @@ public:
 
 	TOutNode* outNode() { return m_outputNode; }
 	void solveNodes();
+	void solve();
 
 private:
 	std::map<std::string, TNodeCtor*> m_nodeFactories;
@@ -46,7 +48,7 @@ private:
 	std::vector<TNode*> m_nodes;
 	std::vector<TLink*> m_links;
 	TLinking m_linking;
-	
+
 	ImVec2 m_scrolling;
 	ImVec4 m_bounds;
 
@@ -57,7 +59,7 @@ private:
 	TOutNode* m_outputNode;
 
 	float m_signalDC, m_envelope, m_outDuration = 0;
-	bool m_rendering = false;
+	bool m_rendering = false, m_loading = false;
 
 	std::vector<TLink*> getNodeLinks(TNode* node);
 	std::vector<TNode*> getNodeInputs(TNode* node);
@@ -67,7 +69,6 @@ private:
 
 	std::vector<TNode*> m_solvedNodes;
 
-	void solve();
 };
 
 #endif // T_NODE_EDITOR_H

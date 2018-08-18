@@ -8,22 +8,25 @@ class TSequencerNode : public TNode {
 public:
 	TSequencerNode()
 		: TNode("Sequencer", 410, 150),
-			noteIndex(0), out(0.0f), key(Notes::C)
+			noteIndex(0), out(0.0f), key((int) Notes::C)
 	{
 		addInput("Mod");
-		addInput("Reset");
 		addInput("Index");
-		addInput("Gate");
 		addInput("Key");
+
 		addOutput("Freq");
+		addOutput("Nt");
 		addOutput("Gate");
-		std::memset(notes, 0, sizeof(Notes) * SEQUENCER_SIZE);
+
 		std::memset(octs, 0, sizeof(int) * SEQUENCER_SIZE);
+		std::memset(enabled, 1, sizeof(bool) * SEQUENCER_SIZE);
+		for (int i = 0; i < SEQUENCER_SIZE; i++) {
+			notes[i] = Notes::C;
+		}
 	}
 
 	void gui() {
 		static const char* NOTES[] = {
-			"--\0",
 			"C\0",
 			"C#\0",
 			"D\0",
@@ -60,70 +63,98 @@ public:
 			for (int i = 0; i < SEQUENCER_SIZE; i++) {
 				char id[4];
 				id[0] = '#'; id[1] = '#'; id[2] = (i+1); id[3] = 0;
-				ImGui::Combo(id, (int*) &notes[i], NOTES, 13);
+				ImGui::Combo(id, (int*) &notes[i], NOTES, 12);
 			}
 			ImGui::PopItemWidth();
 		ImGui::EndHorizontal();
-		
+
 		ImGui::BeginHorizontal(this);
 			ImGui::PushItemWidth(32);
 			for (int i = 0; i < SEQUENCER_SIZE; i++) {
 				char id[5];
 				id[0] = '#'; id[1] = '#'; id[2] = (i+1); id[3] = 'o'; id[4] = 0;
-				ImGui::DragInt(id, &octs[i], 0.25f, -8, 8);
+				ImGui::DragInt(id, &octs[i], 0.25f, 0, 7);
 			}
 			ImGui::PopItemWidth();
 		ImGui::EndHorizontal();
 
-		ImGui::Combo("##key_note", (int*) &key, NOTES, 13);
+		ImGui::BeginHorizontal(this);
+			ImGui::PushItemWidth(32);
+			for (int i = 0; i < SEQUENCER_SIZE; i++) {
+				char id[5];
+				id[0] = '#'; id[1] = '#'; id[2] = (i+1); id[3] = 's'; id[4] = 0;
+				ImGui::ToggleButton(id, &enabled[i]);
+			}
+			ImGui::PopItemWidth();
+		ImGui::EndHorizontal();
+
+		ImGui::Combo("##key_note", (int*) &key, NOTES, 12);
 	}
 
 	void solve() {
-		if (getInputOr(1, 0.0f) > 0.0f) {
-			noteIndex = 0;
-		}
-
-		int ni = noteIndex = (int) getInputOr(2, 0);
-		bool gate = getInputOr(3, 0) > 0.0f ? true : false;
-
-		Notes note = notes[ni % SEQUENCER_SIZE];
+		int ni = noteIndex = (int) getInputOr(1, 0);
+		int nid = ni % SEQUENCER_SIZE;
+		Notes note = notes[nid];
 
 		// Transpose note
-		int nkey = (int) getInputOr(4, (int)key);
-		int fnote = (int) notes[0];
-		int noteDiff = std::abs(nkey - fnote);
-		int nnote = ((int)note + noteDiff);
+		int nkey = (int) getInputOr(2, key);
 
-		if (gate) {
-			if (note != Notes::Silence)
-				out = NOTE(nnote) * std::pow(2, octs[ni % SEQUENCER_SIZE]);
+		int fnote = (int) notes[0];
+		int noteDiff = (nkey - fnote);
+		int nnote = ((int)note + noteDiff);
+		int oct = octs[nid] + tgen::octave(nnote);
+
+		if (enabled[nid]) {
+			out = tgen::note(nnote, oct);
 		} else {
 			out = 0.0f;
+			globGate = true;
+			setOutput(2, 0.0f);
 		}
 
 		setOutput(0, getInput(0) + out);
-		setOutput(1, gate ? 1.0f : 0.0f);
+		setOutput(1, nnote + (oct * 12));
+
+		if (prevNoteIndex != noteIndex) {
+			globGate = true;
+			prevNoteIndex = noteIndex;
+		}
+
+		if (globGate) {
+			setOutput(2, 0.0f);
+			globGate = false;
+		} else {
+			setOutput(2, 1.0f);
+		}
 	}
 
-	virtual void save(JSON& json) {
+	void save(JSON& json) {
 		TNode::save(json);
 		json["type"] = type();
-		json["key"] = (int)key;
+		json["key"] = key;
 
 		std::array<int, SEQUENCER_SIZE> notes_;
 		std::array<int, SEQUENCER_SIZE> octs_;
-		std::copy(std::begin(octs), std::end(octs), std::begin(octs_));
-		for (int i = 0; i < SEQUENCER_SIZE; i++) notes_[i] = (int) notes[i];
+		std::array<bool, SEQUENCER_SIZE> silen_;
+		for (int i = 0; i < SEQUENCER_SIZE; i++) {
+			notes_[i] = (int) notes[i];
+			octs_[i] = octs[i];
+			silen_[i] = enabled[i];
+		}
 		json["notes"] = notes_;
 		json["octs"] = octs_;
+		json["enabled"] = silen_;
 	}
 
-	int noteIndex;
+	bool globGate = false;
+	int noteIndex = 0, prevNoteIndex = 12;
 	float out;
+
 	Notes notes[SEQUENCER_SIZE];
 	int octs[SEQUENCER_SIZE];
+	bool enabled[SEQUENCER_SIZE];
 
-	Notes key;
+	int key;
 
 	static std::string type() { return "Sequencer"; }
 };

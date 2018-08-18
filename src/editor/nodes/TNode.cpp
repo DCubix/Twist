@@ -11,4 +11,5 @@ void TNode::addOutput(const std::string& label) {
 void TNode::save(JSON& json) {
 	json["pos"] = { m_bounds.x, m_bounds.y };
 	json["open"] = open;
+	json["id"] = m_id;
 }

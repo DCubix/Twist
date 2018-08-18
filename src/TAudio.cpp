@@ -2,7 +2,7 @@
 
 #include "glad/glad.h"
 
-TAudio::TAudio(SDL_AudioCallback callback, int sampleRate, int samples, int channels) {
+TAudio::TAudio(SDL_AudioCallback callback, void* udata, int sampleRate, int samples, int channels) {
 	SDL_SetHint(SDL_HINT_VIDEO_HIGHDPI_DISABLED, "0");
 
 	if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
@@ -15,7 +15,7 @@ TAudio::TAudio(SDL_AudioCallback callback, int sampleRate, int samples, int chan
 	spec.samples = samples;
 	spec.channels = channels;
 	spec.callback = callback;
-	spec.userdata = this;
+	spec.userdata = udata;
 	spec.format = AUDIO_F32;
 
 	if ((m_device = SDL_OpenAudioDevice(NULL, 0, &spec, &m_spec, 0)) < 0) {

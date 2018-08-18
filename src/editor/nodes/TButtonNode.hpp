@@ -20,7 +20,7 @@ public:
 		setOutput(0, enabled ? 1.0f : 0.0f);
 	}
 
-	virtual void save(JSON& json) {
+	void save(JSON& json) {
 		TNode::save(json);
 		json["type"] = type();
 		json["on"] = enabled;

@@ -4,6 +4,29 @@
 
 constexpr float PI2 = M_PI * 2.0f;
 
+namespace tgen {
+	float note(int index) {
+		int oct = octave(index);
+		return note(index, oct);
+	}
+
+	float note(int index, int octave) {
+		if (index >= Notes::Count) {
+			index -= Notes::Count;
+			octave++;
+		}
+		if (index < 0) {
+			index = Notes::Count + index;
+			octave--;
+		}
+		return NOTE[index] * std::pow(2, octave);
+	}
+
+	int octave(int note) {
+		return note / 12;
+	}
+}
+
 float TOsc::sample() {
 	return sample(m_frequency) * 0.5f + 0.5f;
 }
@@ -94,48 +117,48 @@ void TWaveGuide::clear() {
 float TWaveGuide::sample(float in, float feedBack, double delay) {
 	// calculate delay offset
 	double back = m_counter - delay;
-	
+
 	// clip lookback buffer-bound
 	if (back < 0.0) {
 		back = T_WAVE_GUIDE_SAMPLES + back;
 	}
-	
+
 	// compute interpolation left-floor
-	const int index0 = back;
-	
+	int index0 = back;
+
 	// compute interpolation right-floor
 	int index_1 = index0 - 1;
 	int index1 = index0 + 1;
 	int index2=  index0 + 2;
-	
+
 	// clip interp. buffer-bound
 	if (index_1 < 0)index_1 = T_WAVE_GUIDE_SAMPLES - 1;
 	if (index1 >= T_WAVE_GUIDE_SAMPLES) index1 = 0;
 	if (index2 >= T_WAVE_GUIDE_SAMPLES) index2 = 0;
-	
+
 	// get neighbourgh samples
-	const float y_1 = m_buffer[index_1];
-	const float y0 = m_buffer[index0];
-	const float y1 = m_buffer[index1];
-	const float y2 = m_buffer[index2];
-	
+	float y_1 = m_buffer[index_1];
+	float y0 = m_buffer[index0];
+	float y1 = m_buffer[index1];
+	float y2 = m_buffer[index2];
+
 	// compute interpolation x
 	const float x = float(back) - float(index0);
-	
+
 	// calculate
-	const float c0 = y0;
-	const float c1 = 0.5f * (y1 - y_1);
-	const float c2 = y_1 - 2.5f * y0 + 2.0f * y1 - 0.5f * y2;
-	const float c3 = 0.5f * (y2 - y_1) + 1.5f * (y0 - y1);
-	
-	const float output = ((c3 * x + c2) * x + c1) * x + c0;
-	
+	float c0 = y0;
+	float c1 = 0.5f * (y1 - y_1);
+	float c2 = y_1 - 2.5f * y0 + 2.0f * y1 - 0.5f * y2;
+	float c3 = 0.5f * (y2 - y_1) + 1.5f * (y0 - y1);
+
+	float output = ((c3 * x + c2) * x + c1) * x + c0;
+
 	// add to delay buffer
 	m_buffer[m_counter++] = in + output * feedBack;
-	
+
 	// clip delay counter
 	if (m_counter >= T_WAVE_GUIDE_SAMPLES) m_counter = 0;
-	
+
 	// return output
 	return output;
 }

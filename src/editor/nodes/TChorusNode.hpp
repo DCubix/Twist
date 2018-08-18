@@ -23,7 +23,7 @@ public:
 		addOutput("Out");
 	}
 
-	virtual ~TChorusNode() {
+	~TChorusNode() {
 		delete m_lfo;
 		m_lfo = nullptr;
 		delete m_wv;
@@ -44,7 +44,7 @@ public:
 		setOutput(0, (out + getInput(0)) * 0.5f);
 	}
 
-	virtual void save(JSON& json) {
+	void save(JSON& json) {
 		TNode::save(json);
 		json["type"] = type();
 		json["sampleRate"] = sampleRate;

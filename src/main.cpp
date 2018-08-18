@@ -6,39 +6,56 @@
 #include "TGen.h"
 #include "editor/TNodeEditor.h"
 
-TNodeEditor* g_Editor;
+static void audioCallback(void* app, Uint8* stream, int length);
 
-void audioCallback(void* audio, Uint8* stream, int length) {
-	int flen = length / sizeof(float);
-	float* fstream = FBUFFER(stream);
-	TAudio* aud = (TAudio*) audio;
+class App {
+public:
 
-	g_Editor->solveNodes();
-	for (int i = 0; i < flen; i++) {
-		if (!g_Editor->rendering())
-			fstream[i] = g_Editor->output();
+	App() {
+		m_sys = new TAudio(audioCallback, this);
+		m_editor = new TNodeEditor();
+		m_editor->sampleRate = m_sys->spec().freq;
+
+		m_sys->guiCallback([this](TAudio* au, int w, int h) {
+			m_editor->draw(w, h);
+		});
 	}
 
-	std::memcpy(g_Editor->outNode()->waveForm, fstream, WAVEFORM_LENGTH * sizeof(float));
+	void start() {
+		while (!m_sys->shouldClose()) {
+			m_sys->sync();
+		}
+		m_sys->destroy();
+		delete m_editor;
+	}
+
+	TNodeEditor* editor() { return m_editor; }
+
+private:
+	TAudio* m_sys;
+	TNodeEditor* m_editor;
+};
+
+static void audioCallback(void* ud, Uint8* stream, int length) {
+	App* app = static_cast<App*>(ud);
+	int flen = length / sizeof(float);
+	float* fstream = FBUFFER(stream);
+
+	if (app->editor() != nullptr) {
+		for (int i = 0; i < flen; i++) {
+			if (!app->editor()->rendering()) fstream[i] = app->editor()->output();
+		}
+
+		std::memcpy(app->editor()->outNode()->waveForm, fstream, WAVEFORM_LENGTH * sizeof(float));
+	}
 }
 
 int main() {
-	srand(time(0));
-	TAudio aud(audioCallback);
-
-	float sr = aud.spec().freq;
+	srand(time(0));	
 	
-	g_Editor = new TNodeEditor();
-	g_Editor->sampleRate = sr;
-	
-	aud.guiCallback([&](TAudio* au, int w, int h) {
-		g_Editor->draw(w, h);
-	});
+	App* app = new App();
+	app->start();
+	delete app;
 
-	while (!aud.shouldClose()) {
-		aud.sync();
-	}
-	aud.destroy();
-	delete g_Editor;
 	return 0;
 }

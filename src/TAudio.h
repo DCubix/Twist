@@ -23,10 +23,9 @@ using GUICallback = std::function<void(TAudio*, int, int)>;
 
 class TAudio {
 public:
-	virtual ~TAudio() {}
-
 	TAudio(
 		SDL_AudioCallback callback,
+		void* udata = nullptr,
 		int sampleRate = TAUDIO_DEFAULT_SAMPLERATE,
 		int samples = TAUDIO_DEFAULT_SAMPLES,
 		int channels = TAUDIO_DEFAULT_CHANNELS
@@ -49,7 +48,7 @@ private:
 	SDL_AudioSpec m_spec;
 
 	GUICallback m_guiCallback;
-	
+
 	bool m_shouldClose;
 };
 

@@ -27,7 +27,7 @@ public:
 		setOutput(0, norm * (newMax - newMin) + newMin);
 	}
 
-	virtual void save(JSON& json) {
+	void save(JSON& json) {
 		TNode::save(json);
 		json["type"] = type();
 		json["omin"] = oldMin;

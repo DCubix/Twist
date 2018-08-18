@@ -22,8 +22,8 @@ public:
 		float fac = getInputOr(2, factor);
 		setOutput(0, tmath::lerp(a, b, fac));
 	}
-	
-	virtual void save(JSON& json) {
+
+	void save(JSON& json) {
 		TNode::save(json);
 		json["type"] = type();
 		json["factor"] = factor;
