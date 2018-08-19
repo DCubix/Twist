@@ -6,8 +6,10 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <unordered_map>
 #include <cstring>
 #include <fstream>
+#include <memory>
 
 #include "nodes/TNode.h"
 #include "nodes/TOutNode.hpp"
@@ -23,8 +25,8 @@ public:
 
 	void draw(int w, int h);
 
-	void addNode(int x, int y, TNode* node);
-	void deleteNode(TNode* node);
+	TNode* addNode(int x, int y, TNodeCtor* ctor, JSON& json);
+	void deleteNode(int id);
 	void link(int inID, int inSlot, int outID, int outSlot);
 
 	bool rendering() const { return m_rendering; }
@@ -33,20 +35,21 @@ public:
 	float output();
 
 	void renderToFile(const std::string& fileName, float time);
+	void saveRecording(const std::string& fileName);
 	void saveTNG(const std::string& fileName);
 	void loadTNG(const std::string& fileName);
 
 	float sampleRate;
 
 	TOutNode* outNode() { return m_outputNode; }
-	void solveNodes();
 	void solve();
 
 private:
+	void solveNodes();
 	std::map<std::string, TNodeCtor*> m_nodeFactories;
 
-	std::vector<TNode*> m_nodes;
-	std::vector<TLink*> m_links;
+	std::map<int, std::unique_ptr<TNode>> m_nodes;
+	std::vector<std::unique_ptr<TLink>> m_links;
 	TLinking m_linking;
 
 	ImVec2 m_scrolling;
@@ -58,16 +61,21 @@ private:
 
 	TOutNode* m_outputNode;
 
-	float m_signalDC, m_envelope, m_outDuration = 0;
-	bool m_rendering = false, m_loading = false;
+	float m_signalDC = 0.0f, m_envelope = 0.0f, m_outDuration = 0, m_recTime = 0.1f,
+			m_recordingFadeTime = 0.0f, m_recordingFade = 0.0f;
+	bool m_rendering = false, m_loading = false, m_playing = false, m_recording = false;
 
-	std::vector<TLink*> getNodeLinks(TNode* node);
-	std::vector<TNode*> getNodeInputs(TNode* node);
-	std::vector<TNode*> buildNodes(TNode* out);
+	std::vector<float> m_recordBuffer;
+	int m_recordPointer = 0, m_recordingFadeType = 0;
+
+	std::vector<int> getAllLinksRelatedToNode(int id);
+	std::vector<int> getNodeLinks(int id);
+	std::vector<int> getNodeInputs(int id);
+	std::vector<int> buildNodes(int id);
 
 	TNode* getNode(int id);
 
-	std::vector<TNode*> m_solvedNodes;
+	std::vector<int> m_solvedNodes;
 
 };
 

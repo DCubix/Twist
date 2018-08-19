@@ -29,19 +29,6 @@
 #define GET(type, v, d) (json[v].is_null() ? d : json[v].get<type>())
 #define REGISTER_NODE(ntype) m_nodeFactories[ntype::type()] = [](JSON& json) -> TNode*
 
-static std::vector<TLink*> getAllLinksRelatedToNode(const std::vector<TLink*>& lnks, TNode* node) {
-	std::vector<TLink*> links;
-	if (node == nullptr) return links;
-	for (TLink* lnk : lnks) {
-		auto pos = std::find(links.begin(), links.end(), lnk);
-		if (lnk->inputID == node->id() || lnk->outputID == node->id()) {
-			if (pos != links.end()) continue;
-			links.push_back(lnk);
-		}
-	}
-	return links;
-}
-
 TNodeEditor::TNodeEditor() {
 	m_linking.active = 0;
 	m_linking.inputID = 0;
@@ -178,18 +165,13 @@ TNodeEditor::TNodeEditor() {
 		return rv;
 	};
 
-	addNode(0, 0, new TOutNode());
-	m_outputNode = (TOutNode*) m_nodes[0];
+	m_nodes[0] = std::unique_ptr<TNode>(new TOutNode());
+	m_nodes[0]->m_id = 0;
+	m_outputNode = (TOutNode*) m_nodes[0].get();
 }
 
 TNodeEditor::~TNodeEditor() {
-	for (TNode* node : m_nodes) {
-		delete node;
-	}
 	m_nodes.clear();
-	for (TLink* link : m_links) {
-		delete link;
-	}
 	m_links.clear();
 }
 
@@ -197,19 +179,13 @@ void TNodeEditor::draw(int w, int h) {
 	if (ImGui::BeginMainMenuBar()) {
 		if (ImGui::BeginMenu("File")) {
 			if (ImGui::MenuItem("New")) {
-				for (TNode* node : m_nodes) {
-					delete node;
-				}
 				m_nodes.clear();
-
-				for (TLink* link : m_links) {
-					delete link;
-				}
 				m_links.clear();
 				m_solvedNodes.clear();
 
-				addNode(0, 0, new TOutNode());
-				m_outputNode = (TOutNode*) m_nodes[0];
+				m_nodes[0] = std::unique_ptr<TNode>(new TOutNode());
+				m_nodes[0]->m_id = 0;
+				m_outputNode = (TOutNode*) m_nodes[0].get();
 				m_scrolling.x = 0;
 				m_scrolling.y = 0;
 			}
@@ -241,27 +217,13 @@ void TNodeEditor::draw(int w, int h) {
 					saveTNG(std::string(filePath));
 				}
 			}
-			ImGui::Separator();
-			if (ImGui::MenuItem("Render (*.wav)")) {
-				const static char* F[] = { "*.wav\0" };
-				const char* filePath = tinyfd_saveFileDialog(
-					"Render",
-					"",
-					1,
-					F,
-					"WAV File"
-				);
-				if (filePath) {
-					renderToFile(std::string(filePath), m_outDuration);
-				}
-			}
 			ImGui::EndMenu();
 		}
 		ImGui::EndMainMenuBar();
 	}
 
-	ImGui::SetNextWindowSize(ImVec2(w, h-20), 0);
-	ImGui::SetNextWindowPos(ImVec2(0, 20), 0);
+	ImGui::SetNextWindowSize(ImVec2(w, h-18), 0);
+	ImGui::SetNextWindowPos(ImVec2(0, 18), 0);
 	ImGui::SetNextWindowBgAlpha(1.0f);
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
@@ -272,7 +234,8 @@ void TNodeEditor::draw(int w, int h) {
 				ImGuiWindowFlags_NoResize |
 				ImGuiWindowFlags_NoTitleBar |
 				ImGuiWindowFlags_NoScrollbar |
-				ImGuiWindowFlags_NoScrollWithMouse;
+				ImGuiWindowFlags_NoScrollWithMouse |
+				ImGuiWindowFlags_NoBringToFrontOnFocus;
 	if (ImGui::Begin("", nullptr, flags)) {
 		if (ImGui::BeginChild("scrolling_region", ImVec2(0,0), false, flags))  {
 			// Zooming
@@ -313,7 +276,8 @@ void TNodeEditor::draw(int w, int h) {
 				m_scrolling = ImGui::GetWindowSize() * 0.5f;
 			} else if (m_oldFontWindowScale!=currentFontWindowScale) {
 				nodesHaveZeroSize = true;
-				for (TNode* node : m_nodes)    {
+				for (auto& e : m_nodes)    {
+					TNode* node = e.second.get();
 					node->m_bounds.z = 0.0f;  // we must reset the size
 					node->m_bounds.w = 0.0f;  // we must reset the size
 				}
@@ -355,7 +319,7 @@ void TNodeEditor::draw(int w, int h) {
 			// Display links
 			draw_list->ChannelsSplit(2);
 			draw_list->ChannelsSetCurrent(0); // Background
-			for (TLink* link : m_links) {
+			for (auto& link : m_links) {
 				TNode* ni = getNode(link->inputID);
 				TNode* no = getNode(link->outputID);
 				if (ni == nullptr || no == nullptr) continue;
@@ -369,7 +333,8 @@ void TNodeEditor::draw(int w, int h) {
 			}
 
 			// Display nodes
-			for (TNode* node : m_nodes) {
+			for (auto& e : m_nodes) {
+				TNode* node = e.second.get();
 				const ImVec2 nodeTitleBarButtonsStartCursor = node->open ? ImGui::GetCursorPos() : ImVec2(0,0);
 
 				ImGui::PushID(node->id());
@@ -403,7 +368,7 @@ void TNodeEditor::draw(int w, int h) {
 						ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, vec2zero);
 						ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, vec2zero);
 						if (ImGui::SmallButton("X")) {
-							deleteNode(node);
+							deleteNode(node->id());
 							m_selectedNode = -1;
 							m_hoveredNode = -1;
 							m_nodeHoveredInList = -1;
@@ -470,7 +435,7 @@ void TNodeEditor::draw(int w, int h) {
 					{
 						int eid = -1;
 						int j = 0;
-						for (TLink* link : m_links) {
+						for (auto& link : m_links) {
 							if (link->outputID == node->id() && link->outputSlot == i) {
 								eid = j;
 								break;
@@ -478,10 +443,9 @@ void TNodeEditor::draw(int w, int h) {
 							j++;
 						}
 						if (eid != -1) {
-							TLink* lnk = m_links[eid];
+							TLink* lnk = m_links[eid].get();
 							getNode(lnk->outputID)->inputs()[lnk->outputSlot].connected = false;
 							m_links.erase(m_links.begin() + eid);
-							delete lnk;
 						}
 					}
 
@@ -559,7 +523,7 @@ void TNodeEditor::draw(int w, int h) {
 					JSON js;
 					for (auto fn : m_nodeFactories) {
 						if (ImGui::MenuItem(fn.first.c_str())) {
-							addNode(scene_pos.x, scene_pos.y, fn.second(js));
+							addNode(scene_pos.x, scene_pos.y, fn.second, js);
 						}
 					}
 				}
@@ -580,29 +544,78 @@ void TNodeEditor::draw(int w, int h) {
 	}
 	ImGui::End();
 
+	ImGui::SetNextWindowSize(ImVec2(240, 0));
+	if (ImGui::Begin("Menu", nullptr, 0)) {
+		if (ImGui::CollapsingHeader("Controls")) {
+			if (ImGui::Button(m_playing ? "Stop" : "Play")) {
+				m_playing = !m_playing;
+			}
+		}
+		if (ImGui::CollapsingHeader("Recording")) {
+			if (ImGui::Button(m_recording ? "Stop" : "Record", ImVec2(ImGui::GetWindowWidth(), 20))) {
+				m_recording = !m_recording;
+			}
+			if (!m_recording) {
+				if (ImGui::Button("Save", ImVec2(ImGui::GetWindowWidth(), 20))) {
+					const static char* F[] = { "*.wav\0" };
+					const char* filePath = tinyfd_saveFileDialog(
+						"Save Recording",
+						"",
+						1,
+						F,
+						"WAV File"
+					);
+					if (filePath) {
+						saveRecording(std::string(filePath));
+					}
+				}
+				if (ImGui::DragFloat("Dur. (s)##maxdur", &m_recTime, 0.1f, 0.1f, 60.0f)) {
+					m_recordBuffer.resize((int)(m_recTime * sampleRate));
+					m_recordPointer = 0;
+				}
+
+				static const char* FADE_TYPES[] = {
+					"None\0",
+					"In\0",
+					"Out\0",
+					"In/Out\0",
+					0
+				};
+				ImGui::DragFloat("Fade (s)", &m_recordingFadeTime, 0.1f, 0.0f, m_recTime);
+				ImGui::Combo("Fade Type", &m_recordingFadeType, FADE_TYPES, 4);
+			} else {
+				int sec = (int)(float(m_recordPointer) / sampleRate) % 60;
+				int minute = sec / 60;
+				ImGui::Text("RECORDING... %02d:%02d", minute, sec);
+			}
+		}
+	}
+	ImGui::End();
+
 	ImGui::PopStyleVar();
 }
 
-void TNodeEditor::addNode(int x, int y, TNode* node) {
-	if (node == nullptr) return;
+TNode* TNodeEditor::addNode(int x, int y, TNodeCtor* ctor, JSON& json) {
+	if (ctor == nullptr) return nullptr;
+	std::unique_ptr<TNode> node = std::unique_ptr<TNode>(ctor(json));
+	TNode* tnode = node.get();
 	node->m_id = m_nodes.size();
 	node->m_bounds.x = x;
 	node->m_bounds.y = y;
-	m_nodes.push_back(node);
+	m_nodes.insert({ node->m_id, std::move(node) });
+
+	return tnode;
 }
 
-void TNodeEditor::deleteNode(TNode* node) {
-	for (TLink* link : getAllLinksRelatedToNode(m_links, node)) {
-		m_links.erase(std::find(m_links.begin(), m_links.end(), link));
-		delete link;
+void TNodeEditor::deleteNode(int id) {
+	for (int link : getAllLinksRelatedToNode(id)) {
+		m_links.erase(m_links.begin() + link);
 	}
 
-	auto pos = std::find(m_nodes.begin(), m_nodes.end(), node);
+	auto pos = m_nodes.find(id);
 	if (pos != m_nodes.end()) {
 		m_nodes.erase(pos);
 	}
-	delete node;
-	node = nullptr;
 
 	solveNodes();
 }
@@ -616,50 +629,63 @@ void TNodeEditor::link(int inID, int inSlot, int outID, int outSlot) {
 
 	getNode(outID)->inputs()[outSlot].connected = true;
 
-	m_links.push_back(link);
+	m_links.push_back(std::unique_ptr<TLink>(link));
 
 	solveNodes();
 }
 
-std::vector<TLink*> TNodeEditor::getNodeLinks(TNode* node) {
-	std::vector<TLink*> links;
-	for (TLink* lnk : m_links) {
-		if (lnk->inputID == node->id()) {
-			links.push_back(lnk);
+std::vector<int> TNodeEditor::getAllLinksRelatedToNode(int id) {
+	std::vector<int> links;
+	for (int i = 0; i < m_links.size(); i++) {
+		auto& lnk = m_links[i];
+		auto pos = std::find(links.begin(), links.end(), i);
+		if (lnk->inputID == id || lnk->outputID == id) {
+			if (pos != links.end()) continue;
+			links.push_back(i);
 		}
 	}
 	return links;
 }
 
-std::vector<TNode*> TNodeEditor::getNodeInputs(TNode* node) {
-	std::vector<TNode*> ins;
-	for (TLink* lnk : m_links) {
-		TNode* nd = getNode(lnk->inputID);
-		if (lnk->outputID == node->id() && nd != nullptr) {
-			ins.push_back(nd);
+std::vector<int> TNodeEditor::getNodeLinks(int id) {
+	std::vector<int> links;
+	for (int i = 0; i < m_links.size(); i++) {
+		TLink* lnk = m_links[i].get();
+		if (lnk->inputID == id) {
+			links.push_back(i);
+		}
+	}
+	return links;
+}
+
+std::vector<int> TNodeEditor::getNodeInputs(int id) {
+	std::vector<int> ins;
+	for (auto& lnk : m_links) {
+		if (lnk->outputID == id && getNode(lnk->inputID) != nullptr) {
+			ins.push_back(lnk->inputID);
 		}
 	}
 	return ins;
 }
 
 void TNodeEditor::solveNodes() {
-	m_solvedNodes = buildNodes(m_outputNode);
+	m_solvedNodes = buildNodes(m_outputNode->id());
 }
 
-std::vector<TNode*> TNodeEditor::buildNodes(TNode* out) {
-	if (out == nullptr)
-		return std::vector<TNode*>();
+std::vector<int> TNodeEditor::buildNodes(int outID) {
+	if (getNode(outID) == nullptr)
+		return std::vector<int>();
 
-	std::vector<TNode*> nodes;
-	nodes.push_back(out);
+	std::vector<int> nodes;
+	nodes.push_back(outID);
 
-	for (TNode* in : getNodeInputs(out)) {
-		if (in == nullptr) continue;
+	for (int in : getNodeInputs(outID)) {
+		if (getNode(in) == nullptr) continue;
 		nodes.push_back(in);
 
-		std::vector<TNode*> rec = buildNodes(in);
-		for (TNode* rnd : rec) {
-			if (rnd == nullptr) continue;
+		std::vector<int> rec = buildNodes(in);
+		for (int rnd : rec) {
+			if (getNode(rnd) == nullptr) continue;
 			if (std::find(nodes.begin(), nodes.end(), rnd) == nodes.end()) {
 				nodes.push_back(rnd);
 			}
@@ -672,22 +698,21 @@ std::vector<TNode*> TNodeEditor::buildNodes(TNode* out) {
 }
 
 TNode* TNodeEditor::getNode(int id) {
-	for (TNode* node : m_nodes) {
-		if (node->id() == id) {
-			return node;
-		}
-	}
-	return nullptr;
+	return m_nodes[id].get();
 }
 
 void TNodeEditor::solve() {
 	if (m_loading) return;
 
-	for (TNode* node : m_solvedNodes) {
+	for (int id : m_solvedNodes) {
+		TNode* node = getNode(id);
 		if (node == nullptr) continue;
+
 		node->solve();
-		for (TLink* link : getNodeLinks(node)) {
-			TNode* tgt = m_nodes[link->outputID];
+
+		for (int linkID : getNodeLinks(id)) {
+			TLink* link = m_links[linkID].get();
+			TNode* tgt = getNode(link->outputID);
 			tgt->setInput(link->outputSlot, node->getOutput(link->inputSlot));
 		}
 	}
@@ -696,7 +721,8 @@ void TNodeEditor::solve() {
 float TNodeEditor::output() {
 	if (m_loading) return 0.0f;
 
-	solve();
+	if (m_playing || m_recording)
+		solve();
 
 	const float ATTACK_TIME  = 5.0f / 1000.0f;
 	const float RELEASE_TIME = 200.0f / 1000.0f;
@@ -716,12 +742,63 @@ float TNodeEditor::output() {
 	}
 	m_envelope = std::max(m_envelope, 1.0f);
 
-	return std::min(std::max((sample * 0.6f / m_envelope), -1.0f), 1.0f) * m_outputNode->volume;
+	float finalOut = std::min(std::max((sample * 0.6f / (m_envelope+0.0001f)), -1.0f), 1.0f) * m_outputNode->volume;
+
+	if (m_recording) {
+		const int fadeTime = int(m_recordingFadeTime * sampleRate);
+		const float fadeDelta = 1.0f / fadeTime;
+		switch (m_recordingFadeType) {
+			case 0: m_recordingFade = 1.0f; break;
+			case 1:
+				if (m_recordPointer >= 0 && m_recordPointer < fadeTime)
+					m_recordingFade += fadeDelta;
+				break;
+			case 2:
+				if (m_recordPointer >= m_recordBuffer.size() - fadeTime)
+					m_recordingFade -= fadeDelta;
+				else
+					m_recordingFade = 1.0f;
+				break;
+			case 3: {
+				if (m_recordPointer >= 0 && m_recordPointer < fadeTime)
+					m_recordingFade += fadeDelta;
+				else if (m_recordPointer >= m_recordBuffer.size() - fadeTime)
+					m_recordingFade -= fadeDelta;
+				else
+					m_recordingFade = 1.0f;
+			} break;
+		}
+		m_recordBuffer[m_recordPointer++] = finalOut * m_recordingFade;
+		if (m_recordPointer >= m_recordBuffer.size()) {
+			m_recording = false;
+			m_recordPointer = 0;
+			m_recordingFade = 1;
+		}
+	}
+
+	return finalOut;
+}
+
+void TNodeEditor::saveRecording(const std::string& fileName) {
+	m_rendering = true;
+	TinyWav tw;
+	tinywav_open_write(&tw,
+		1,
+		44100,
+		TW_FLOAT32, // the output samples will be 32-bit floats. TW_INT16 is also supported
+		TW_INLINE,  // the samples will be presented inlined in a single buffer.
+					// Other options include TW_INTERLEAVED and TW_SPLIT
+		fileName.c_str() // the output path
+	);
+
+	tinywav_write_f(&tw, m_recordBuffer.data(), m_recordBuffer.size());
+	tinywav_close_write(&tw);
+	m_rendering = false;
 }
 
 void TNodeEditor::renderToFile(const std::string& fileName, float time) {
 	m_rendering = true;
-	const int sampleCount = int(time * 44100.0f);
+	const int sampleCount = int(time * sampleRate);
 	TinyWav tw;
 	tinywav_open_write(&tw,
 		1,
@@ -749,20 +826,18 @@ void TNodeEditor::saveTNG(const std::string& fileName) {
 
 	int i = 0;
 	for (int j = 1; j < m_nodes.size(); j++) {
-		TNode* node = m_nodes[j];
-		node->save(json["nodes"][i]);
-		i++;
+		TNode* node = m_nodes[j].get();
+		node->save(json["nodes"][i++]);
 	}
 
 	i = 0;
-	for (TLink* link : m_links) {
-		if (link == nullptr) continue;
-		JSON& links = json["links"][i];
+	for (auto& link : m_links) {
+		if (link.get() == nullptr) continue;
+		JSON& links = json["links"][i++];
 		links["inID"] = link->inputID;
 		links["inSlot"] = link->inputSlot;
 		links["outID"] = link->outputID;
 		links["outSlot"] = link->outputSlot;
-		i++;
 	}
 	fp << json.dump(1, '\t', true);
 	fp.close();
@@ -776,24 +851,20 @@ void TNodeEditor::loadTNG(const std::string& fileName) {
 	fp >> json;
 	fp.close();
 
-	for (TNode* node : m_nodes) {
-		delete node;
-	}
 	m_nodes.clear();
-
-	for (TLink* link : m_links) {
-		delete link;
-	}
 	m_links.clear();
 	m_solvedNodes.clear();
 
-	addNode(json["outPos"][0], json["outPos"][1], new TOutNode());
-	m_outputNode = (TOutNode*) m_nodes[0];
+	m_nodes[0] = std::unique_ptr<TNode>(new TOutNode());
+	m_nodes[0]->m_id = 0;
+	m_nodes[0]->m_bounds.x = json["outPos"][0];
+	m_nodes[0]->m_bounds.y = json["outPos"][1];
+	m_outputNode = (TOutNode*) m_nodes[0].get();
 
 	for (int i = 0; i < json["nodes"].size(); i++) {
 		JSON& node = json["nodes"][i];
-		TNode* nd = m_nodeFactories[node["type"]](node);
-		addNode(node["pos"][0], node["pos"][1], nd);
+		std::string type = node["type"].get<std::string>();
+		TNode* nd = addNode(node["pos"][0], node["pos"][1], m_nodeFactories[type], node);
 		if (node["id"].is_number_integer())
 			nd->m_id = node["id"];
 	}

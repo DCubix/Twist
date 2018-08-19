@@ -73,7 +73,7 @@ public:
 			for (int i = 0; i < SEQUENCER_SIZE; i++) {
 				char id[5];
 				id[0] = '#'; id[1] = '#'; id[2] = (i+1); id[3] = 'o'; id[4] = 0;
-				ImGui::DragInt(id, &octs[i], 0.25f, 0, 7);
+				ImGui::DragInt(id, &octs[i], 0.25f, -5, 5);
 			}
 			ImGui::PopItemWidth();
 		ImGui::EndHorizontal();
