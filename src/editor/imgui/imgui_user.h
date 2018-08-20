@@ -15,6 +15,7 @@ IMGUI_API void          SetTabItemClosed(const char* label);
 IMGUI_API void          SetTabItemSelected(const char* label);
 
 IMGUI_API float         VUMeter(const char* id, float value);
+IMGUI_API void          AudioView(const char* id, float width, float* values, int length, int pos);
 }
 
 enum ImGuiTabBarFlags_

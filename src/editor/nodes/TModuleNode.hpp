@@ -35,7 +35,7 @@ public:
 	void solve() {
 		if (nodeGraph && !reloading) {
 			for (int i = 0; i < m_inputs.size(); i++) {
-				inputs->setOutput(i, getInputOr(i, 0.0f));
+				inputs->setOutput(i, getInput(i));
 			}
 			nodeGraph->solve();
 			for (int i = 0; i < m_outputs.size(); i++) {
@@ -54,8 +54,10 @@ public:
 		if (fname.empty()) return;
 		reloading = true;
 		
-		if (!nodeGraph)
-			nodeGraph = std::unique_ptr<TNodeGraph>(new TNodeGraph());
+		if (nodeGraph) {
+			nodeGraph.reset();
+		}
+		nodeGraph = std::unique_ptr<TNodeGraph>(new TNodeGraph());
 		nodeGraph->load(fname);
 
 		m_inputs.clear();

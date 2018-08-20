@@ -22,14 +22,14 @@ public:
 	}
 
 	void solve() {
-		lvl = tmath::lerp(lvl, -1.0f, 1.0f / 44010);
-		buffer[bufPointer++ % 1024] = getInput(0);
-
-		for (int i = 0; i < 1024; i++) {
-			lvl = std::max(lvl, buffer[i]);
+		if (inputs()[0].connected) {
+			lvl = std::max(lvl, getInput(0) * 0.5f + 0.5f);
 		}
 
 		setInput(0, getInput(0) * volume);
+
+		lvl -= 1.0f / 22050;
+		lvl = std::min(std::max(lvl, 0.0f), 1.0f);
 	}
 
 	void save(JSON& json) {
@@ -40,8 +40,6 @@ public:
 
 	float volume = 1.0f;
 	float lvl = 0.0f;
-	float buffer[1024];
-	int bufPointer = 0;
 
 	static std::string type() { return "Out"; }
 };

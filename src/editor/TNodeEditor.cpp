@@ -22,9 +22,10 @@
 #include "nodes/TModuleNode.hpp"
 #include "nodes/TDelayLineNode.hpp"
 #include "nodes/TStorageNodes.hpp"
+#include "nodes/TSampleNode.hpp"
 
 #include "tinyfiledialogs.h"
-#include "tinywav.h"
+#include "sndfile.hh"
 
 #include "imgui/imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -235,6 +236,15 @@ TNodeEditor::TNodeEditor() {
 		return new TWriterNode{
 			GET(int, "idx", 0)
 		};
+	});
+
+	TNodeFactory::registerNode<TSampleNode>(NODE_CTOR {
+		TSampleNode* smp = new TSampleNode();
+		smp->sampleRate = GET(float, "sampleRate", 44100);
+		smp->duration = GET(float, "duration", 0);
+		if (json["sample"].is_array())
+			smp->sample = json["sample"].get<std::vector<float>>(); 
+		return smp;
 	});
 
 }
@@ -694,13 +704,15 @@ void TNodeEditor::draw(int w, int h) {
 			}
 			if (!m_recording) {
 				if (ImGui::Button("Save", ImVec2(ImGui::GetWindowWidth(), 20))) {
-					const static char* F[] = { "*.wav\0" };
+					const static char* F[] = { 
+						"*.ogg\0"
+					};
 					const char* filePath = tinyfd_saveFileDialog(
 						"Save Recording",
 						"",
 						1,
 						F,
-						"WAV File"
+						"Audio File (*.ogg)"
 					);
 					if (filePath) {
 						saveRecording(std::string(filePath));
@@ -828,40 +840,26 @@ float TNodeEditor::output() {
 
 void TNodeEditor::saveRecording(const std::string& fileName) {
 	m_rendering = true;
-	TinyWav tw;
-	tinywav_open_write(&tw,
-		1,
-		44100,
-		TW_FLOAT32, // the output samples will be 32-bit floats. TW_INT16 is also supported
-		TW_INLINE,  // the samples will be presented inlined in a single buffer.
-					// Other options include TW_INTERLEAVED and TW_SPLIT
-		fileName.c_str() // the output path
-	);
 
-	tinywav_write_f(&tw, m_recordBuffer.data(), m_recordBuffer.size());
-	tinywav_close_write(&tw);
+	int fmt = SF_FORMAT_OGG | SF_FORMAT_VORBIS;
+	SndfileHandle snd = SndfileHandle(fileName, SFM_WRITE, fmt, 1, int(sampleRate));
+	snd.writef(m_recordBuffer.data(), m_recordBuffer.size());
+
 	m_rendering = false;
 }
 
 void TNodeEditor::renderToFile(const std::string& fileName, float time) {
 	m_rendering = true;
 	const int sampleCount = int(time * sampleRate);
-	TinyWav tw;
-	tinywav_open_write(&tw,
-		1,
-		44100,
-		TW_FLOAT32, // the output samples will be 32-bit floats. TW_INT16 is also supported
-		TW_INLINE,  // the samples will be presented inlined in a single buffer.
-					// Other options include TW_INTERLEAVED and TW_SPLIT
-		fileName.c_str() // the output path
-	);
-
+	
 	float data[sampleCount];
 	for (int i = 0; i < sampleCount; i++) {
 		data[i] = output();
 	}
 
-	tinywav_write_f(&tw, data, sampleCount);
-	tinywav_close_write(&tw);
+	int fmt = SF_FORMAT_OGG | SF_FORMAT_VORBIS;
+	SndfileHandle snd = SndfileHandle(fileName, SFM_WRITE, fmt, 1, int(sampleRate));
+	snd.writef(data, sampleCount);
+
 	m_rendering = false;
 }

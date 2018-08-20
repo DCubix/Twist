@@ -40,36 +40,103 @@ static float remap(float value, float from1, float to1, float from2, float to2) 
 }
 
 float VUMeter(const char* id, float value) {
-	ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(0, 0, 0, 255));
 	const float height = BLOCK_SPACE + (BLOCK_HEIGHT + BLOCK_SPACE) * BLOCK_COUNT;
 
 	const int blockCount = (int) remap(value, 0.0f, 1.0f, 0, BLOCK_COUNT);
 
-	if (ImGui::BeginChild(id, ImVec2(16, height))) {
-		ImDrawList* draw_list = ImGui::GetWindowDrawList();
-		float y = ImGui::GetWindowHeight() - BLOCK_SPACE;
-		
-		const ImVec2 wp = ImGui::GetWindowPos();
-		for (int i = 0; i < blockCount; i++) {
-			int col = IM_COL32(0, 200, 100, 255);
-			if (i >= BLOCK_COUNT - 10 && i < BLOCK_COUNT - 3) {
-				col = IM_COL32(200, 200, 100, 255);
-			} else if (i >= BLOCK_COUNT - 3) {
-				col = IM_COL32(200, 100, 100, 255);
-			}
-			draw_list->AddRectFilled(
-				ImVec2(BLOCK_SPACE, y - BLOCK_HEIGHT) + wp,
-				ImVec2(16 - BLOCK_SPACE, y) + wp,
-				col
-			);
-			y -= (BLOCK_HEIGHT + BLOCK_SPACE);
+	ImDrawList* draw_list = ImGui::GetWindowDrawList();
+	float y = 0.0f;
+	
+	const ImVec2 wp = ImGui::GetCursorScreenPos();
+
+	draw_list->AddRectFilled(
+		wp,
+		ImVec2(16, height) + wp,
+		IM_COL32(0, 0, 0, 255)
+	);
+
+	ImGui::InvisibleButton(id, ImVec2(16, height));
+	for (int i = 0; i < blockCount; i++) {
+		int col = IM_COL32(0, 200, 100, 255);
+		if (i >= BLOCK_COUNT - 10 && i < BLOCK_COUNT - 3) {
+			col = IM_COL32(200, 200, 100, 255);
+		} else if (i >= BLOCK_COUNT - 3) {
+			col = IM_COL32(200, 100, 100, 255);
 		}
+		float iy = height - y;
+		draw_list->AddRectFilled(
+			ImVec2(BLOCK_SPACE, iy - BLOCK_HEIGHT) + wp,
+			ImVec2(16 - BLOCK_SPACE, iy) + wp,
+			col
+		);
+		y += (BLOCK_HEIGHT + BLOCK_SPACE);
 	}
 
-	ImGui::EndChild();
-	ImGui::PopStyleColor();
+	draw_list->AddRect(
+		wp,
+		ImVec2(16, height) + wp,
+		IM_COL32(100, 100, 100, 255)
+	);
 
 	return height;
+}
+
+void AudioView(const char* id, float width, float* values, int length, int pos) {
+	const int col = IM_COL32(0, 200, 100, 255);
+
+	int pos_r = int((float(pos) / length) * width);
+
+	const ImVec2 wp = ImGui::GetCursorScreenPos();
+	ImGui::InvisibleButton(id, ImVec2(width, 64));
+
+	const float h = 32.0f;
+	ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+	const ImVec2 rect_max = ImVec2(width, h*2) + wp;
+
+	draw_list->AddRectFilled(
+		wp,
+		rect_max,
+		IM_COL32(0, 0, 0, 255)
+	);
+
+	draw_list->PushClipRect(wp, rect_max);
+
+	draw_list->AddLine(
+		ImVec2(0.0f, h) + wp,
+		ImVec2(width, h) + wp,
+		IM_COL32(80,80,80,255)
+	);
+
+	ImVec2 prev = ImVec2(0.0f, h) + wp;
+	for (int i = 0; i < width; i++) {
+		int j = int((float(i) / width) * length);
+		ImVec2 pos = ImVec2(i, values[j] * h + h) + wp;
+		draw_list->AddLine(prev, pos, col);
+		prev = pos;
+	}
+
+	draw_list->AddLine(
+		ImVec2(pos_r, 0) + wp,
+		ImVec2(pos_r, h*2) + wp,
+		IM_COL32(200, 100, 100, 128),
+		2
+	);
+	draw_list->AddLine(
+		ImVec2(pos_r, 0) + wp,
+		ImVec2(pos_r, h*2) + wp,
+		IM_COL32(200, 100, 100, 255)
+	);
+
+	draw_list->PopClipRect();
+
+
+	draw_list->AddRect(
+		wp,
+		rect_max,
+		IM_COL32(100, 100, 100, 255)
+	);
+
 }
 }
 

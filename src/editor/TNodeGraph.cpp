@@ -80,13 +80,6 @@ TIntList TNodeGraph::buildNodes(const TIntList& ids) {
 }
 
 void TNodeGraph::solveNodes() {
-	// // Evaluate writer nodes
-	// for (auto& nd : m_nodes) {
-	// 	if (nd.second->m_type != TWriterNode::type()) continue;
-	// 	TIntList swn = buildNodes(nd.second->id());
-	// 	m_solvedWriterNodes[nd.second->id()] = swn;
-	// }
-
 	TIntList outNodes;
 	for (auto& nd : m_nodes) {
 		if (nd.second->m_type != TWriterNode::type()) continue;
@@ -98,6 +91,7 @@ void TNodeGraph::solveNodes() {
 	} else {
 		outNodes.push_back(outputNode());
 	}
+
 	m_solvedNodes = buildNodes(outNodes);
 }
 
@@ -127,7 +121,6 @@ float TNodeGraph::solve() {
 	for (int id : m_solvedNodes) {
 		TNode* nd = node(id);
 		if (nd == nullptr) continue;
-		// if (nd->m_type == TWriterNode::type()) continue;
 		
 		nd->solve();
 
@@ -138,11 +131,6 @@ float TNodeGraph::solve() {
 			tgt->setInput(link->outputSlot, nd->getOutput(link->inputSlot));
 		}
 	}
-
-	// // Evaluate writer nodes
-	// for (auto& e : m_solvedWriterNodes) {
-	// 	solveNodes(e.second);
-	// }
 
 	if (m_type == TGraphType::Normal) {
 		TNode* out = m_nodes[outputNode()].get();

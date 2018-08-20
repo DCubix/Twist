@@ -197,6 +197,8 @@ public:
 
 	std::string name() const { return m_name; }
 
+	void solveNodes();
+
 protected:
 	int getID();
 	TIntList getAllLinksRelatedToNode(int id);
@@ -204,7 +206,6 @@ protected:
 	TIntList getNodeInputs(int id);
 	TIntList buildNodes(int id);
 	TIntList buildNodes(const TIntList& ids);
-	void solveNodes();
 	void solveNodes(const TIntList& solved);
 
 	int m_outputNode = 0, m_inputsNode = 0, m_outputsNode = 0;
@@ -213,7 +214,6 @@ protected:
 	TLinkList m_links;
 
 	TIntList m_solvedNodes;
-	std::map<int, TIntList> m_solvedWriterNodes;
 
 	ImVec2 m_scrolling;
 

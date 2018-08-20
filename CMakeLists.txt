@@ -10,11 +10,13 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 
 find_package(SDL2 REQUIRED)
+find_package(SndFile REQUIRED)
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/editor/imgui/")
 
 include_directories(
 	${SDL2_INCLUDE_DIRS}
+	${LIBSNDFILE_INCLUDE_DIRS}
 )
 
 file(GLOB SRC
@@ -39,6 +41,7 @@ file(GLOB SRC
 add_executable(${PROJECT_NAME} ${SRC})
 target_link_libraries(${PROJECT_NAME}
 	${SDL2_LIBRARIES}
+	${LIBSNDFILE_LIBRARIES}
 	ImGUI
 )
 
