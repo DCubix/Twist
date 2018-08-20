@@ -190,11 +190,13 @@ private:
 #define T_WAVE_GUIDE_SAMPLES 44100
 class TWaveGuide {
 public:
-	TWaveGuide();
+	TWaveGuide() {}
+	TWaveGuide(float sr);
 
 	void clear();
-	float sample(float in, float feedBack, double delay);
+	float sample(float in, float feedBack, float delay);
 private:
+	float sampleRate;
 	float m_buffer[T_WAVE_GUIDE_SAMPLES];
 	int m_counter;
 };

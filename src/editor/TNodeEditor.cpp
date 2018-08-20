@@ -1,6 +1,7 @@
 #include "TNodeEditor.h"
 
 #include <iostream>
+#include <sstream>
 #include <cmath>
 #include <algorithm>
 
@@ -18,6 +19,9 @@
 #include "nodes/TValueNode.hpp"
 #include "nodes/TTimerNode.hpp"
 #include "nodes/TReverbNode.hpp"
+#include "nodes/TModuleNode.hpp"
+#include "nodes/TDelayLineNode.hpp"
+#include "nodes/TStorageNodes.hpp"
 
 #include "tinyfiledialogs.h"
 #include "tinywav.h"
@@ -26,16 +30,19 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui/imgui_internal.h"
 
-#define GET(type, v, d) (json[v].is_null() ? d : json[v].get<type>())
-#define REGISTER_NODE(ntype) m_nodeFactories[ntype::type()] = [](JSON& json) -> TNode*
+#define NODE_CTOR [](JSON& json) -> TNode*
+
+#define NODE_SLOT_RADIUS(x) (6.0f * x)
+#define NODE_SLOT_RADIUS2(x) (8.0f * x)
+#define LINK_THICKNESS(x) (5.0f * x)
+#define NODE_ROUNDING(x) (8.0f * x)
+#define NODE_PADDING(x) (8.0f * x)
 
 TNodeEditor::TNodeEditor() {
 	m_linking.active = 0;
 	m_linking.inputID = 0;
 	m_linking.inputSlot = 0;
 	m_linking.node = nullptr;
-	m_scrolling.x = 0;
-	m_scrolling.y = 0;
 	m_selectedNode = -1;
 	m_nodeHoveredInList = -1;
 	m_openContextMenu = false;
@@ -45,43 +52,49 @@ TNodeEditor::TNodeEditor() {
 	m_bounds.w = 1;
 	m_oldFontWindowScale = 0;
 
-	REGISTER_NODE(TValueNode) {
+	TNodeFactory::registerNode<TValueNode>(NODE_CTOR {
 		return new TValueNode{ GET(float, "value", 0.0f) };
-	};
-	REGISTER_NODE(TMixNode) {
+	});
+
+	TNodeFactory::registerNode<TMixNode>(NODE_CTOR {
 		return new TMixNode{ GET(float, "factor", 0.5f) };
-	};
-	REGISTER_NODE(TOscillatorNode) {
+	});
+
+	TNodeFactory::registerNode<TOscillatorNode>(NODE_CTOR {
 		return new TOscillatorNode{
 			GET(float, "sampleRate", 44100),
 			(TOsc::TWave) GET(int, "waveForm", 0),
 			GET(float, "freq", 440),
 			GET(float, "amp", 1)
 		};
-	};
-	REGISTER_NODE(TNoteNode) {
+	});
+
+	TNodeFactory::registerNode<TNoteNode>(NODE_CTOR {
 		return new TNoteNode{
 			(Notes) GET(int, "note", 0),
 			GET(int, "oct", 0)
 		};
-	};
-	REGISTER_NODE(TChorusNode) {
+	});
+
+	TNodeFactory::registerNode<TChorusNode>(NODE_CTOR {
 		return new TChorusNode{
 			GET(float, "sampleRate", 44100),
 			GET(float, "delayTime", 50),
 			GET(float, "chorusRate", 1),
 			GET(float, "chorusDepth", 1)
 		};
-	};
-	REGISTER_NODE(TRemapNode) {
+	});
+
+	TNodeFactory::registerNode<TRemapNode>(NODE_CTOR {
 		return new TRemapNode{
 			GET(float, "omin", 0),
 			GET(float, "omax", 1),
 			GET(float, "nmin", 0),
 			GET(float, "nmax", 1)
 		};
-	};
-	REGISTER_NODE(TSequencerNode) {
+	});
+
+	TNodeFactory::registerNode<TSequencerNode>(NODE_CTOR {
 		TSequencerNode* seq = new TSequencerNode{};
 		if (json["key"].is_number_integer()) {
 			seq->key = json["key"];
@@ -102,27 +115,31 @@ TNodeEditor::TNodeEditor() {
 			}
 		}
 		return seq;
-	};
-	REGISTER_NODE(TButtonNode) {
+	});
+
+	TNodeFactory::registerNode<TButtonNode>(NODE_CTOR {
 		return new TButtonNode{
 			GET(bool, "on", false)
 		};
-	};
-	REGISTER_NODE(TFilterNode) {
+	});
+
+	TNodeFactory::registerNode<TFilterNode>(NODE_CTOR {
 		return new TFilterNode{
 			GET(float, "sampleRate", 44100),
 			GET(float, "cutOff", 20),
 			(TFilterNode::TFilter) GET(int, "filter", 0)
 		};
-	};
-	REGISTER_NODE(TMathNode) {
+	});
+
+	TNodeFactory::registerNode<TMathNode>(NODE_CTOR {
 		return new TMathNode{
 			(TMathNode::TMathNodeOp) GET(int, "op", 0),
 			GET(float, "a", 0),
 			GET(float, "b", 0)
 		};
-	};
-	REGISTER_NODE(TADSRNode) {
+	});
+
+	TNodeFactory::registerNode<TADSRNode>(NODE_CTOR {
 		return new TADSRNode{
 			GET(float, "sampleRate", 44100),
 			GET(float, "a", 0),
@@ -130,15 +147,17 @@ TNodeEditor::TNodeEditor() {
 			GET(float, "s", 0),
 			GET(float, "r", 0)
 		};
-	};
-	REGISTER_NODE(TTimerNode) {
+	});
+
+	TNodeFactory::registerNode<TTimerNode>(NODE_CTOR {
 		return new TTimerNode{
 			GET(float, "sampleRate", 44100),
 			GET(float, "bpm", 120),
 			GET(float, "swing", 0)
 		};
-	};
-	REGISTER_NODE(TReverbNode) {
+	});
+
+	TNodeFactory::registerNode<TReverbNode>(NODE_CTOR {
 		TReverbNode* rv = new TReverbNode{
 			GET(float, "sampleRate", 44100)
 		};
@@ -163,31 +182,376 @@ TNodeEditor::TNodeEditor() {
 			rv->pset.p16 = preset[16];
 		}
 		return rv;
-	};
+	});
 
-	m_nodes[0] = std::unique_ptr<TNode>(new TOutNode());
-	m_nodes[0]->m_id = 0;
-	m_outputNode = (TOutNode*) m_nodes[0].get();
+	TNodeFactory::registerNode<TOutNode>(NODE_CTOR {
+		TOutNode* out = new TOutNode();
+		out->volume = GET(float, "volume", 1.0f);
+		return out;
+	});
+
+	TNodeFactory::registerNode<TInputsNode>(NODE_CTOR {
+		TInputsNode* tin = new TInputsNode();
+		if (json["inputs"].is_array()) {
+			for (int i = 0; i < json["inputs"].size(); i++) {
+				tin->addOutput(json["inputs"][i]);
+			}
+		}
+		return tin;
+	});
+
+	TNodeFactory::registerNode<TOutputsNode>(NODE_CTOR {
+		TOutputsNode* tout = new TOutputsNode();
+		if (json["outputs"].is_array()) {
+			for (int i = 0; i < json["outputs"].size(); i++) {
+				tout->addInput(json["outputs"][i]);
+			}
+		}
+		return tout;
+	});
+
+	TNodeFactory::registerNode<TModuleNode>(NODE_CTOR {
+		TModuleNode* mod = new TModuleNode();
+		mod->filePath = json["filePath"].is_string() ? json["filePath"] : "";
+		mod->load(mod->filePath);
+		return mod;
+	});
+
+	TNodeFactory::registerNode<TDelayLineNode>(NODE_CTOR {
+		return new TDelayLineNode{
+			GET(float, "sampleRate", 44100.0f),
+			GET(float, "feedback", 0.0f),
+			GET(int, "delay", 10)
+		};
+	});
+
+	TNodeFactory::registerNode<TReaderNode>(NODE_CTOR {
+		return new TReaderNode{
+			GET(int, "idx", 0)
+		};
+	});
+
+	TNodeFactory::registerNode<TWriterNode>(NODE_CTOR {
+		return new TWriterNode{
+			GET(int, "idx", 0)
+		};
+	});
+
 }
 
-TNodeEditor::~TNodeEditor() {
-	m_nodes.clear();
-	m_links.clear();
+void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
+	const ImGuiIO io = ImGui::GetIO();
+
+	// Zooming
+	ImGuiContext& g = *GImGui;
+	ImGuiWindow* window = ImGui::GetCurrentWindow();
+
+	float oldFontScaleToReset = g.Font->Scale; // We'll clean up at the bottom
+	float fontScaleStored = m_oldFontWindowScale ? m_oldFontWindowScale : oldFontScaleToReset;
+	float& fontScaleToTrack = g.Font->Scale;
+
+	// if (!io.FontAllowUserScaling) {
+	// 	// Set the correct font scale (3 lines)
+	// 	fontScaleToTrack = fontScaleStored;
+	// 	g.FontBaseSize = io.FontGlobalScale * g.Font->Scale * g.Font->FontSize;
+	// 	g.FontSize = window->CalcFontSize();
+
+	// 	if (ImGui::IsMouseHoveringRect(window->InnerMainRect.Min, window->InnerMainRect.Max) && io.MouseWheel)   {
+
+	// 		// Zoom / Scale window
+	// 		float new_font_scale = ImClamp(fontScaleToTrack + g.IO.MouseWheel * 0.075f, 0.50f, 2.50f);
+	// 		float scale = new_font_scale / fontScaleToTrack;
+	// 		if (scale != 1)	{
+	// 			graph->m_scrolling = graph->m_scrolling * scale;
+	// 			// Set the correct font scale (3 lines), and store it
+	// 			fontScaleStored = fontScaleToTrack = new_font_scale;
+	// 			g.FontBaseSize = io.FontGlobalScale * g.Font->Scale * g.Font->FontSize;
+	// 			g.FontSize = window->CalcFontSize();
+	// 		}
+	// 	}
+	// }
+
+	// fixes zooming just a bit
+	bool nodesHaveZeroSize = false;
+	m_currentFontWindowScale = !io.FontAllowUserScaling ? fontScaleStored : ImGui::GetCurrentWindow()->FontWindowScale;
+	if (m_oldFontWindowScale == 0.0f) {
+		m_oldFontWindowScale = m_currentFontWindowScale;
+		nodesHaveZeroSize = true;   // at start or after clear()
+		graph->m_scrolling = ImGui::GetWindowSize() * 0.5f;
+	} else if (m_oldFontWindowScale != m_currentFontWindowScale) {
+		nodesHaveZeroSize = true;
+		for (auto& e : graph->nodes())    {
+			TNode* node = e.second.get();
+			node->m_bounds.z = 0.0f;  // we must reset the size
+			node->m_bounds.w = 0.0f;  // we must reset the size
+		}
+		// These two lines makes the scaling work around the mouse position AFAICS
+		if (io.FontAllowUserScaling) {
+			const ImVec2 delta = (io.MousePos - ImGui::GetCursorScreenPos());
+			graph->m_scrolling -= (delta * m_currentFontWindowScale - delta * m_oldFontWindowScale) / m_currentFontWindowScale;
+		}
+		m_oldFontWindowScale = m_currentFontWindowScale;
+	}
+
+	bool openContext = false;
+	ImVec2 offset = ImGui::GetCursorScreenPos() + graph->m_scrolling;
+	ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+	float scl = m_currentFontWindowScale;
+
+	// Display grid
+	ImU32 GRID_COLOR = IM_COL32(200, 200, 200, 40);
+	float GRID_SZ = 64.0f * scl;
+	ImVec2 win_pos = ImGui::GetCursorScreenPos();
+	ImVec2 canvas_sz = ImGui::GetWindowSize();
+	for (float x = fmodf(graph->m_scrolling.x, GRID_SZ); x < canvas_sz.x; x += GRID_SZ)
+		draw_list->AddLine(ImVec2(x, 0.0f) + win_pos, ImVec2(x, canvas_sz.y) + win_pos, GRID_COLOR);
+	for (float y = fmodf(graph->m_scrolling.y, GRID_SZ); y < canvas_sz.y; y += GRID_SZ)
+		draw_list->AddLine(ImVec2(0.0f, y) + win_pos, ImVec2(canvas_sz.x, y) + win_pos, GRID_COLOR);
+
+
+	// Display links
+	draw_list->ChannelsSplit(2);
+	draw_list->ChannelsSetCurrent(0); // Background
+	for (auto& link : graph->links()) {
+		TNode* ni = graph->node(link->inputID);
+		TNode* no = graph->node(link->outputID);
+		if (ni == nullptr || no == nullptr) continue;
+
+		ImVec2 p1 = offset + ni->outputSlotPos(link->inputSlot, scl);
+		ImVec2 p2 = offset + no->inputSlotPos(link->outputSlot, scl);
+
+		draw_list->AddCircleFilled(p1, NODE_SLOT_RADIUS2(scl), IM_COL32(200, 200, 100, 255));
+		draw_list->AddCircleFilled(p2, NODE_SLOT_RADIUS2(scl), IM_COL32(200, 200, 100, 255));
+		draw_list->AddBezierCurve(p1, p1 + ImVec2(+50, 0), p2 + ImVec2(-50, 0), p2, IM_COL32(200, 200, 100, 255), LINK_THICKNESS(scl));
+	}
+
+	// Display nodes
+	std::vector<int> toDelete;
+
+	for (auto& e : graph->nodes()) {
+		TNode* node = e.second.get();
+		if (node == nullptr) continue;
+
+		ImGui::PushID(node->id());
+		ImVec2 node_rect_min = offset + ImVec2(node->m_bounds.x, node->m_bounds.y) * scl;
+
+		// Display node contents first
+		draw_list->ChannelsSetCurrent(1); // Foreground
+		bool old_any_active = ImGui::IsAnyItemActive();
+		
+		ImGui::SetCursorScreenPos(node_rect_min + ImVec2(NODE_PADDING(scl), NODE_PADDING(scl)));
+		ImGui::BeginGroup();
+			ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Appearing);
+			ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(1, 1, 1, 0));
+			ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(1, 1, 1, 0));
+			ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(1, 1, 1, 0));
+			if (ImGui::TreeNode(node, "%s", "")) { ImGui::TreePop(); node->open = true; }
+			else node->open = false;
+
+			ImGui::PopStyleColor(3);
+			ImGui::SameLine(0, 2);
+
+			ImGui::Text("%s", node->m_title.c_str());
+			
+			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1, 1, 1, 0));
+			ImGui::SameLine();
+
+			static const ImVec2 vec2zero(0, 0);
+
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, vec2zero);
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, vec2zero);
+			ImGui::PushID("NodeButtons");
+			if (ImGui::Button("X", ImVec2(15, 15))) {
+				toDelete.push_back(node->id());
+				m_selectedNode = -1;
+				m_hoveredNode = -1;
+				m_nodeHoveredInList = -1;
+			}
+			ImGui::PopID();
+			ImGui::PopStyleVar(2);
+			ImGui::PopStyleColor();
+
+			if (node->open) {
+				ImGui::Spacing();
+				ImGui::Spacing();
+				ImGui::BeginGroup();
+					node->gui();
+				ImGui::EndGroup();
+			}
+		ImGui::EndGroup();
+
+		// Save the size of what we have emitted and whether any of the widgets are being used
+		bool node_widgets_active = (!old_any_active && ImGui::IsAnyItemActive());
+		float pad = NODE_PADDING(scl);
+		ImVec2 nodeSize = ImGui::GetItemRectSize() + ImVec2(pad, pad)*2;
+		node->m_bounds.z = nodeSize.x;
+		node->m_bounds.w = nodeSize.y;
+		ImVec2 node_rect_max = node_rect_min + node->size();
+		
+		// Display node box
+		draw_list->ChannelsSetCurrent(0); // Background
+		ImGui::SetCursorScreenPos(node_rect_min);
+		ImGui::InvisibleButton("node##invbtn", node->size());
+		if (ImGui::IsItemHovered()) {
+			m_hoveredNode = node->id();
+			openContext |= ImGui::IsMouseClicked(1);
+		}
+
+		bool node_moving_active = ImGui::IsItemActive();
+		if (node_widgets_active || node_moving_active)
+			m_selectedNode = node->id();
+
+		if (node_moving_active && ImGui::IsMouseDragging(0) && !m_linking.active) {
+			node->m_bounds.x += ImGui::GetIO().MouseDelta.x / scl;
+			node->m_bounds.y += ImGui::GetIO().MouseDelta.y / scl;
+			graph->m_saved = false;
+		}
+
+		ImU32 node_bg_color = (m_nodeHoveredInList == node->id() || m_hoveredNode == node->id() || (m_nodeHoveredInList == -1 && m_selectedNode == node->id())) ? IM_COL32(75, 75, 75, 255) : IM_COL32(60, 60, 60, 255);
+		draw_list->AddRectFilled(node_rect_min, node_rect_max, node_bg_color, NODE_ROUNDING(scl));
+		draw_list->AddRect(node_rect_min, node_rect_max, IM_COL32(100, 100, 100, 255), NODE_ROUNDING(scl));
+		
+		const float slotRadius = NODE_SLOT_RADIUS(scl);
+
+		for (int i = 0; i < node->inputs().size(); i++) {
+			const char* label = node->inputs()[i].label.c_str();
+			ImVec2 pos = offset + node->inputSlotPos(i, scl);
+			ImVec2 tsz = ImGui::CalcTextSize(label);
+			ImVec2 off = ImVec2(-(tsz.x + slotRadius + 3), -tsz.y * 0.5f);
+			ImVec2 off1 = ImVec2(-(tsz.x + slotRadius + 3), -tsz.y * 0.5f + 1);
+
+			draw_list->AddText(pos + off1, IM_COL32(0, 0, 0, 220), label);
+			draw_list->AddText(pos + off, IM_COL32(255, 255, 255, 220), label);
+			draw_list->AddCircleFilled(pos, slotRadius, IM_COL32(150, 200, 150, 255));
+
+			// Unlink
+			ImVec2 hsz(slotRadius, slotRadius);
+			if (ImGui::IsMouseHoveringRect(pos - hsz, pos + hsz) &&
+				ImGui::IsMouseDoubleClicked(0) &&
+				!m_linking.active)
+			{
+				int eid = -1;
+				int j = 0;
+				for (auto& link : graph->links()) {
+					if (link->outputID == node->id() && link->outputSlot == i) {
+						eid = j;
+						break;
+					}
+					j++;
+				}
+				if (eid != -1) {
+					TLink* lnk = graph->links()[eid].get();
+					graph->node(lnk->outputID)->inputs()[lnk->outputSlot].connected = false;
+					graph->node(lnk->inputID)->outputs()[lnk->inputSlot].connected = false;
+					graph->links().erase(graph->links().begin() + eid);
+					graph->m_saved = false;
+				}
+			}
+
+			// End linking
+			if (ImGui::IsMouseHoveringRect(pos - hsz, pos + hsz) &&
+				ImGui::IsMouseReleased(0) &&
+				m_linking.active && m_linking.node != node)
+			{
+				m_linking.active = false;
+				graph->link(m_linking.inputID, m_linking.inputSlot, node->id(), i);
+			}
+		}
+		
+		for (int i = 0; i < node->outputs().size(); i++) {
+			const char* label = node->outputs()[i].label.c_str();
+			ImVec2 pos = offset + node->outputSlotPos(i, scl);
+			ImVec2 tsz = ImGui::CalcTextSize(label);
+			ImVec2 off = ImVec2(slotRadius + 3, -tsz.y * 0.5f);
+			ImVec2 off1 = ImVec2(slotRadius + 3, -tsz.y * 0.5f + 1);
+
+			draw_list->AddText(pos + off1, IM_COL32(0, 0, 0, 220), label);
+			draw_list->AddText(pos + off, IM_COL32(255, 255, 255, 220), label);
+			draw_list->AddCircleFilled(pos, slotRadius, IM_COL32(200, 150, 150, 255));
+
+			/// Start linking process
+			ImVec2 hsz(slotRadius, slotRadius);
+			if (ImGui::IsMouseHoveringRect(pos - hsz, pos + hsz) && ImGui::IsMouseClicked(0)) {
+				m_linking.active = true;
+				m_linking.node = node;
+				m_linking.inputID = node->id();
+				m_linking.inputSlot = i;
+
+			}
+
+			if (m_linking.active && m_linking.node == node && m_linking.inputSlot == i) {
+				ImVec2 l0 = pos;
+				ImVec2 l1 = ImGui::GetIO().MousePos;
+				int col = IM_COL32(170, 170, 170, 255);
+				draw_list->AddCircleFilled(l0, slotRadius, col);
+				draw_list->AddCircleFilled(l1, slotRadius, col);
+				draw_list->AddBezierCurve(l0, l0 + ImVec2(+50, 0), l1 + ImVec2(-50, 0), l1, col, 5.0f);
+			}
+		}
+
+		ImGui::PopID();
+	}
+	draw_list->ChannelsMerge();
+
+	// Scrolling
+	if (ImGui::IsWindowHovered() && !ImGui::IsAnyItemActive() && ImGui::IsMouseDragging(2, 0.0f)) {
+		graph->m_scrolling = graph->m_scrolling + ImGui::GetIO().MouseDelta;
+		graph->m_saved = false;
+	}
+
+	// Open context menu
+	if (!ImGui::IsAnyItemHovered() && ImGui::IsMouseHoveringWindow() && ImGui::IsMouseClicked(1)) {
+		m_selectedNode = m_nodeHoveredInList = m_hoveredNode = -1;
+		openContext = true;
+	}
+	if (openContext) {
+		ImGui::OpenPopup("context_menu");
+		if (m_nodeHoveredInList != -1)
+			m_selectedNode = m_nodeHoveredInList;
+		if (m_hoveredNode != -1)
+			m_selectedNode = m_hoveredNode;
+	}
+
+	// Draw context menu
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 8));
+	if (ImGui::BeginPopup("context_menu")) {
+		TNode* node = m_selectedNode != -1 ? graph->node(m_selectedNode) : nullptr;
+		ImVec2 scene_pos = ImGui::GetMousePosOnOpeningCurrentPopup() - offset;
+		if (node) {
+			ImGui::Text("%s Node", node->m_title.c_str());
+			ImGui::Separator();
+			if (ImGui::MenuItem("Delete", NULL, false, false)) {}
+			if (ImGui::MenuItem("Duplicate", NULL, false, false)) {}
+		} else {
+			for (auto fn : TNodeFactory::factories) {
+				if ((fn.first == TInputsNode::type() ||
+					 fn.first == TOutputsNode::type()) &&
+					graph->type() != TNodeGraph::Module)
+				{
+					continue;
+				}
+				if (ImGui::MenuItem(fn.first.c_str())) {
+					graph->addNode(scene_pos.x, scene_pos.y, fn.first);
+				}
+			}
+		}
+		ImGui::EndPopup();
+	}
+	ImGui::PopStyleVar();
+
+	// Delete nodes
+	for (int i : toDelete) {
+		graph->deleteNode(i);
+	}
+
 }
 
 void TNodeEditor::draw(int w, int h) {
 	if (ImGui::BeginMainMenuBar()) {
 		if (ImGui::BeginMenu("File")) {
 			if (ImGui::MenuItem("New")) {
-				m_nodes.clear();
-				m_links.clear();
-				m_solvedNodes.clear();
-
-				m_nodes[0] = std::unique_ptr<TNode>(new TOutNode());
-				m_nodes[0]->m_id = 0;
-				m_outputNode = (TOutNode*) m_nodes[0].get();
-				m_scrolling.x = 0;
-				m_scrolling.y = 0;
+				newGraph();
 			}
 			ImGui::Separator();
 			if (ImGui::MenuItem("Open (*.tng)", "Ctrl+O")) {
@@ -201,20 +565,27 @@ void TNodeEditor::draw(int w, int h) {
 					0
 				);
 				if (filePath) {
-					loadTNG(std::string(filePath));
+					TNodeGraph* graph = newGraph();
+					graph->load(std::string(filePath));
 				}
 			}
 			if (ImGui::MenuItem("Save (*.tng)", "Ctrl+S")) {
-				const static char* FILTERS[] = { "*.tng\0" };
-				const char* filePath = tinyfd_saveFileDialog(
-					"Save",
-					"",
-					1,
-					FILTERS,
-					"Twist Node-Graph"
-				);
-				if (filePath) {
-					saveTNG(std::string(filePath));
+				if (!m_nodeGraphs.empty()) {
+					if (m_nodeGraphs[m_activeGraph]->m_fileName.empty()) {
+						const static char* FILTERS[] = { "*.tng\0" };
+						const char* filePath = tinyfd_saveFileDialog(
+							"Save",
+							"",
+							1,
+							FILTERS,
+							"Twist Node-Graph"
+						);
+						if (filePath) {
+							m_nodeGraphs[m_activeGraph]->save(std::string(filePath));
+						}
+					} else {
+						m_nodeGraphs[m_activeGraph]->save(m_nodeGraphs[m_activeGraph]->m_fileName);
+					}
 				}
 			}
 			ImGui::EndMenu();
@@ -237,303 +608,69 @@ void TNodeEditor::draw(int w, int h) {
 				ImGuiWindowFlags_NoScrollWithMouse |
 				ImGuiWindowFlags_NoBringToFrontOnFocus;
 	if (ImGui::Begin("", nullptr, flags)) {
-		if (ImGui::BeginChild("scrolling_region", ImVec2(0,0), false, flags))  {
-			// Zooming
-			ImGuiContext& g = *GImGui;
-			ImGuiWindow* window = ImGui::GetCurrentWindow();
+		if (ImGui::BeginChild("scrolling_region", ImVec2(0,0), false, flags)) {
+			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 4));
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 
-			float oldFontScaleToReset = g.Font->Scale; // We'll clean up at the bottom
-			float fontScaleStored = m_oldFontWindowScale ? m_oldFontWindowScale : oldFontScaleToReset;
-			float& fontScaleToTrack = g.Font->Scale;
+			ImGui::BeginTabBar("##main_tabs", ImGuiTabBarFlags_SizingPolicyFit);
+			for (int i = 0; i < m_nodeGraphs.size(); i++) {
+				std::stringstream stm;
+				stm << m_nodeGraphs[i]->name();
+				stm << "##";
+				stm << i;
 
-			// if (!io.FontAllowUserScaling) {
-			// 	// Set the correct font scale (3 lines)
-			// 	fontScaleToTrack = fontScaleStored;
-			// 	g.FontBaseSize = io.FontGlobalScale * g.Font->Scale * g.Font->FontSize;
-			// 	g.FontSize = window->CalcFontSize();
-
-			// 	if (ImGui::IsMouseHoveringRect(window->InnerMainRect.Min, window->InnerMainRect.Max) && io.MouseWheel)   {
-
-			// 		// Zoom / Scale window
-			// 		float new_font_scale = ImClamp(fontScaleToTrack + g.IO.MouseWheel * 0.075f, 0.50f, 2.50f);
-			// 		float scale = new_font_scale / fontScaleToTrack;
-			// 		if (scale != 1)	{
-			// 			m_scrolling = m_scrolling * scale;
-			// 			// Set the correct font scale (3 lines), and store it
-			// 			fontScaleStored = fontScaleToTrack = new_font_scale;
-			// 			g.FontBaseSize = io.FontGlobalScale * g.Font->Scale * g.Font->FontSize;
-			// 			g.FontSize = window->CalcFontSize();
-			// 		}
-			// 	}
-			// }
-
-			// fixes zooming just a bit
-			bool nodesHaveZeroSize = false;
-			const float currentFontWindowScale = !io.FontAllowUserScaling ? fontScaleStored : ImGui::GetCurrentWindow()->FontWindowScale;
-			if (m_oldFontWindowScale == 0.0f) {
-				m_oldFontWindowScale = currentFontWindowScale;
-				nodesHaveZeroSize = true;   // at start or after clear()
-				m_scrolling = ImGui::GetWindowSize() * 0.5f;
-			} else if (m_oldFontWindowScale!=currentFontWindowScale) {
-				nodesHaveZeroSize = true;
-				for (auto& e : m_nodes)    {
-					TNode* node = e.second.get();
-					node->m_bounds.z = 0.0f;  // we must reset the size
-					node->m_bounds.w = 0.0f;  // we must reset the size
+				int flags = !m_nodeGraphs[i]->m_saved ? ImGuiTabItemFlags_UnsavedDocument : 0;
+				
+				const bool wasOpen = m_nodeGraphs[i]->m_open;
+				if (ImGui::TabItem(stm.str().c_str(), &m_nodeGraphs[i]->m_open, flags)) {
+					m_activeGraph = i;
 				}
-				// These two lines makes the scaling work around the mouse position AFAICS
-				//if (io.FontAllowUserScaling) {
-					const ImVec2 delta = (io.MousePos - ImGui::GetCursorScreenPos());
-					m_scrolling -= (delta * currentFontWindowScale - delta * m_oldFontWindowScale) / currentFontWindowScale;
-				//}
-				m_oldFontWindowScale = currentFontWindowScale;
+
+				if (wasOpen && !m_nodeGraphs[i]->m_open) {
+					if (m_nodeGraphs[i]->m_saved) {
+						m_nodeGraphs.erase(m_nodeGraphs.begin() + i);
+						m_playing = false;
+						m_recording = false;
+						break;
+					} else {
+						int res = tinyfd_messageBox(
+							"Warning!",
+							"You have unsaved changes! Continue?",
+							"yesno",
+							"warning",
+							0
+						);
+						if (res == 1) {
+							m_nodeGraphs.erase(m_nodeGraphs.begin() + i);
+							m_playing = false;
+							m_recording = false;
+							break;
+						}
+						m_nodeGraphs[i]->m_open = true;
+					}
+				}
 			}
+			ImGui::EndTabBar();
 
-			bool openContext = false;
+			ImGui::PopStyleVar(2);
+		}
+		ImGui::EndChild();
 
-			const float NODE_SLOT_RADIUS = 6.0f * currentFontWindowScale;
-			const float NODE_SLOT_RADIUS2 = 8.0f * currentFontWindowScale;
-			const float linkThick = 5.0f * currentFontWindowScale;
-			const float nodeRounding = 8.0f * currentFontWindowScale;
-			const ImVec2 NODE_WINDOW_PADDING(8.0f * currentFontWindowScale, 8.0f * currentFontWindowScale);
-
+		if (ImGui::BeginChild("scrolling_region", ImVec2(0,0), false, flags) && !m_nodeGraphs.empty()) {
 			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(1, 1));
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 			ImGui::PushStyleColor(ImGuiCol_ChildWindowBg, IM_COL32(60, 60, 70, 200));
-			ImGui::BeginChild("scrolling_region", ImVec2(0, 0), true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoMove);
+			ImGui::BeginChild("scrolling_region_", ImVec2(0, 0), true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoMove);
 			ImGui::PushItemWidth(120.0f);
 
-			ImVec2 offset = ImGui::GetCursorScreenPos() + m_scrolling;
 			ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
-			// Display grid
-			ImU32 GRID_COLOR = IM_COL32(200, 200, 200, 40);
-			float GRID_SZ = 64.0f * currentFontWindowScale;
-			ImVec2 win_pos = ImGui::GetCursorScreenPos();
-			ImVec2 canvas_sz = ImGui::GetWindowSize();
-			for (float x = fmodf(m_scrolling.x, GRID_SZ); x < canvas_sz.x; x += GRID_SZ)
-				draw_list->AddLine(ImVec2(x, 0.0f) + win_pos, ImVec2(x, canvas_sz.y) + win_pos, GRID_COLOR);
-			for (float y = fmodf(m_scrolling.y, GRID_SZ); y < canvas_sz.y; y += GRID_SZ)
-				draw_list->AddLine(ImVec2(0.0f, y) + win_pos, ImVec2(canvas_sz.x, y) + win_pos, GRID_COLOR);
-
-			// Display links
-			draw_list->ChannelsSplit(2);
-			draw_list->ChannelsSetCurrent(0); // Background
-			for (auto& link : m_links) {
-				TNode* ni = getNode(link->inputID);
-				TNode* no = getNode(link->outputID);
-				if (ni == nullptr || no == nullptr) continue;
-
-				ImVec2 p1 = offset + ni->outputSlotPos(link->inputSlot, currentFontWindowScale);
-				ImVec2 p2 = offset + no->inputSlotPos(link->outputSlot, currentFontWindowScale);
-
-				draw_list->AddCircleFilled(p1, NODE_SLOT_RADIUS2, IM_COL32(200, 200, 100, 255));
-				draw_list->AddCircleFilled(p2, NODE_SLOT_RADIUS2, IM_COL32(200, 200, 100, 255));
-				draw_list->AddBezierCurve(p1, p1 + ImVec2(+50, 0), p2 + ImVec2(-50, 0), p2, IM_COL32(200, 200, 100, 255), linkThick);
-			}
-
-			// Display nodes
-			for (auto& e : m_nodes) {
-				TNode* node = e.second.get();
-				const ImVec2 nodeTitleBarButtonsStartCursor = node->open ? ImGui::GetCursorPos() : ImVec2(0,0);
-
-				ImGui::PushID(node->id());
-				ImVec2 node_rect_min = offset + ImVec2(node->m_bounds.x, node->m_bounds.y) * currentFontWindowScale;
-
-				// Display node contents first
-				draw_list->ChannelsSetCurrent(1); // Foreground
-				bool old_any_active = ImGui::IsAnyItemActive();
-
-				ImGui::SetCursorScreenPos(node_rect_min + NODE_WINDOW_PADDING);
-				ImGui::BeginGroup();
-					ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Appearing);
-					ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(1, 1, 1, 0));
-					ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(1, 1, 1, 0));
-					ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(1, 1, 1, 0));
-					if (ImGui::TreeNode(node, "%s", "")) { ImGui::TreePop(); node->open = true; }
-					else node->open = false;
-
-					ImGui::PopStyleColor(3);
-					ImGui::SameLine(0, 2);
-
-					ImGui::Text("%s", node->m_title.c_str());
-					if (node != m_outputNode) {
-						ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1, 1, 1, 0));
-						ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.75,0.75,0.75,0.5));
-						ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.75,0.75,0.75,0.77));
-						ImGui::SameLine();
-
-						static const ImVec2 vec2zero(0, 0);
-						
-						ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, vec2zero);
-						ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, vec2zero);
-						if (ImGui::SmallButton("X")) {
-							deleteNode(node->id());
-							m_selectedNode = -1;
-							m_hoveredNode = -1;
-							m_nodeHoveredInList = -1;
-							break;
-						}
-						ImGui::PopStyleVar(2);
-						ImGui::PopStyleColor(3);
-					}
-
-					if (node->open) {
-						ImGui::Spacing();
-						ImGui::Spacing();
-						ImGui::BeginGroup();
-							node->gui();
-						ImGui::EndGroup();
-					}
-				ImGui::EndGroup();
-
-				// Save the size of what we have emitted and whether any of the widgets are being used
-				bool node_widgets_active = (!old_any_active && ImGui::IsAnyItemActive());
-				ImVec2 nodeSize = ImGui::GetItemRectSize() + NODE_WINDOW_PADDING + NODE_WINDOW_PADDING;
-				node->m_bounds.z = nodeSize.x;
-				node->m_bounds.w = nodeSize.y;
-				ImVec2 node_rect_max = node_rect_min + node->size();
-				
-				// Display node box
-				draw_list->ChannelsSetCurrent(0); // Background
-				ImGui::SetCursorScreenPos(node_rect_min);
-				ImGui::InvisibleButton("node##invbtn", node->size());
-				if (ImGui::IsItemHovered()) {
-					m_hoveredNode = node->id();
-					openContext |= ImGui::IsMouseClicked(1);
-				}
-
-				bool node_moving_active = ImGui::IsItemActive();
-				if (node_widgets_active || node_moving_active)
-					m_selectedNode = node->id();
-
-				if (node_moving_active && ImGui::IsMouseDragging(0) && !m_linking.active) {
-					node->m_bounds.x = node->m_bounds.x + ImGui::GetIO().MouseDelta.x/currentFontWindowScale;
-					node->m_bounds.y = node->m_bounds.y + ImGui::GetIO().MouseDelta.y/currentFontWindowScale;
-				}
-
-				ImU32 node_bg_color = (m_nodeHoveredInList == node->id() || m_hoveredNode == node->id() || (m_nodeHoveredInList == -1 && m_selectedNode == node->id())) ? IM_COL32(75, 75, 75, 255) : IM_COL32(60, 60, 60, 255);
-				draw_list->AddRectFilled(node_rect_min, node_rect_max, node_bg_color, nodeRounding);
-				draw_list->AddRect(node_rect_min, node_rect_max, IM_COL32(100, 100, 100, 255), nodeRounding);
-				
-				for (int i = 0; i < node->inputs().size(); i++) {
-					const char* label = node->inputs()[i].label.c_str();
-					ImVec2 pos = offset + node->inputSlotPos(i, currentFontWindowScale);
-					ImVec2 tsz = ImGui::CalcTextSize(label);
-					ImVec2 off = ImVec2(-(tsz.x + NODE_SLOT_RADIUS + 3), -tsz.y * 0.5f);
-					ImVec2 off1 = ImVec2(-(tsz.x + NODE_SLOT_RADIUS + 3), -tsz.y * 0.5f + 1);
-
-					draw_list->AddText(pos + off1, IM_COL32(0, 0, 0, 220), label);
-					draw_list->AddText(pos + off, IM_COL32(255, 255, 255, 220), label);
-					draw_list->AddCircleFilled(pos, NODE_SLOT_RADIUS, IM_COL32(150, 200, 150, 210));
-
-					// Unlink
-					ImVec2 hsz(NODE_SLOT_RADIUS, NODE_SLOT_RADIUS);
-					if (ImGui::IsMouseHoveringRect(pos - hsz, pos + hsz) &&
-						ImGui::IsMouseDoubleClicked(0) &&
-						!m_linking.active)
-					{
-						int eid = -1;
-						int j = 0;
-						for (auto& link : m_links) {
-							if (link->outputID == node->id() && link->outputSlot == i) {
-								eid = j;
-								break;
-							}
-							j++;
-						}
-						if (eid != -1) {
-							TLink* lnk = m_links[eid].get();
-							getNode(lnk->outputID)->inputs()[lnk->outputSlot].connected = false;
-							m_links.erase(m_links.begin() + eid);
-						}
-					}
-
-					// End linking
-					if (ImGui::IsMouseHoveringRect(pos - hsz, pos + hsz) &&
-						ImGui::IsMouseReleased(0) &&
-						m_linking.active && m_linking.node != node)
-					{
-						m_linking.active = false;
-						link(m_linking.inputID, m_linking.inputSlot, node->id(), i);
-					}
-				}
-				
-				for (int i = 0; i < node->outputs().size(); i++) {
-					const char* label = node->outputs()[i].label.c_str();
-					ImVec2 pos = offset + node->outputSlotPos(i, currentFontWindowScale);
-					ImVec2 tsz = ImGui::CalcTextSize(label);
-					ImVec2 off = ImVec2(NODE_SLOT_RADIUS + 3, -tsz.y * 0.5f);
-					ImVec2 off1 = ImVec2(NODE_SLOT_RADIUS + 3, -tsz.y * 0.5f + 1);
-
-					draw_list->AddText(pos + off1, IM_COL32(0, 0, 0, 220), label);
-					draw_list->AddText(pos + off, IM_COL32(255, 255, 255, 220), label);
-					draw_list->AddCircleFilled(pos, NODE_SLOT_RADIUS, IM_COL32(200, 150, 150, 210));
-
-					/// Start linking process
-					ImVec2 hsz(NODE_SLOT_RADIUS, NODE_SLOT_RADIUS);
-					if (ImGui::IsMouseHoveringRect(pos - hsz, pos + hsz) && ImGui::IsMouseClicked(0)) {
-						m_linking.active = true;
-						m_linking.node = node;
-						m_linking.inputID = node->id();
-						m_linking.inputSlot = i;
-
-					}
-
-					if (m_linking.active && m_linking.node == node && m_linking.inputSlot == i) {
-						ImVec2 l0 = pos;
-						ImVec2 l1 = ImGui::GetIO().MousePos;
-						draw_list->AddBezierCurve(l0, l0 + ImVec2(+50, 0), l1 + ImVec2(-50, 0), l1, IM_COL32(200, 200, 100, 255), 5.0f);
-					}
-				}
-
-				ImGui::PopID();
-			}
-			draw_list->ChannelsMerge();
+			drawNodeGraph(m_nodeGraphs[m_activeGraph].get());
 
 			if (m_linking.active && ImGui::IsMouseReleased(0)) {
 				m_linking.active = false;
 				m_linking.node = nullptr;
 			}
-
-			// Open context menu
-			if (!ImGui::IsAnyItemHovered() && ImGui::IsMouseHoveringWindow() && ImGui::IsMouseClicked(1)) {
-				m_selectedNode = m_nodeHoveredInList = m_hoveredNode = -1;
-				openContext = true;
-			}
-			if (openContext) {
-				ImGui::OpenPopup("context_menu");
-				if (m_nodeHoveredInList != -1)
-					m_selectedNode = m_nodeHoveredInList;
-				if (m_hoveredNode != -1)
-					m_selectedNode = m_hoveredNode;
-			}
-
-			// Draw context menu
-			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 8));
-			if (ImGui::BeginPopup("context_menu")) {
-				TNode* node = m_selectedNode != -1 ? getNode(m_selectedNode) : nullptr;
-				ImVec2 scene_pos = ImGui::GetMousePosOnOpeningCurrentPopup() - offset;
-				if (node && node != m_outputNode) {
-					ImGui::Text("%s Node", node->m_title.c_str());
-					ImGui::Separator();
-					if (ImGui::MenuItem("Delete", NULL, false, false)) {}
-					if (ImGui::MenuItem("Duplicate", NULL, false, false)) {}
-				} else {
-					JSON js;
-					for (auto fn : m_nodeFactories) {
-						if (ImGui::MenuItem(fn.first.c_str())) {
-							addNode(scene_pos.x, scene_pos.y, fn.second, js);
-						}
-					}
-				}
-				ImGui::EndPopup();
-			}
-			ImGui::PopStyleVar();
-
-			// Scrolling
-			if (ImGui::IsWindowHovered() && !ImGui::IsAnyItemActive() && ImGui::IsMouseDragging(2, 0.0f))
-				m_scrolling = m_scrolling + ImGui::GetIO().MouseDelta;
 
 			ImGui::PopItemWidth();
 			ImGui::EndChild();
@@ -544,7 +681,7 @@ void TNodeEditor::draw(int w, int h) {
 	}
 	ImGui::End();
 
-	ImGui::SetNextWindowSize(ImVec2(240, 0));
+	ImGui::SetNextWindowSize(ImVec2(250, 0));
 	if (ImGui::Begin("Menu", nullptr, 0)) {
 		if (ImGui::CollapsingHeader("Controls")) {
 			if (ImGui::Button(m_playing ? "Stop" : "Play")) {
@@ -589,140 +726,51 @@ void TNodeEditor::draw(int w, int h) {
 				ImGui::Text("RECORDING... %02d:%02d", minute, sec);
 			}
 		}
+		if (!m_nodeGraphs.empty()) {
+			if (ImGui::CollapsingHeader("Properties")) {
+				static const char* GRAPH_TYPES[] = {
+					"Normal\0",
+					"Module\0",
+					0
+				};
+				ImGui::InputText(
+					"Graph Name##graphName",
+					m_nodeGraphs[m_activeGraph]->m_name.data(),
+					m_nodeGraphs[m_activeGraph]->m_name.size()
+				);
+				ImGui::Combo(
+					"Graph Type##graphType",
+					(int*)&m_nodeGraphs[m_activeGraph]->m_type,
+					GRAPH_TYPES,
+					2
+				);
+			}
+		}
 	}
 	ImGui::End();
 
 	ImGui::PopStyleVar();
 }
 
-TNode* TNodeEditor::addNode(int x, int y, TNodeCtor* ctor, JSON& json) {
-	if (ctor == nullptr) return nullptr;
-	std::unique_ptr<TNode> node = std::unique_ptr<TNode>(ctor(json));
-	TNode* tnode = node.get();
-	node->m_id = m_nodes.size();
-	node->m_bounds.x = x;
-	node->m_bounds.y = y;
-	m_nodes.insert({ node->m_id, std::move(node) });
+TNodeGraph* TNodeEditor::newGraph() {
+	std::unique_ptr<TNodeGraph> graph = std::unique_ptr<TNodeGraph>(new TNodeGraph());
 
-	return tnode;
-}
+	std::stringstream stm;
+	stm << "Untitled Node Graph";
+	stm << m_nodeGraphs.size();
+	graph->m_name = stm.str();
 
-void TNodeEditor::deleteNode(int id) {
-	for (int link : getAllLinksRelatedToNode(id)) {
-		m_links.erase(m_links.begin() + link);
-	}
-
-	auto pos = m_nodes.find(id);
-	if (pos != m_nodes.end()) {
-		m_nodes.erase(pos);
-	}
-
-	solveNodes();
-}
-
-void TNodeEditor::link(int inID, int inSlot, int outID, int outSlot) {
-	TLink* link = new TLink();
-	link->inputID = inID;
-	link->inputSlot = inSlot;
-	link->outputID = outID;
-	link->outputSlot = outSlot;
-
-	getNode(outID)->inputs()[outSlot].connected = true;
-
-	m_links.push_back(std::unique_ptr<TLink>(link));
-
-	solveNodes();
-}
-
-std::vector<int> TNodeEditor::getAllLinksRelatedToNode(int id) {
-	std::vector<int> links;
-	for (int i = 0; i < m_links.size(); i++) {
-		auto& lnk = m_links[i];
-		auto pos = std::find(links.begin(), links.end(), i);
-		if (lnk->inputID == id || lnk->outputID == id) {
-			if (pos != links.end()) continue;
-			links.push_back(i);
-		}
-	}
-	return links;
-}
-
-std::vector<int> TNodeEditor::getNodeLinks(int id) {
-	std::vector<int> links;
-	for (int i = 0; i < m_links.size(); i++) {
-		TLink* lnk = m_links[i].get();
-		if (lnk->inputID == id) {
-			links.push_back(i);
-		}
-	}
-	return links;
-}
-
-std::vector<int> TNodeEditor::getNodeInputs(int id) {
-	std::vector<int> ins;
-	for (auto& lnk : m_links) {
-		if (lnk->outputID == id && getNode(lnk->inputID) != nullptr) {
-			ins.push_back(lnk->inputID);
-		}
-	}
-	return ins;
-}
-
-void TNodeEditor::solveNodes() {
-	m_solvedNodes = buildNodes(m_outputNode->id());
-}
-
-std::vector<int> TNodeEditor::buildNodes(int outID) {
-	if (getNode(outID) == nullptr)
-		return std::vector<int>();
-
-	std::vector<int> nodes;
-	nodes.push_back(outID);
-
-	for (int in : getNodeInputs(outID)) {
-		if (getNode(in) == nullptr) continue;
-		nodes.push_back(in);
-
-		std::vector<int> rec = buildNodes(in);
-		for (int rnd : rec) {
-			if (getNode(rnd) == nullptr) continue;
-			if (std::find(nodes.begin(), nodes.end(), rnd) == nodes.end()) {
-				nodes.push_back(rnd);
-			}
-		}
-	}
-
-	std::reverse(nodes.begin(), nodes.end());
-
-	return nodes;
-}
-
-TNode* TNodeEditor::getNode(int id) {
-	return m_nodes[id].get();
-}
-
-void TNodeEditor::solve() {
-	if (m_loading) return;
-
-	for (int id : m_solvedNodes) {
-		TNode* node = getNode(id);
-		if (node == nullptr) continue;
-
-		node->solve();
-
-		for (int linkID : getNodeLinks(id)) {
-			TLink* link = m_links[linkID].get();
-			TNode* tgt = getNode(link->outputID);
-			tgt->setInput(link->outputSlot, node->getOutput(link->inputSlot));
-		}
-	}
+	m_nodeGraphs.push_back(std::move(graph));
+	return m_nodeGraphs.back().get();
 }
 
 float TNodeEditor::output() {
 	if (m_loading) return 0.0f;
 
-	if (m_playing || m_recording)
-		solve();
+	float sample = 0.0f;
+	if (m_playing || m_recording) {
+		sample = m_nodeGraphs[m_activeGraph]->solve();
+	}
 
 	const float ATTACK_TIME  = 5.0f / 1000.0f;
 	const float RELEASE_TIME = 200.0f / 1000.0f;
@@ -730,7 +778,6 @@ float TNodeEditor::output() {
 	float attack  = 1.0f - std::exp(-1.0f / (ATTACK_TIME * sampleRate));
 	float release = 1.0f - std::exp(-1.0f / (RELEASE_TIME * sampleRate));
 
-	float sample = m_outputNode->getInput(0);
 	m_signalDC = tmath::lerp(m_signalDC, sample, 0.5f / sampleRate);
 	sample -= m_signalDC;
 
@@ -742,7 +789,7 @@ float TNodeEditor::output() {
 	}
 	m_envelope = std::max(m_envelope, 1.0f);
 
-	float finalOut = std::min(std::max((sample * 0.6f / (m_envelope+0.0001f)), -1.0f), 1.0f) * m_outputNode->volume;
+	float finalOut = std::min(std::max((sample * 0.6f / (m_envelope+0.0001f)), -1.0f), 1.0f);
 
 	if (m_recording) {
 		const int fadeTime = int(m_recordingFadeTime * sampleRate);
@@ -817,65 +864,4 @@ void TNodeEditor::renderToFile(const std::string& fileName, float time) {
 	tinywav_write_f(&tw, data, sampleCount);
 	tinywav_close_write(&tw);
 	m_rendering = false;
-}
-
-void TNodeEditor::saveTNG(const std::string& fileName) {
-	std::ofstream fp(fileName);
-	JSON json;
-	json["outPos"] = { m_outputNode->bounds().x, m_outputNode->bounds().y };
-
-	int i = 0;
-	for (int j = 1; j < m_nodes.size(); j++) {
-		TNode* node = m_nodes[j].get();
-		node->save(json["nodes"][i++]);
-	}
-
-	i = 0;
-	for (auto& link : m_links) {
-		if (link.get() == nullptr) continue;
-		JSON& links = json["links"][i++];
-		links["inID"] = link->inputID;
-		links["inSlot"] = link->inputSlot;
-		links["outID"] = link->outputID;
-		links["outSlot"] = link->outputSlot;
-	}
-	fp << json.dump(1, '\t', true);
-	fp.close();
-}
-
-void TNodeEditor::loadTNG(const std::string& fileName) {
-	m_loading = true;
-
-	JSON json;
-	std::ifstream fp(fileName);
-	fp >> json;
-	fp.close();
-
-	m_nodes.clear();
-	m_links.clear();
-	m_solvedNodes.clear();
-
-	m_nodes[0] = std::unique_ptr<TNode>(new TOutNode());
-	m_nodes[0]->m_id = 0;
-	m_nodes[0]->m_bounds.x = json["outPos"][0];
-	m_nodes[0]->m_bounds.y = json["outPos"][1];
-	m_outputNode = (TOutNode*) m_nodes[0].get();
-
-	for (int i = 0; i < json["nodes"].size(); i++) {
-		JSON& node = json["nodes"][i];
-		std::string type = node["type"].get<std::string>();
-		TNode* nd = addNode(node["pos"][0], node["pos"][1], m_nodeFactories[type], node);
-		if (node["id"].is_number_integer())
-			nd->m_id = node["id"];
-	}
-
-	for (int i = 0; i < json["links"].size(); i++) {
-		JSON lnk = json["links"][i];
-		if (lnk.is_null()) continue;
-		link(lnk["inID"], lnk["inSlot"], lnk["outID"], lnk["outSlot"]);
-	}
-
-	solveNodes();
-
-	m_loading = false;
 }

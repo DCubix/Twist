@@ -8,7 +8,7 @@
 
 class TChorusNode : public TNode {
 public:
-	TChorusNode(float sampleRate, float dt=50, float cr=1.0f, float cd=1.0f)
+	TChorusNode(float sampleRate, float dt=1, float cr=1.0f, float cd=1.0f)
 		: TNode("Chorus", 140, 140),
 			sampleRate(sampleRate), delayTime(dt), chorusRate(cr), chorusDepth(cd)
 	{
@@ -16,7 +16,7 @@ public:
 		m_lfo->amplitude(1.0f);
 		m_lfo->waveForm(TOsc::Sine);
 
-		m_wv = new TWaveGuide();
+		m_wv = new TWaveGuide(sampleRate);
 		m_wv->clear();
 
 		addInput("In");
@@ -55,7 +55,7 @@ public:
 
 	float sampleRate;
 	float lpOut;
-	double dt;
+	float dt;
 
 	float chorusRate, chorusDepth, delayTime;
 

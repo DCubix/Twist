@@ -31,7 +31,7 @@ public:
 			0
 		};
 		ImGui::Combo("Note", (int*)&note, NOTES, 12, -1);
-		ImGui::DragInt("Oct", &oct, 1, -5, 5);
+		ImGui::DragInt("Oct", &oct, 0.1f, -5, 5);
 	}
 
 	void solve() {

@@ -10,6 +10,7 @@ public:
 		Sub,
 		Mul,
 		Neg,
+		Average,
 		OpCount
 	};
 
@@ -26,7 +27,8 @@ public:
 			"Add\0",
 			"Subtract\0",
 			"Multiply\0",
-			"Negate"
+			"Negate",
+			"Average"
 		};
 		ImGui::PushItemWidth(80);
 		ImGui::Combo("Op", (int*)&op, OPS, OpCount, -1);
@@ -44,6 +46,7 @@ public:
 			case Sub: out = a - b; break;
 			case Mul: out = a * b; break;
 			case Neg: out = -a; break;
+			case Average: out = (a + b) * 0.5f; break;
 		}
 		setOutput(0, out);
 	}

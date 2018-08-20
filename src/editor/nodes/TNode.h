@@ -33,8 +33,10 @@ struct TNodeType {
 };
 
 class TNodeEditor;
+class TNodeGraph;
 class TNode : public TNodeType {
 	friend class TNodeEditor;
+	friend class TNodeGraph;
 public:
 	TNode() : m_bounds(ImVec4(0, 0, 1, 1)), m_title("TNode") {}
 	TNode(const std::string& title, int width, int height)
@@ -46,6 +48,8 @@ public:
 	virtual void solve() {}
 
 	virtual void save(JSON& json);
+
+	TNodeGraph* parent() { return m_parent; }
 
 	const ImVec4& bounds() const { return m_bounds; }
 	ImVec4& bounds() { return m_bounds; }
@@ -84,12 +88,17 @@ protected:
 	void addInput(const std::string& label);
 	void addOutput(const std::string& label);
 
+	bool removeInput(int id);
+	bool removeOutput(int id);
+
 	int m_id;
-	std::string m_title;
+	std::string m_title, m_type;
 	ImVec4 m_bounds;
 
 	std::vector<TValue> m_inputs;
 	std::vector<TValue> m_outputs;
+
+	TNodeGraph* m_parent;
 };
 
 struct TLink {

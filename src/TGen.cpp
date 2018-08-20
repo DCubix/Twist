@@ -102,10 +102,11 @@ void TADSR::gate(bool g) {
 }
 
 float TADSR::coef(float rate, float targetRatio) {
-	return (rate <= 0) ? 0.0 : exp(-log((1.0 + targetRatio) / targetRatio) / rate);
+	return (rate <= 0) ? 0.0 : std::exp(-std::log((1.0 + targetRatio) / targetRatio) / rate);
 }
 
-TWaveGuide::TWaveGuide() {
+TWaveGuide::TWaveGuide(float sr) {
+	sampleRate = sr;
 	clear();
 }
 
@@ -114,12 +115,15 @@ void TWaveGuide::clear() {
 	for (int i = 0; i < T_WAVE_GUIDE_SAMPLES; i++) m_buffer[i] = 0;
 }
 
-float TWaveGuide::sample(float in, float feedBack, double delay) {
+float TWaveGuide::sample(float in, float feedBack, float delay) {
+	float delayS = float(delay) / 1000.0f;
+	int delaySmp = int(delayS * sampleRate);
+
 	// calculate delay offset
-	double back = m_counter - delay;
+	int back = m_counter - delaySmp;
 
 	// clip lookback buffer-bound
-	if (back < 0.0) {
+	if (back < 0) {
 		back = T_WAVE_GUIDE_SAMPLES + back;
 	}
 
@@ -129,14 +133,14 @@ float TWaveGuide::sample(float in, float feedBack, double delay) {
 	// compute interpolation right-floor
 	int index_1 = index0 - 1;
 	int index1 = index0 + 1;
-	int index2=  index0 + 2;
+	int index2 = index0 + 2;
 
 	// clip interp. buffer-bound
-	if (index_1 < 0)index_1 = T_WAVE_GUIDE_SAMPLES - 1;
+	if (index_1 < 0) index_1 = T_WAVE_GUIDE_SAMPLES - 1;
 	if (index1 >= T_WAVE_GUIDE_SAMPLES) index1 = 0;
 	if (index2 >= T_WAVE_GUIDE_SAMPLES) index2 = 0;
 
-	// get neighbourgh samples
+	// get neighbour samples
 	float y_1 = m_buffer[index_1];
 	float y0 = m_buffer[index0];
 	float y1 = m_buffer[index1];

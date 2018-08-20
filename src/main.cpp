@@ -45,8 +45,6 @@ static void audioCallback(void* ud, Uint8* stream, int length) {
 		for (int i = 0; i < flen; i++) {
 			if (!app->editor()->rendering()) fstream[i] = app->editor()->output();
 		}
-
-		std::memcpy(app->editor()->outNode()->waveForm, fstream, WAVEFORM_LENGTH * sizeof(float));
 	}
 }
 
