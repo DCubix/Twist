@@ -40,6 +40,8 @@ public:
 	void renderToFile(const std::string& fileName, float time);
 	void saveRecording(const std::string& fileName);
 
+	void closeGraph(int id);
+
 	RtMidiIn* midiIn() { return m_MIDIin.get(); }
 	RtMidiOut* midiOut() { return m_MIDIout.get(); }
 
@@ -53,11 +55,12 @@ private:
 
 	ImVec4 m_bounds;
 
-	int m_hoveredNode, m_selectedNode, m_nodeHoveredInList, m_activeGraph = 0;
-	bool m_openContextMenu;
+	TIntList m_selectedNodes;
+	int m_hoveredNode, m_nodeHoveredInList, m_activeGraph = 0;
+	bool m_openContextMenu, m_selectingNodes = false, m_nodeActive, m_nodeAnyActive, m_nodeOldActive;
 	float m_oldFontWindowScale, m_currentFontWindowScale;
 
-	ImVec2 m_mainWindowSize;
+	ImVec2 m_mainWindowSize, m_selectionStart, m_selectionEnd;
 
 	float m_signalDC = 0.0f, m_envelope = 0.0f, m_outDuration = 0, m_recTime = 0.1f,
 			m_recordingFadeTime = 0.0f, m_recordingFade = 0.0f;

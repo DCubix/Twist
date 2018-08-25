@@ -115,8 +115,10 @@ void TNodeGraph::solveNodes(const TIntList& solved) {
 		nd->solve();
 		for (int i = 0; i < m_links.size(); i++) {
 			TLink* lnk = m_links[i].get();
+			if (lnk == nullptr) continue;
 			if (lnk->inputID == id) {
 				TNode* tgt = node(lnk->outputID);
+				if (tgt == nullptr) continue;
 				tgt->setInput(lnk->outputSlot, nd->getOutput(lnk->inputSlot));
 			}
 		}
@@ -220,11 +222,24 @@ void TNodeGraph::link(int inID, int inSlot, int outID, int outSlot) {
 	node(outID)->inputs()[outSlot].connected = true;
 	node(inID)->outputs()[inSlot].connected = true;
 
+	m_lock.lock();
 	m_links.push_back(std::unique_ptr<TLink>(link));
+	m_lock.unlock();
 
 	m_saved = false;
 
 	solveNodes();
+}
+
+void TNodeGraph::removeLink(int id) {
+	TLink* lnk = m_links[id].get();
+	if (lnk == nullptr) return;
+	node(lnk->outputID)->inputs()[lnk->outputSlot].connected = false;
+	node(lnk->inputID)->outputs()[lnk->inputSlot].connected = false;
+	m_lock.lock();
+	m_links.erase(m_links.begin() + id);
+	m_lock.unlock();
+	m_saved = false;
 }
 
 void TNodeGraph::load(const std::string& fileName) {
@@ -381,7 +396,7 @@ void TNodeGraph::removeSample(int id) {
 	auto pos = m_sampleLibrary.find(id);
 	if (pos == m_sampleLibrary.end())
 		return;
-	m_sampleLibrary.erase(pos);
+	m_sampleLibrary.erase(id);
 }
 
 TSampleLibEntry* TNodeGraph::getSample(int id) {

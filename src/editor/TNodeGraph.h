@@ -182,6 +182,7 @@ public:
 
 	TNodeList& nodes() { return m_nodes; }
 	TLinkList& links() { return m_links; }
+	void removeLink(int id);
 
 	TNode* node(int id);
 	float solve();

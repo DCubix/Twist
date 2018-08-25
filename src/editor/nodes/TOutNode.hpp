@@ -17,6 +17,7 @@ public:
 	}
 
 	void gui() {
+		// ImGui::Text("LEVEL: %.3f", nextLvl);
 		ImGui::VUMeter("##wf", lvl);
 	}
 
@@ -27,7 +28,7 @@ public:
 
 		lvl = tmath::lerp(lvl, nextLvl, 0.0007f);
 		nextLvl -= 1.0f / 22050;
-		//lvl = std::min(std::max(lvl, -1.0f), 1.0f);
+		nextLvl = std::min(std::max(nextLvl, 0.0f), 1.0f);
 	}
 
 	void save(JSON& json) {

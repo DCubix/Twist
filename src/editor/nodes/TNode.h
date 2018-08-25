@@ -8,6 +8,8 @@ using JSON = nlohmann::json;
 
 #define IMGUI_INCLUDE_IMGUI_USER_H
 #include "imgui.h"
+#define IMGUI_DEFINE_MATH_OPERATORS
+#include "imgui_internal.h"
 
 namespace tmath {
 	static float lerp(float a, float b, float t) {
@@ -95,6 +97,7 @@ protected:
 	int m_id;
 	std::string m_title, m_type;
 	ImVec4 m_bounds;
+	ImRect m_selectionBounds;
 
 	std::vector<TValue> m_inputs;
 	std::vector<TValue> m_outputs;

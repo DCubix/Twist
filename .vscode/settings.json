@@ -55,7 +55,9 @@
 		"variant": "cpp",
 		"map": "cpp",
 		"complex": "cpp",
-		"string": "cpp"
+		"string": "cpp",
+		"condition_variable": "cpp",
+		"mutex": "cpp"
 	},
 	"C_Cpp.default.configurationProvider": "vector-of-bool.cmake-tools",
 	"C_Cpp.configurationWarnings": "Disabled"

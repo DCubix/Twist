@@ -32,7 +32,19 @@ public:
 		auto slns = parent()->getSampleNames();
 		if (ImGui::Combo("Sample", &selectedID, slns.data(), slns.size())) {
 			sampleID = parent()->getSampleID(std::string(slns[selectedID]));
+			sample.invalidate();
 		}
+
+		// Check if sample has been deleted
+		if (parent()->getSample(sampleID) == nullptr && sample.valid()) {
+			sample.invalidate();
+		} else if (!sample.valid()) {
+			TSampleLibEntry* sle = parent()->getSample(sampleID);
+			if (sle != nullptr) {
+				sample = TSoundSample(sle->sampleData, sle->sampleRate, sle->duration);
+			}
+		}
+
 		if (sample.valid()) {
 			ImGui::Knob("Vol.", &volume, 0.0f, 1.0f);
 			ImGui::SameLine();
@@ -43,11 +55,6 @@ public:
 				sample.sampleData().size(),
 				int(sample.time() * sample.sampleRate())
 			);
-		} else {
-			TSampleLibEntry* sle = parent()->getSample(sampleID);
-			if (sle != nullptr) {
-				sample = TSoundSample(sle->sampleData, sle->sampleRate, sle->duration);
-			}
 		}
 	}
 

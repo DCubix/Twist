@@ -197,6 +197,7 @@ public:
 
 	void gate(bool g);
 	bool valid() const { return !m_sampleData.empty() && m_duration > 0.0f; }
+	void invalidate() { m_sampleData.clear(); m_duration = 0; }
 
 	std::vector<float> sampleData() const { return m_sampleData; }
 	float sampleRate() const { return m_sampleRate; }

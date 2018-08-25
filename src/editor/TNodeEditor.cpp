@@ -39,13 +39,60 @@
 #define NODE_ROUNDING(x) (5.0f * x)
 #define NODE_PADDING(x) (5.0f * x)
 
+inline static float ImVec2Dot(const ImVec2& S1,const ImVec2& S2) {return (S1.x*S2.x+S1.y*S2.y);}
+inline static float GetSquaredDistancePointSegment(const ImVec2& P,const ImVec2& S1,const ImVec2& S2) {
+  const float l2 = (S1.x-S2.x)*(S1.x-S2.x)+(S1.y-S2.y)*(S1.y-S2.y);
+  if (l2 < 0.0000001f) return (P.x-S2.x)*(P.x-S2.x)+(P.y-S2.y)*(P.y-S2.y);   // S1 == S2 case
+  ImVec2 T(S2 - S1);
+  const float tf = ImVec2Dot(P - S1, T)/l2;
+  const float minTf = 1.f < tf ? 1.f : tf;
+  const float t = 0.f > minTf ? 0.f : minTf;
+  T = S1 + T*t;  // T = Projection on the segment
+  return (P.x-T.x)*(P.x-T.x)+(P.y-T.y)*(P.y-T.y);
+}
+
+inline static float GetSquaredDistanceToBezierCurve(const ImVec2& point,const ImVec2& p1,const ImVec2& p2,const ImVec2& p3,const ImVec2& p4)   {
+	static const int num_segments = 2;   // Num Sampling Points In between p1 and p4
+	static bool firstRun = true;
+	static ImVec4 weights[num_segments];
+
+	if (firstRun)    {
+		// static init here
+		IM_ASSERT(num_segments>0);    // This are needed for computing distances: cannot be zero
+		firstRun = false;
+		for (int i = 1; i <= num_segments; i++) {
+			float t = (float)i/(float)(num_segments+1);
+			float u = 1.0f - t;
+			weights[i-1].x=u*u*u;
+			weights[i-1].y=3*u*u*t;
+			weights[i-1].z=3*u*t*t;
+			weights[i-1].w=t*t*t;
+		}
+	}
+
+	float minSquaredDistance=FLT_MAX,tmp;   // FLT_MAX is probably in <limits.h>
+	ImVec2 L = p1,tp;
+	for (int i = 0; i < num_segments; i++)  {
+		const ImVec4& W=weights[i];
+		tp.x = W.x*p1.x + W.y*p2.x + W.z*p3.x + W.w*p4.x;
+		tp.y = W.x*p1.y + W.y*p2.y + W.z*p3.y + W.w*p4.y;
+
+	tmp = GetSquaredDistancePointSegment(point,L,tp);
+	if (minSquaredDistance>tmp) minSquaredDistance=tmp;
+	L=tp;
+	}
+	tp = p4;
+	tmp = GetSquaredDistancePointSegment(point,L,tp);
+	if (minSquaredDistance>tmp) minSquaredDistance=tmp;
+
+	return minSquaredDistance;
+}
+
 TNodeEditor::TNodeEditor() {
 	m_linking.active = 0;
 	m_linking.inputID = 0;
 	m_linking.inputSlot = 0;
 	m_linking.node = nullptr;
-	m_selectedNode = -1;
-	m_nodeHoveredInList = -1;
 	m_openContextMenu = false;
 	m_bounds.x = 0;
 	m_bounds.y = 0;
@@ -261,6 +308,8 @@ TNodeEditor::TNodeEditor() {
 }
 
 void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
+	if (graph == nullptr) return;
+
 	const ImGuiIO io = ImGui::GetIO();
 
 	// Zooming
@@ -332,26 +381,55 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 	for (float y = fmodf(graph->m_scrolling.y, GRID_SZ); y < canvas_sz.y; y += GRID_SZ)
 		draw_list->AddLine(ImVec2(0.0f, y) + win_pos, ImVec2(canvas_sz.x, y) + win_pos, GRID_COLOR);
 
+	const bool isMouseHoveringWindow = ImGui::IsMouseHoveringRect(window->InnerMainRect.Min, window->InnerMainRect.Max);
+	const bool mustCheckForNearestLink = isMouseHoveringWindow && !m_linking.active && io.KeyShift;
 
 	// Display links
 	draw_list->ChannelsSplit(2);
 	draw_list->ChannelsSetCurrent(0); // Background
-	for (auto& link : graph->links()) {
+	const float hoveredLinkDistSqrThres = 100.0f;
+	int nearestLinkId=-1;
+	for (int link_idx = 0; link_idx < graph->m_links.size(); link_idx++) {
+		auto& link = graph->m_links[link_idx];
+		
 		TNode* ni = graph->node(link->inputID);
 		TNode* no = graph->node(link->outputID);
 		if (ni == nullptr || no == nullptr) continue;
 
 		ImVec2 p1 = offset + ni->outputSlotPos(link->inputSlot, scl);
 		ImVec2 p2 = offset + no->inputSlotPos(link->outputSlot, scl);
+		ImVec2 cp1 = p1 + ImVec2(50, 0);
+		ImVec2 cp2 = p2 - ImVec2(50, 0);
+
+		ImRect cullLink;
+		cullLink.Min = cullLink.Max = p1;
+		cullLink.Add(p2);
+
+		float thick = LINK_THICKNESS(scl);
+		cullLink.Expand(thick * 2.0f);
 
 		draw_list->AddCircleFilled(p1, NODE_SLOT_RADIUS2(scl), IM_COL32(200, 200, 100, 255));
 		draw_list->AddCircleFilled(p2, NODE_SLOT_RADIUS2(scl), IM_COL32(200, 200, 100, 255));
-		draw_list->AddBezierCurve(p1, p1 + ImVec2(+50, 0), p2 + ImVec2(-50, 0), p2, IM_COL32(200, 200, 100, 255), LINK_THICKNESS(scl));
+		draw_list->AddBezierCurve(p1, cp1, cp2, p2, IM_COL32(200, 200, 100, 255), thick);
+
+		if (mustCheckForNearestLink && nearestLinkId == -1 && cullLink.Contains(io.MousePos)) {
+			const float d = GetSquaredDistanceToBezierCurve(io.MousePos, p1, cp1, cp2, p2);
+			if (d < hoveredLinkDistSqrThres) {
+				nearestLinkId = link_idx;
+				draw_list->AddBezierCurve(p1, cp1, cp2, p2, IM_COL32(200, 200, 100, 128), thick*2);
+			}
+		}
+	}
+	if (nearestLinkId != -1 && io.MouseReleased[0]) {
+		graph->removeLink(nearestLinkId);
+		nearestLinkId = -1;
 	}
 
 	// Display nodes
 	std::vector<int> toDelete;
 
+	m_hoveredNode = -1;
+	m_nodeActive = false;
 	for (auto& e : graph->nodes()) {
 		TNode* node = e.second.get();
 		if (node == nullptr) continue;
@@ -361,7 +439,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 
 		// Display node contents first
 		draw_list->ChannelsSetCurrent(1); // Foreground
-		bool old_any_active = ImGui::IsAnyItemActive();
+		m_nodeOldActive = ImGui::IsAnyItemActive();
 
 		ImGui::SetCursorScreenPos(node_rect_min + ImVec2(NODE_PADDING(scl), NODE_PADDING(scl)));
 		ImGui::BeginGroup();
@@ -387,9 +465,8 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 			ImGui::PushID("NodeButtons");
 			if (ImGui::Button("X", ImVec2(15, 15))) {
 				toDelete.push_back(node->id());
-				m_selectedNode = -1;
+				m_selectedNodes.clear();
 				m_hoveredNode = -1;
-				m_nodeHoveredInList = -1;
 			}
 			ImGui::PopID();
 			ImGui::PopStyleVar(2);
@@ -404,38 +481,36 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 		ImGui::EndGroup();
 
 		// Save the size of what we have emitted and whether any of the widgets are being used
-		bool node_widgets_active = (!old_any_active && ImGui::IsAnyItemActive());
+		m_nodeAnyActive = (!m_nodeOldActive && ImGui::IsAnyItemActive());
+
 		float pad = NODE_PADDING(scl);
 		ImVec2 nodeSize = ImGui::GetItemRectSize() + ImVec2(pad, pad)*2;
 		node->m_bounds.z = nodeSize.x;
 		node->m_bounds.w = nodeSize.y;
 		ImVec2 node_rect_max = node_rect_min + node->size();
 		
+		node->m_selectionBounds = ImRect(node_rect_min, node_rect_max);
+
 		// Display node box
 		draw_list->ChannelsSetCurrent(0); // Background
 		ImGui::SetCursorScreenPos(node_rect_min);
 		ImGui::InvisibleButton("node##invbtn", node->size());
-		m_hoveredNode = -1;
+
+		if (!m_nodeActive)
+			m_nodeActive = ImGui::IsItemActive() || m_nodeAnyActive;
+
 		if (ImGui::IsItemHovered()) {
 			m_hoveredNode = node->id();
 			openContext |= ImGui::IsMouseClicked(1);
 		}
 
-		bool node_moving_active = ImGui::IsItemActive();
-		if (node_widgets_active || node_moving_active)
-			m_selectedNode = node->id();
-
-		if (node_moving_active && ImGui::IsMouseDragging(0) && !m_linking.active) {
-			node->m_bounds.x += ImGui::GetIO().MouseDelta.x / scl;
-			node->m_bounds.y += ImGui::GetIO().MouseDelta.y / scl;
-			graph->m_saved = false;
-		}
-
-		ImU32 node_bg_color = (m_nodeHoveredInList == node->id() || m_hoveredNode == node->id() || (m_nodeHoveredInList == -1 && m_selectedNode == node->id())) ? IM_COL32(75, 75, 75, 255) : IM_COL32(60, 60, 60, 255);
+		auto pos = std::find(m_selectedNodes.begin(), m_selectedNodes.end(), node->id());
+		ImU32 node_bg_color = m_hoveredNode == node->id() || pos != m_selectedNodes.end() ? IM_COL32(85, 85, 85, 255) : IM_COL32(60, 60, 60, 255);
 		draw_list->AddRectFilled(node_rect_min, node_rect_max, node_bg_color, NODE_ROUNDING(scl));
 		draw_list->AddRect(node_rect_min, node_rect_max, IM_COL32(100, 100, 100, 255), NODE_ROUNDING(scl));
 		
 		const float slotRadius = NODE_SLOT_RADIUS(scl);
+		const ImVec2 hsz(slotRadius*1.5f, slotRadius*1.5f);
 
 		for (int i = 0; i < node->inputs().size(); i++) {
 			const char* label = node->inputs()[i].label.c_str();
@@ -447,30 +522,6 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 			draw_list->AddText(pos + off1, IM_COL32(0, 0, 0, 220), label);
 			draw_list->AddText(pos + off, IM_COL32(255, 255, 255, 220), label);
 			draw_list->AddCircleFilled(pos, slotRadius, IM_COL32(150, 200, 150, 255));
-
-			// Unlink
-			ImVec2 hsz(slotRadius, slotRadius);
-			if (ImGui::IsMouseHoveringRect(pos - hsz, pos + hsz) &&
-				ImGui::IsMouseDoubleClicked(0) &&
-				!m_linking.active)
-			{
-				int eid = -1;
-				int j = 0;
-				for (auto& link : graph->links()) {
-					if (link->outputID == node->id() && link->outputSlot == i) {
-						eid = j;
-						break;
-					}
-					j++;
-				}
-				if (eid != -1) {
-					TLink* lnk = graph->links()[eid].get();
-					//graph->node(lnk->outputID)->inputs()[lnk->outputSlot].connected = false;
-					//graph->node(lnk->inputID)->outputs()[lnk->inputSlot].connected = false;
-					graph->links().erase(graph->links().begin() + eid);
-					graph->m_saved = false;
-				}
-			}
 
 			// End linking
 			if (ImGui::IsMouseHoveringRect(pos - hsz, pos + hsz) &&
@@ -494,7 +545,6 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 			draw_list->AddCircleFilled(pos, slotRadius, IM_COL32(200, 150, 150, 255));
 
 			/// Start linking process
-			ImVec2 hsz(slotRadius, slotRadius);
 			if (ImGui::IsMouseHoveringRect(pos - hsz, pos + hsz) && ImGui::IsMouseClicked(0)) {
 				m_linking.active = true;
 				m_linking.node = node;
@@ -503,18 +553,97 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 			}
 
 			if (m_linking.active && m_linking.node == node && m_linking.inputSlot == i) {
-				ImVec2 l0 = pos;
-				ImVec2 l1 = ImGui::GetIO().MousePos;
-				int col = IM_COL32(170, 170, 170, 255);
-				draw_list->AddCircleFilled(l0, slotRadius, col);
-				draw_list->AddCircleFilled(l1, slotRadius, col);
-				draw_list->AddBezierCurve(l0, l0 + ImVec2(+50, 0), l1 + ImVec2(-50, 0), l1, col, 5.0f);
+				ImVec2 p1 = pos;
+				ImVec2 p2 = ImGui::GetIO().MousePos;
+				ImVec2 cp1 = p1 + ImVec2(50, 0);
+				ImVec2 cp2 = p2 - ImVec2(50, 0);
+
+				const int col = IM_COL32(200, 200, 100, 200);
+				const float r = slotRadius * 1.5f;
+				draw_list->AddCircleFilled(p1, slotRadius*0.5f, col);
+				draw_list->AddTriangleFilled(
+					ImVec2(0, -r) + p2,
+					ImVec2(r+0.5f,  0) + p2,
+					ImVec2(0,  r) + p2,
+					col
+				);
+				draw_list->AddBezierCurve(p1, cp1, cp2, p2, col, 5.0f);
 			}
 		}
 
 		ImGui::PopID();
 	}
+
+	/// Selecting nodes
+	if (!m_nodeActive && ImGui::IsMouseClicked(0) && !m_linking.active) {
+		m_selectionStart = io.MousePos;
+		m_selectingNodes = true;
+	} else if (m_selectingNodes && ImGui::IsMouseReleased(0)) {
+		m_selectingNodes = false;
+	} else if (!m_selectingNodes && ImGui::IsMouseClicked(0) && !m_linking.active) {
+		if (m_nodeActive) {
+			if (io.KeyCtrl && std::find(m_selectedNodes.begin(), m_selectedNodes.end(), m_hoveredNode) == m_selectedNodes.end()) {
+				m_selectedNodes.push_back(m_hoveredNode);
+			} else {
+				if (m_selectedNodes.size() == 1)
+					m_selectedNodes.clear();
+			}
+		} else {
+			m_selectedNodes.clear();
+		}
+	}
+
+	/// Selecting nodes
+	if (m_selectingNodes) {
+		m_selectionEnd = io.MousePos;
+		
+		ImRect selRect = ImRect(m_selectionStart, m_selectionEnd);
+		if (selRect.Min.x>selRect.Max.x) {float tmp = selRect.Min.x;selRect.Min.x=selRect.Max.x;selRect.Max.x=tmp;}
+		if (selRect.Min.y>selRect.Max.y) {float tmp = selRect.Min.y;selRect.Min.y=selRect.Max.y;selRect.Max.y=tmp;}
+
+		draw_list->AddRectFilled(
+			selRect.Min,
+			selRect.Max,
+			IM_COL32(100, 100, 100, 100)
+		);
+		draw_list->AddRect(
+			selRect.Min,
+			selRect.Max,
+			IM_COL32(150, 150, 150, 150)
+		);
+
+		for (auto& e : graph->nodes()) {
+			TNode* node = e.second.get();
+			ImRect nbounds = node->m_selectionBounds;
+
+			if (selRect.Overlaps(nbounds)) {
+				if (std::find(m_selectedNodes.begin(), m_selectedNodes.end(), node->id()) == m_selectedNodes.end()) {
+					m_selectedNodes.push_back(node->id());
+				}
+			} else {
+				auto pos = std::find(m_selectedNodes.begin(), m_selectedNodes.end(), node->id());
+				if (pos != m_selectedNodes.end()) {
+					m_selectedNodes.erase(pos);
+				}
+			}
+		}
+	}
+
 	draw_list->ChannelsMerge();
+
+	// Moving selected nodes
+	if (!m_selectingNodes && ImGui::IsMouseDragging(0) && !m_linking.active) {
+		if (m_selectedNodes.empty() && m_hoveredNode != -1) {
+			m_selectedNodes.push_back(m_hoveredNode);
+		}
+		for (int id : m_selectedNodes) {
+			TNode* node = graph->nodes()[id].get();
+			if (node == nullptr) continue;
+			node->m_bounds.x += ImGui::GetIO().MouseDelta.x / scl;
+			node->m_bounds.y += ImGui::GetIO().MouseDelta.y / scl;
+			graph->m_saved = false;
+		}
+	}
 
 	// Scrolling
 	if (ImGui::IsWindowHovered() && !ImGui::IsAnyItemActive() && ImGui::IsMouseDragging(2, 0.0f)) {
@@ -524,28 +653,22 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 
 	// Open context menu
 	if (!ImGui::IsAnyItemHovered() && ImGui::IsMouseHoveringWindow() && ImGui::IsMouseClicked(1)) {
-		m_selectedNode = m_nodeHoveredInList = m_hoveredNode = -1;
+		m_hoveredNode = -1;
+		m_selectedNodes.clear();
 		openContext = true;
 	}
 	if (openContext) {
 		ImGui::OpenPopup("context_menu");
-		if (m_nodeHoveredInList != -1)
-			m_selectedNode = m_nodeHoveredInList;
-		if (m_hoveredNode != -1)
-			m_selectedNode = m_hoveredNode;
+		if (m_hoveredNode != -1) {
+			m_selectedNodes.push_back(m_hoveredNode);
+		}
 	}
 
 	// Draw context menu
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 8));
 	if (ImGui::BeginPopup("context_menu")) {
-		TNode* node = m_selectedNode != -1 ? graph->node(m_selectedNode) : nullptr;
 		ImVec2 scene_pos = ImGui::GetMousePosOnOpeningCurrentPopup() - offset;
-		if (node) {
-			ImGui::Text("%s Node", node->m_title.c_str());
-			ImGui::Separator();
-			if (ImGui::MenuItem("Delete", NULL, false, false)) {}
-			if (ImGui::MenuItem("Duplicate", NULL, false, false)) {}
-		} else {
+		if (m_selectedNodes.empty()) {
 			for (auto fn : TNodeFactory::factories) {
 				if ((fn.first == TInputsNode::type() ||
 					 fn.first == TOutputsNode::type()) &&
@@ -557,6 +680,8 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 					graph->addNode(scene_pos.x, scene_pos.y, fn.first);
 				}
 			}
+		} else {
+			ImGui::CloseCurrentPopup();
 		}
 		ImGui::EndPopup();
 	}
@@ -762,7 +887,8 @@ void TNodeEditor::draw(int w, int h) {
 					static int selectedNode = 0;
 					ImGui::PushItemWidth(-1);
 					if (ImGui::ListBox("##node_list", &selectedNode, nodeNames.data(), nodeNames.size())) {
-						m_selectedNode = nodeIDs[selectedNode];
+						m_selectedNodes.clear();
+						m_selectedNodes.push_back(nodeIDs[selectedNode]);
 						m_nodeGraphs[m_activeGraph]->m_scrolling.x = -nodeBounds[selectedNode].x + m_mainWindowSize.x * 0.5f - nodeBounds[selectedNode].z * 0.5f;
 						m_nodeGraphs[m_activeGraph]->m_scrolling.y = -nodeBounds[selectedNode].y + m_mainWindowSize.y * 0.5f - nodeBounds[selectedNode].w * 0.5f;
 					}
@@ -798,7 +924,8 @@ void TNodeEditor::draw(int w, int h) {
 						}
 					}
 					if (ImGui::Button("Delete", ImVec2(w, 18))) {
-						m_nodeGraphs[m_activeGraph]->removeSample(selectedSample);
+						int sid = m_nodeGraphs[m_activeGraph]->getSampleID(std::string(items[selectedSample]));
+						m_nodeGraphs[m_activeGraph]->removeSample(sid);
 						selectedSample = -1;
 					}
 					ImGui::EndGroup();
@@ -824,10 +951,7 @@ void TNodeEditor::draw(int w, int h) {
 
 				if (wasOpen && !m_nodeGraphs[i]->m_open) {
 					if (m_nodeGraphs[i]->m_saved) {
-						m_playing = false;
-						m_recording = false;
-						m_nodeGraphs[i]->m_solvedNodes.clear();
-						m_nodeGraphs.erase(m_nodeGraphs.begin() + i);
+						closeGraph(i);
 						break;
 					} else {
 						int res = tinyfd_messageBox(
@@ -838,10 +962,7 @@ void TNodeEditor::draw(int w, int h) {
 							0
 						);
 						if (res == 1) {
-							m_playing = false;
-							m_recording = false;
-							m_nodeGraphs[i]->m_solvedNodes.clear();
-							m_nodeGraphs.erase(m_nodeGraphs.begin() + i);
+							closeGraph(i);
 							break;
 						}
 						m_nodeGraphs[i]->m_open = true;
@@ -876,6 +997,16 @@ void TNodeEditor::draw(int w, int h) {
 	ImGui::End();
 
 	ImGui::PopStyleVar();
+}
+
+void TNodeEditor::closeGraph(int id) {
+	m_playing = false;
+	m_recording = false;
+	m_nodeGraphs[id]->m_solvedNodes.clear();
+	m_nodeGraphs.erase(m_nodeGraphs.begin() + id);
+	if (m_activeGraph > m_nodeGraphs.size()-1) {
+		m_activeGraph = m_nodeGraphs.size()-1;
+	}
 }
 
 TNodeGraph* TNodeEditor::newGraph() {
