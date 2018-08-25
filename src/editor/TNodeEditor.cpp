@@ -463,10 +463,23 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, vec2zero);
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, vec2zero);
 			ImGui::PushID("NodeButtons");
+			if (ImGui::Button("C", ImVec2(15, 15))) {
+				int cx = int(node->m_bounds.x + 50);
+				int cy = int(node->m_bounds.y + 50);
+				JSON params; node->save(params);
+				graph->addNode(cx, cy, node->m_type, params);
+			}
+			if (ImGui::IsItemHovered()) {
+				ImGui::SetTooltip("Clone");
+			}
+			ImGui::SameLine();
 			if (ImGui::Button("X", ImVec2(15, 15))) {
 				toDelete.push_back(node->id());
 				m_selectedNodes.clear();
 				m_hoveredNode = -1;
+			}
+			if (ImGui::IsItemHovered()) {
+				ImGui::SetTooltip("Delete");
 			}
 			ImGui::PopID();
 			ImGui::PopStyleVar(2);

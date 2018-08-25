@@ -142,6 +142,7 @@ public:
 			return;
 		}
 		factories[T::type()] = ctor;
+		
 	}
 
 	template <class T>
