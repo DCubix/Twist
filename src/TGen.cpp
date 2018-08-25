@@ -1,6 +1,7 @@
 #include "TGen.h"
 
 #include <cmath>
+#include "sndfile.hh"
 
 constexpr float PI2 = M_PI * 2.0f;
 
@@ -165,4 +166,60 @@ float TWaveGuide::sample(float in, float feedBack, float delay) {
 
 	// return output
 	return output;
+}
+
+TSoundSample::TSoundSample(const std::string& fileName) {
+	SndfileHandle snd = SndfileHandle(fileName);
+	int maxSecs = 10;
+	if (snd.samplerate() > 44100) {
+		maxSecs = 5;
+	}
+	if (snd.frames() < snd.samplerate() * maxSecs) {
+		m_sampleRate = snd.samplerate();
+		m_duration = float(double(snd.frames()) / m_sampleRate);
+
+		std::vector<float> samplesRaw;
+		samplesRaw.resize(snd.frames() * snd.channels());
+
+		snd.readf(samplesRaw.data(), samplesRaw.size());
+
+		m_sampleData.resize(snd.frames());
+		for (int i = 0; i < snd.frames(); i++) {
+			m_sampleData[i] = samplesRaw[i];
+		}
+
+		m_currTime = 0;
+	}
+}
+
+void TSoundSample::gate(bool g) {
+	if (g) {
+		m_state = TADSR::Attack;
+	} else if (m_state != TADSR::Idle) {
+		m_state = TADSR::Decay;
+	}
+}
+
+float TSoundSample::sample() {
+	float out = 0.0f;
+	switch (m_state) {
+		case TADSR::Idle: break;
+		case TADSR::Attack: {
+			if (m_currTime < m_duration) {
+				int sp = int(m_currTime * m_sampleRate);
+				out = m_sampleData[sp];
+			}
+
+			m_currTime += 1.0f / m_sampleRate;
+			if (m_currTime >= m_duration) {
+				m_state = TADSR::Decay;
+			}
+		} break;
+		case TADSR::Decay: {
+			m_currTime = 0;
+			m_state = TADSR::Idle;
+		} break;
+		default: break;
+	}
+	return out;
 }

@@ -10,8 +10,10 @@
 #include <cstring>
 #include <fstream>
 #include <memory>
+#include <mutex>
 
 #include "nodes/TNode.h"
+#include "../TGen.h"
 
 using TNodeCtor = TNode*(JSON&);
 
@@ -156,6 +158,12 @@ public:
 	static TNodeFactories factories;
 };
 
+struct TSampleLibEntry {
+	std::vector<float> sampleData;
+	float sampleRate, duration;
+	std::string name;
+};
+
 class TNodeEditor;
 class TNodeGraph {
 	friend class TNodeEditor;
@@ -168,7 +176,7 @@ public:
 	};
 
 	TNode* addNode(int x, int y, const std::string& type);
-	TNode* addNode(int x, int y, const std::string& type, JSON& params);
+	TNode* addNode(int x, int y, const std::string& type, JSON& params, int id = -1);
 	void deleteNode(int id);
 	void link(int inID, int inSlot, int outID, int outSlot);
 
@@ -195,23 +203,35 @@ public:
 	void load(const std::string& fileName);
 	void save(const std::string& fileName);
 
+	bool addSample(const std::string& fileName);
+	void removeSample(int id);
+	int getSampleID(const std::string& name);
+	TSampleLibEntry* getSample(int id);
+	std::vector<const char*> getSampleNames();
+
+	TNodeEditor* editor() { return m_editor; }
+	void editor(TNodeEditor* ed) { m_editor = ed; }
+
 	std::string name() const { return m_name; }
 
 	void solveNodes();
 
 protected:
+	void addSample(const std::string& fname, const std::vector<float>& data, float sr, float dur);
 	int getID();
 	TIntList getAllLinksRelatedToNode(int id);
-	TIntList getNodeLinks(int id);
 	TIntList getNodeInputs(int id);
 	TIntList buildNodes(int id);
 	TIntList buildNodes(const TIntList& ids);
 	void solveNodes(const TIntList& solved);
 
+	TNodeEditor* m_editor;
+
 	int m_outputNode = 0, m_inputsNode = 0, m_outputsNode = 0;
 
 	TNodeList m_nodes;
 	TLinkList m_links;
+	std::mutex m_lock;
 
 	TIntList m_solvedNodes;
 
@@ -221,6 +241,8 @@ protected:
 	std::string m_name, m_fileName;
 
 	std::array<float, GLOBAL_STORAGE_SIZE> m_globalStorage;
+	std::map<int, std::unique_ptr<TSampleLibEntry>> m_sampleLibrary;
+
 	bool m_open = true, m_saved = false;
 };
 

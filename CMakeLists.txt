@@ -11,12 +11,14 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 
 find_package(SDL2 REQUIRED)
 find_package(SndFile REQUIRED)
+find_package(RtMIDI REQUIRED)
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/editor/imgui/")
 
 include_directories(
 	${SDL2_INCLUDE_DIRS}
 	${LIBSNDFILE_INCLUDE_DIRS}
+	${RTMIDI_INCLUDE_DIR}
 )
 
 file(GLOB SRC
@@ -42,6 +44,7 @@ add_executable(${PROJECT_NAME} ${SRC})
 target_link_libraries(${PROJECT_NAME}
 	${SDL2_LIBRARIES}
 	${LIBSNDFILE_LIBRARIES}
+	${RTMIDI_LIBRARY}
 	ImGUI
 )
 

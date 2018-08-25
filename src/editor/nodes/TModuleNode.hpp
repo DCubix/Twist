@@ -59,6 +59,7 @@ public:
 		}
 		nodeGraph = std::unique_ptr<TNodeGraph>(new TNodeGraph());
 		nodeGraph->load(fname);
+		nodeGraph->editor(parent()->editor());
 
 		m_inputs.clear();
 		m_outputs.clear();

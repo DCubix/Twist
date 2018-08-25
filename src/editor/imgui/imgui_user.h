@@ -1,10 +1,17 @@
 #ifndef IMGUI_USER_H
 #define IMGUI_USER_H
 
+#include "../TTex.hpp"
+
 typedef int ImGuiTabBarFlags;
 typedef int ImGuiTabItemFlags;
 
 namespace ImGui {
+static TTex* KnobTex = nullptr;
+static TTex* VUTex = nullptr;
+static TTex* SWTex = nullptr;
+
+IMGUI_API bool          Knob(const char* label, float* value_p, float minv, float maxv);
 IMGUI_API void          ToggleButton(const char* str_id, bool* v);
 IMGUI_API void          BeginTabBar(const char* str_id, ImGuiTabBarFlags flags = 0);
 IMGUI_API void          EndTabBar();
@@ -16,6 +23,7 @@ IMGUI_API void          SetTabItemSelected(const char* label);
 
 IMGUI_API float         VUMeter(const char* id, float value);
 IMGUI_API void          AudioView(const char* id, float width, float* values, int length, int pos);
+IMGUI_API bool          Splitter(bool split_vertically, float thickness, float* size1, float* size2, float min_size1, float min_size2, float splitter_long_axis_size = -1.0f);
 }
 
 enum ImGuiTabBarFlags_

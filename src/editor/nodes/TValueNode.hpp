@@ -11,7 +11,7 @@ public:
 	}
 
 	void gui() {
-		ImGui::DragFloat("Value", &value, 0.01f, 0.0f, 1.0f);
+		ImGui::Knob("Value", &value, 0.0f, 1.0f);
 	}
 
 	void solve() {

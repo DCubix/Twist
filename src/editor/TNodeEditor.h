@@ -8,6 +8,7 @@
 #include <map>
 #include <unordered_map>
 #include <cstring>
+#include <cstdint>
 #include <fstream>
 #include <memory>
 
@@ -15,8 +16,15 @@
 #include "nodes/TOutNode.hpp"
 
 #include "imgui.h"
+#include "RtMidi.h"
 
 #include "TNodeGraph.h"
+
+void midiCallback(double dt, std::vector<uint8_t>* message, void* userData);
+
+struct TMIDIMessage {
+	
+};
 
 class TNodeEditor {
 public:
@@ -32,6 +40,9 @@ public:
 	void renderToFile(const std::string& fileName, float time);
 	void saveRecording(const std::string& fileName);
 
+	RtMidiIn* midiIn() { return m_MIDIin.get(); }
+	RtMidiOut* midiOut() { return m_MIDIout.get(); }
+
 	float sampleRate;
 
 private:
@@ -46,6 +57,8 @@ private:
 	bool m_openContextMenu;
 	float m_oldFontWindowScale, m_currentFontWindowScale;
 
+	ImVec2 m_mainWindowSize;
+
 	float m_signalDC = 0.0f, m_envelope = 0.0f, m_outDuration = 0, m_recTime = 0.1f,
 			m_recordingFadeTime = 0.0f, m_recordingFade = 0.0f;
 	bool m_rendering = false, m_loading = false, m_playing = false, m_recording = false;
@@ -54,6 +67,9 @@ private:
 	int m_recordPointer = 0, m_recordingFadeType = 0;
 
 	std::vector<std::unique_ptr<TNodeGraph>> m_nodeGraphs;
+
+	std::unique_ptr<RtMidiIn> m_MIDIin;
+	std::unique_ptr<RtMidiOut> m_MIDIout;
 
 };
 

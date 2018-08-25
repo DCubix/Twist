@@ -13,23 +13,21 @@ class TOutNode : public TNode {
 public:
 	TOutNode() : TNode("Output", 140, 140), volume(1.0f) {
 		addInput("In");
+		addInput("Vol.");
 	}
 
 	void gui() {
-		float height = ImGui::VUMeter("##wf", lvl);
-		ImGui::SameLine();
-		ImGui::VSliderFloat("##volume", ImVec2(16, height), &volume, 0.0f, 1.0f);
+		ImGui::VUMeter("##wf", lvl);
 	}
 
 	void solve() {
-		if (inputs()[0].connected) {
-			lvl = std::max(lvl, getInput(0) * 0.5f + 0.5f);
-		}
-
+		nextLvl = std::max(nextLvl, getInput(0));
+		volume = getInputOr(1, 1.0f);
 		setInput(0, getInput(0) * volume);
 
-		lvl -= 1.0f / 22050;
-		lvl = std::min(std::max(lvl, 0.0f), 1.0f);
+		lvl = tmath::lerp(lvl, nextLvl, 0.0007f);
+		nextLvl -= 1.0f / 22050;
+		//lvl = std::min(std::max(lvl, -1.0f), 1.0f);
 	}
 
 	void save(JSON& json) {
@@ -39,7 +37,7 @@ public:
 	}
 
 	float volume = 1.0f;
-	float lvl = 0.0f;
+	float lvl = 0.0f, nextLvl = 0.0f;
 
 	static std::string type() { return "Out"; }
 };

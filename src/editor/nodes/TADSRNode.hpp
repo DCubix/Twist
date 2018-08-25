@@ -24,10 +24,17 @@ public:
 	}
 
 	void gui() {
-		ImGui::DragFloat("Attack", &a, 0.01f, 0.0f, 1.0f);
-		ImGui::DragFloat("Decay", &d, 0.01f, 0.0f, 1.0f);
-		ImGui::DragFloat("Sustain", &s, 0.01f, 0.0f, 1.0f);
-		ImGui::DragFloat("Release", &r, 0.01f, 0.0f, 1.0f);
+		// ImGui::DragFloat("Attack", &a, 0.01f, 0.0f, 1.0f);
+		// ImGui::DragFloat("Decay", &d, 0.01f, 0.0f, 1.0f);
+		// ImGui::DragFloat("Sustain", &s, 0.01f, 0.0f, 1.0f);
+		// ImGui::DragFloat("Release", &r, 0.01f, 0.0f, 1.0f);
+		ImGui::Knob("Att.", &a, 0.0f, 1.0f);
+		ImGui::SameLine();
+		ImGui::Knob("Dec.", &d, 0.0f, 1.0f);
+		ImGui::SameLine();
+		ImGui::Knob("Sus.", &s, 0.0f, 1.0f);
+		ImGui::SameLine();
+		ImGui::Knob("Rel.", &r, 0.0f, 10.0f);
 	}
 
 	void solve() {

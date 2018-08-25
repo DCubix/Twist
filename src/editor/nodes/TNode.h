@@ -44,6 +44,7 @@ public:
 	{}
 
 	virtual ~TNode() {}
+	virtual void setup() {}
 	virtual void gui() {}
 	virtual void solve() {}
 

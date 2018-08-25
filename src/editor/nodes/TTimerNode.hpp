@@ -56,7 +56,7 @@ public:
 
 private:
 	void updateIndex(int& index, float& stime, bool& gate, float sw, float delay) {
-		float delaySw = index % 2 == 0 ? delay - sw * 0.5f : delay + sw * 0.5f;
+		float delaySw = index % 2 == 0 ? delay + sw * 0.5f : delay - sw * 0.5f;
 		if (stime >= delaySw) {
 			index++;
 			stime = 0;

@@ -32,6 +32,7 @@ public:
 			"Noise\0"
 		};
 		ImGui::Combo("WaveForm", (int*)&wf, WAVES, 6, -1);
+
 		ImGui::DragFloat("Freq", &frequency, 0.1f, 0.0f, 20000.0f);
 		ImGui::DragFloat("Amp", &amplitude, 0.1f, 0.0f, 9999.0f);
 	}

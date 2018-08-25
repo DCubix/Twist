@@ -187,6 +187,29 @@ private:
 
 };
 
+class TSoundSample : public TSampler {
+public:
+	TSoundSample() { }
+	TSoundSample(const std::vector<float> data, float sr, float dur)
+		: m_sampleData(data), m_sampleRate(sr), m_duration(dur), m_currTime(0), m_state(0)
+	{ }
+	TSoundSample(const std::string& fileName);
+
+	void gate(bool g);
+	bool valid() const { return !m_sampleData.empty() && m_duration > 0.0f; }
+
+	std::vector<float> sampleData() const { return m_sampleData; }
+	float sampleRate() const { return m_sampleRate; }
+	float duration() const { return m_duration; }
+	float time() const { return m_currTime; }
+
+	float sample();
+protected:
+	std::vector<float> m_sampleData;
+	float m_duration = 0, m_currTime, m_sampleRate;
+	int m_state;
+};
+
 #define T_WAVE_GUIDE_SAMPLES 44100
 class TWaveGuide {
 public:

@@ -7,32 +7,144 @@
 
 using namespace ImGui;
 
+#include <algorithm>
 #include <cstdint>
 
 #define BLOCK_COUNT 30
 #define BLOCK_HEIGHT 4
 #define BLOCK_SPACE 1
 
+#include "knob.h"
+#include "vu.h"
+#include "sw.h"
+
 namespace ImGui {
+bool Splitter(bool split_vertically, float thickness, float* size1, float* size2, float min_size1, float min_size2, float splitter_long_axis_size) {
+	ImGuiContext& g = *GImGui;
+	ImGuiWindow* window = g.CurrentWindow;
+	ImGuiID id = window->GetID("##Splitter");
+	ImRect bb;
+	bb.Min = window->DC.CursorPos + (split_vertically ? ImVec2(*size1, 0.0f) : ImVec2(0.0f, *size1));
+	bb.Max = bb.Min + CalcItemSize(split_vertically ? ImVec2(thickness, splitter_long_axis_size) : ImVec2(splitter_long_axis_size, thickness), 0.0f, 0.0f);
+	return SplitterBehavior(id, bb, split_vertically ? ImGuiAxis_X : ImGuiAxis_Y, size1, size2, min_size1, min_size2, 0.0f);
+}
+
+bool Knob(const char* label, float* p_value, float v_min, float v_max) {
+	if (KnobTex == nullptr) {
+		KnobTex = new TTex(knob_png, knob_png_len);
+	}
+
+	ImGuiWindow* window = GetCurrentWindow();
+	if (window->SkipItems)
+		return false;
+
+	ImGuiContext& g = *GImGui;
+	ImGuiIO& io = ImGui::GetIO();
+	ImGuiStyle& style = ImGui::GetStyle();
+	const ImGuiID id = window->GetID(label);
+
+	float width = 40.0f;
+	ImVec2 pos = ImGui::GetCursorScreenPos();
+	float line_height = ImGui::GetTextLineHeight();
+	ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+	float ANGLE_MIN = 3.141592f * 0.75f;
+	float ANGLE_MAX = 3.141592f * 2.25f;
+
+	ImGui::BeginGroup();
+	ImGui::PushItemWidth(width);
+
+	char ilbl[128] = {0};
+	ImFormatString(ilbl, 128, "##drag%s", label);
+	ImGui::PushStyleColor(ImGuiCol_FrameBg, ImGui::GetColorU32(ImGuiCol_TitleBgCollapsed));
+	bool in_drag = ImGui::DragFloat(ilbl, p_value, 0.01f, v_min, v_max);
+	ImGui::PopStyleColor();
+
+	ImGui::PopItemWidth();
+	ImGui::InvisibleButton(label, ImVec2(width, width + line_height + style.ItemInnerSpacing.y));
+
+	bool value_changed = false;
+	bool is_active = ImGui::IsItemActive();
+	bool is_hovered = ImGui::IsItemActive();
+	bool is_dblclick = ImGui::IsMouseDoubleClicked(0) && is_hovered;
+	if (is_active && io.MouseDelta.y != 0.0f && !in_drag) {
+		float step = (v_max - v_min) / 200.0f;
+		*p_value -= io.MouseDelta.y * step;
+		if (*p_value < v_min) *p_value = v_min;
+		if (*p_value > v_max) *p_value = v_max;
+		value_changed = true;
+	}
+
+	ImGui::EndGroup();
+
+	float t = (*p_value - v_min) / (v_max - v_min);
+
+	const float tw = 1.0f / 100;
+	const float th = 1.0f;
+
+	int index = int(t * 99.0f);
+
+	draw_list->PushClipRect(
+		pos,
+		pos + ImVec2(width, width + line_height*2 + style.ItemInnerSpacing.y),
+		true
+	);
+
+	draw_list->AddRectFilled(
+		pos + ImVec2(0, line_height),
+		pos + ImVec2(width, width + line_height*2 + style.ItemInnerSpacing.y),
+		ImGui::GetColorU32(ImGuiCol_TitleBgCollapsed),
+		5.0f
+	);
+
+	draw_list->AddImage(
+		(ImTextureID)(KnobTex->id()),
+		pos + ImVec2(0, line_height),
+		pos + ImVec2(width, width + line_height),
+		ImVec2(tw * (index % 100), 0),
+		ImVec2(tw * (index % 100) + tw, th)
+	);
+
+	ImVec2 tsz = ImGui::CalcTextSize(label);
+	float centerTextX = width/2 - tsz.x/2;
+	draw_list->AddText(ImVec2(pos.x + centerTextX, pos.y + width + line_height + style.ItemInnerSpacing.y+1.2f), ImGui::GetColorU32(ImGuiCol_FrameBg), label);
+	draw_list->AddText(ImVec2(pos.x + centerTextX, pos.y + width + line_height + style.ItemInnerSpacing.y), ImGui::GetColorU32(ImGuiCol_Text), label);
+
+	draw_list->PopClipRect();
+
+	return value_changed;
+}
+
 void ToggleButton(const char* str_id, bool* v) {
 	ImVec2 p = ImGui::GetCursorScreenPos();
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
-	const float w = 32;
 	float height = ImGui::GetFrameHeight();
-	float width = w;
-	float radius = height * 0.50f;
+	float width = 32.0f;
+	float radius = height * 0.5f;
 
-	if (ImGui::InvisibleButton(str_id, ImVec2(width, height)))
+	ImGui::InvisibleButton(str_id, ImVec2(width, height));
+	if (ImGui::IsItemClicked())
 		*v = !*v;
+
+	float t = *v ? 1.0f : 0.0f;
+
+	ImGuiContext& g = *GImGui;
+	float ANIM_SPEED = 0.08f;
+	if (g.ActiveId == g.CurrentWindow->GetID(str_id))// && g.LastActiveIdTimer < ANIM_SPEED)
+	{
+		float t_anim = ImSaturate(g.ActiveIdTimer / ANIM_SPEED);
+		t = *v ? (t_anim) : (1.0f - t_anim);
+	}
+
 	ImU32 col_bg;
 	if (ImGui::IsItemHovered())
-		col_bg = *v ? IM_COL32(145+20, 211, 68+20, 255) : IM_COL32(218-20, 218-20, 218-20, 255);
+		col_bg = ImGui::GetColorU32(ImLerp(ImVec4(0.78f, 0.78f, 0.78f, 1.0f), ImVec4(0.64f, 0.83f, 0.34f, 1.0f), t));
 	else
-		col_bg = *v ? IM_COL32(145, 211, 68, 255) : IM_COL32(218, 218, 218, 255);
+		col_bg = ImGui::GetColorU32(ImLerp(ImVec4(0.85f, 0.85f, 0.85f, 1.0f), ImVec4(0.56f, 0.83f, 0.26f, 1.0f), t));
 
 	draw_list->AddRectFilled(p, ImVec2(p.x + width, p.y + height), col_bg, height * 0.5f);
-	draw_list->AddCircleFilled(ImVec2(*v ? (p.x + width - radius) : (p.x + radius), p.y + radius), radius - 1.5f, IM_COL32(255, 255, 255, 255));
+	draw_list->AddCircleFilled(ImVec2(p.x + radius + t * (width - radius * 2.0f), p.y + radius), radius - 1.5f, IM_COL32(255, 255, 255, 255));
 }
 
 static float remap(float value, float from1, float to1, float from2, float to2) {
@@ -40,43 +152,43 @@ static float remap(float value, float from1, float to1, float from2, float to2) 
 }
 
 float VUMeter(const char* id, float value) {
-	const float height = BLOCK_SPACE + (BLOCK_HEIGHT + BLOCK_SPACE) * BLOCK_COUNT;
+	if (VUTex == nullptr) {
+		VUTex = new TTex(vu_png, vu_png_len);
+	}
 
-	const int blockCount = (int) remap(value, 0.0f, 1.0f, 0, BLOCK_COUNT);
+	const float width = float(int(VUTex->width() / 10));
+	const float height = float(int(VUTex->height() / 10));
 
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
-	float y = 0.0f;
-	
+
+	const float tw = 1.0f / 10;
+	const float th = 1.0f / 10;
+
+	int index = int(value * 99.0f);
+
 	const ImVec2 wp = ImGui::GetCursorScreenPos();
 
-	draw_list->AddRectFilled(
+	draw_list->PushClipRect(wp, ImVec2(width, height) + wp, true);
+
+	float x = tw * (index % 10);
+	float y = th * int(index / 10);
+	draw_list->AddImage(
+		(ImTextureID)(VUTex->id()),
 		wp,
-		ImVec2(16, height) + wp,
-		IM_COL32(0, 0, 0, 255)
+		ImVec2(width, height) + wp,
+		ImVec2(x, y),
+		ImVec2(x + tw, y + th)
 	);
 
-	ImGui::InvisibleButton(id, ImVec2(16, height));
-	for (int i = 0; i < blockCount; i++) {
-		int col = IM_COL32(0, 200, 100, 255);
-		if (i >= BLOCK_COUNT - 10 && i < BLOCK_COUNT - 3) {
-			col = IM_COL32(200, 200, 100, 255);
-		} else if (i >= BLOCK_COUNT - 3) {
-			col = IM_COL32(200, 100, 100, 255);
-		}
-		float iy = height - y;
-		draw_list->AddRectFilled(
-			ImVec2(BLOCK_SPACE, iy - BLOCK_HEIGHT) + wp,
-			ImVec2(16 - BLOCK_SPACE, iy) + wp,
-			col
-		);
-		y += (BLOCK_HEIGHT + BLOCK_SPACE);
-	}
+	ImGui::InvisibleButton(id, ImVec2(width, height));
 
 	draw_list->AddRect(
 		wp,
-		ImVec2(16, height) + wp,
+		ImVec2(width, height) + wp,
 		IM_COL32(100, 100, 100, 255)
 	);
+
+	draw_list->PopClipRect();
 
 	return height;
 }
@@ -86,10 +198,10 @@ void AudioView(const char* id, float width, float* values, int length, int pos) 
 
 	int pos_r = int((float(pos) / length) * width);
 
+	const float h = 34.0f;
 	const ImVec2 wp = ImGui::GetCursorScreenPos();
-	ImGui::InvisibleButton(id, ImVec2(width, 64));
+	ImGui::InvisibleButton(id, ImVec2(width, h*2));
 
-	const float h = 32.0f;
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
 	const ImVec2 rect_max = ImVec2(width, h*2) + wp;
@@ -100,7 +212,7 @@ void AudioView(const char* id, float width, float* values, int length, int pos) 
 		IM_COL32(0, 0, 0, 255)
 	);
 
-	draw_list->PushClipRect(wp, rect_max);
+	draw_list->PushClipRect(wp, rect_max, true);
 
 	draw_list->AddLine(
 		ImVec2(0.0f, h) + wp,

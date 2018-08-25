@@ -33,11 +33,11 @@
 
 #define NODE_CTOR [](JSON& json) -> TNode*
 
-#define NODE_SLOT_RADIUS(x) (6.0f * x)
-#define NODE_SLOT_RADIUS2(x) (8.0f * x)
+#define NODE_SLOT_RADIUS(x) (5.0f * x)
+#define NODE_SLOT_RADIUS2(x) (6.0f * x)
 #define LINK_THICKNESS(x) (5.0f * x)
-#define NODE_ROUNDING(x) (8.0f * x)
-#define NODE_PADDING(x) (8.0f * x)
+#define NODE_ROUNDING(x) (5.0f * x)
+#define NODE_PADDING(x) (5.0f * x)
 
 TNodeEditor::TNodeEditor() {
 	m_linking.active = 0;
@@ -52,6 +52,18 @@ TNodeEditor::TNodeEditor() {
 	m_bounds.z = 1;
 	m_bounds.w = 1;
 	m_oldFontWindowScale = 0;
+
+	m_MIDIin = std::unique_ptr<RtMidiIn>(new RtMidiIn(
+		RtMidi::UNSPECIFIED, "Twist MIDI In"
+	));
+	m_MIDIin->openPort(0, "Twist - Main In");
+	m_MIDIin->setCallback(&midiCallback, nullptr);
+	m_MIDIin->ignoreTypes(false, false, false);
+
+	m_MIDIout = std::unique_ptr<RtMidiOut>(new RtMidiOut(
+		RtMidi::UNSPECIFIED, "Twist MIDI Out"
+	));
+	m_MIDIout->openPort(0, "Twist - Main Out");
 
 	TNodeFactory::registerNode<TValueNode>(NODE_CTOR {
 		return new TValueNode{ GET(float, "value", 0.0f) };
@@ -239,12 +251,11 @@ TNodeEditor::TNodeEditor() {
 	});
 
 	TNodeFactory::registerNode<TSampleNode>(NODE_CTOR {
-		TSampleNode* smp = new TSampleNode();
-		smp->sampleRate = GET(float, "sampleRate", 44100);
-		smp->duration = GET(float, "duration", 0);
-		if (json["sample"].is_array())
-			smp->sample = json["sample"].get<std::vector<float>>(); 
-		return smp;
+		return new TSampleNode(
+			GET(int, "sample", 0),
+			GET(int, "selectedID", 0),
+			GET(float, "volume", 1.0f)
+		);
 	});
 
 }
@@ -256,9 +267,9 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 	ImGuiContext& g = *GImGui;
 	ImGuiWindow* window = ImGui::GetCurrentWindow();
 
-	float oldFontScaleToReset = g.Font->Scale; // We'll clean up at the bottom
-	float fontScaleStored = m_oldFontWindowScale ? m_oldFontWindowScale : oldFontScaleToReset;
-	float& fontScaleToTrack = g.Font->Scale;
+	// float oldFontScaleToReset = g.Font->Scale; // We'll clean up at the bottom
+	// float fontScaleStored = m_oldFontWindowScale ? m_oldFontWindowScale : oldFontScaleToReset;
+	// float& fontScaleToTrack = g.Font->Scale;
 
 	// if (!io.FontAllowUserScaling) {
 	// 	// Set the correct font scale (3 lines)
@@ -282,26 +293,28 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 	// }
 
 	// fixes zooming just a bit
-	bool nodesHaveZeroSize = false;
-	m_currentFontWindowScale = !io.FontAllowUserScaling ? fontScaleStored : ImGui::GetCurrentWindow()->FontWindowScale;
-	if (m_oldFontWindowScale == 0.0f) {
-		m_oldFontWindowScale = m_currentFontWindowScale;
-		nodesHaveZeroSize = true;   // at start or after clear()
-		graph->m_scrolling = ImGui::GetWindowSize() * 0.5f;
-	} else if (m_oldFontWindowScale != m_currentFontWindowScale) {
-		nodesHaveZeroSize = true;
-		for (auto& e : graph->nodes())    {
-			TNode* node = e.second.get();
-			node->m_bounds.z = 0.0f;  // we must reset the size
-			node->m_bounds.w = 0.0f;  // we must reset the size
-		}
-		// These two lines makes the scaling work around the mouse position AFAICS
-		if (io.FontAllowUserScaling) {
-			const ImVec2 delta = (io.MousePos - ImGui::GetCursorScreenPos());
-			graph->m_scrolling -= (delta * m_currentFontWindowScale - delta * m_oldFontWindowScale) / m_currentFontWindowScale;
-		}
-		m_oldFontWindowScale = m_currentFontWindowScale;
-	}
+	// bool nodesHaveZeroSize = false;
+	// m_currentFontWindowScale = !io.FontAllowUserScaling ? fontScaleStored : ImGui::GetCurrentWindow()->FontWindowScale;
+	// if (m_oldFontWindowScale == 0.0f) {
+	// 	m_oldFontWindowScale = m_currentFontWindowScale;
+	// 	nodesHaveZeroSize = true;   // at start or after clear()
+	// 	graph->m_scrolling = ImGui::GetWindowSize() * 0.5f;
+	// } else if (m_oldFontWindowScale != m_currentFontWindowScale) {
+	// 	nodesHaveZeroSize = true;
+	// 	for (auto& e : graph->nodes())    {
+	// 		TNode* node = e.second.get();
+	// 		node->m_bounds.z = 0.0f;  // we must reset the size
+	// 		node->m_bounds.w = 0.0f;  // we must reset the size
+	// 	}
+	// 	// These two lines makes the scaling work around the mouse position AFAICS
+	// 	if (io.FontAllowUserScaling) {
+	// 		const ImVec2 delta = (io.MousePos - ImGui::GetCursorScreenPos());
+	// 		graph->m_scrolling -= (delta * m_currentFontWindowScale - delta * m_oldFontWindowScale) / m_currentFontWindowScale;
+	// 	}
+	// 	m_oldFontWindowScale = m_currentFontWindowScale;
+	// }
+
+	m_currentFontWindowScale = 1;
 
 	bool openContext = false;
 	ImVec2 offset = ImGui::GetCursorScreenPos() + graph->m_scrolling;
@@ -349,7 +362,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 		// Display node contents first
 		draw_list->ChannelsSetCurrent(1); // Foreground
 		bool old_any_active = ImGui::IsAnyItemActive();
-		
+
 		ImGui::SetCursorScreenPos(node_rect_min + ImVec2(NODE_PADDING(scl), NODE_PADDING(scl)));
 		ImGui::BeginGroup();
 			ImGui::SetNextTreeNodeOpen(true, ImGuiCond_Appearing);
@@ -384,7 +397,6 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 
 			if (node->open) {
 				ImGui::Spacing();
-				ImGui::Spacing();
 				ImGui::BeginGroup();
 					node->gui();
 				ImGui::EndGroup();
@@ -403,6 +415,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 		draw_list->ChannelsSetCurrent(0); // Background
 		ImGui::SetCursorScreenPos(node_rect_min);
 		ImGui::InvisibleButton("node##invbtn", node->size());
+		m_hoveredNode = -1;
 		if (ImGui::IsItemHovered()) {
 			m_hoveredNode = node->id();
 			openContext |= ImGui::IsMouseClicked(1);
@@ -452,8 +465,8 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 				}
 				if (eid != -1) {
 					TLink* lnk = graph->links()[eid].get();
-					graph->node(lnk->outputID)->inputs()[lnk->outputSlot].connected = false;
-					graph->node(lnk->inputID)->outputs()[lnk->inputSlot].connected = false;
+					//graph->node(lnk->outputID)->inputs()[lnk->outputSlot].connected = false;
+					//graph->node(lnk->inputID)->outputs()[lnk->inputSlot].connected = false;
 					graph->links().erase(graph->links().begin() + eid);
 					graph->m_saved = false;
 				}
@@ -487,7 +500,6 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 				m_linking.node = node;
 				m_linking.inputID = node->id();
 				m_linking.inputSlot = i;
-
 			}
 
 			if (m_linking.active && m_linking.node == node && m_linking.inputSlot == i) {
@@ -558,6 +570,52 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 }
 
 void TNodeEditor::draw(int w, int h) {
+	auto style = &ImGui::GetStyle();
+	style->WindowRounding = 5.3f;
+	style->GrabRounding = style->FrameRounding = 2.3f;
+	style->ScrollbarRounding = 5.0f;
+	style->FrameBorderSize = 1.0f;
+	style->ItemSpacing.y = 6.5f;
+
+	style->Colors[ImGuiCol_Text]                  = {0.73333335f, 0.73333335f, 0.73333335f, 1.00f};
+	style->Colors[ImGuiCol_TextDisabled]          = {0.34509805f, 0.34509805f, 0.34509805f, 1.00f};
+	style->Colors[ImGuiCol_WindowBg]              = {0.23529413f, 0.24705884f, 0.25490198f, 0.94f};
+	style->Colors[ImGuiCol_ChildBg]               = {0.23529413f, 0.24705884f, 0.25490198f, 0.00f};
+	style->Colors[ImGuiCol_PopupBg]               = {0.23529413f, 0.24705884f, 0.25490198f, 0.94f};
+	style->Colors[ImGuiCol_Border]                = {0.33333334f, 0.33333334f, 0.33333334f, 0.50f};
+	style->Colors[ImGuiCol_BorderShadow]          = {0.15686275f, 0.15686275f, 0.15686275f, 0.00f};
+	style->Colors[ImGuiCol_FrameBg]               = {0.16862746f, 0.16862746f, 0.16862746f, 0.54f};
+	style->Colors[ImGuiCol_FrameBgHovered]        = {0.453125f, 0.67578125f, 0.99609375f, 0.67f};
+	style->Colors[ImGuiCol_FrameBgActive]         = {0.47058827f, 0.47058827f, 0.47058827f, 0.67f};
+	style->Colors[ImGuiCol_TitleBg]               = {0.04f, 0.04f, 0.04f, 1.00f};
+	style->Colors[ImGuiCol_TitleBgCollapsed]      = {0.16f, 0.29f, 0.48f, 1.00f};
+	style->Colors[ImGuiCol_TitleBgActive]         = {0.00f, 0.00f, 0.00f, 0.51f};
+	style->Colors[ImGuiCol_MenuBarBg]             = {0.27058825f, 0.28627452f, 0.2901961f, 0.80f};
+	style->Colors[ImGuiCol_ScrollbarBg]           = {0.27058825f, 0.28627452f, 0.2901961f, 0.60f};
+	style->Colors[ImGuiCol_ScrollbarGrab]         = {0.21960786f, 0.30980393f, 0.41960788f, 0.51f};
+	style->Colors[ImGuiCol_ScrollbarGrabHovered]  = {0.21960786f, 0.30980393f, 0.41960788f, 1.00f};
+	style->Colors[ImGuiCol_ScrollbarGrabActive]   = {0.13725491f, 0.19215688f, 0.2627451f, 0.91f};
+	style->Colors[ImGuiCol_CheckMark]             = {0.90f, 0.90f, 0.90f, 0.83f};
+	style->Colors[ImGuiCol_SliderGrab]            = {0.70f, 0.70f, 0.70f, 0.62f};
+	style->Colors[ImGuiCol_SliderGrabActive]      = {0.30f, 0.30f, 0.30f, 0.84f};
+	style->Colors[ImGuiCol_Button]                = {0.33333334f, 0.3529412f, 0.36078432f, 0.49f};
+	style->Colors[ImGuiCol_ButtonHovered]         = {0.21960786f, 0.30980393f, 0.41960788f, 1.00f};
+	style->Colors[ImGuiCol_ButtonActive]          = {0.13725491f, 0.19215688f, 0.2627451f, 1.00f};
+	style->Colors[ImGuiCol_Header]                = {0.33333334f, 0.3529412f, 0.36078432f, 0.53f};
+	style->Colors[ImGuiCol_HeaderHovered]         = {0.453125f, 0.67578125f, 0.99609375f, 0.67f};
+	style->Colors[ImGuiCol_HeaderActive]          = {0.47058827f, 0.47058827f, 0.47058827f, 0.67f};
+	style->Colors[ImGuiCol_Separator]             = {0.31640625f, 0.31640625f, 0.31640625f, 1.00f};
+	style->Colors[ImGuiCol_SeparatorHovered]      = {0.31640625f, 0.31640625f, 0.31640625f, 1.00f};
+	style->Colors[ImGuiCol_SeparatorActive]       = {0.31640625f, 0.31640625f, 0.31640625f, 1.00f};
+	style->Colors[ImGuiCol_ResizeGrip]            = {1.00f, 1.00f, 1.00f, 0.85f};
+	style->Colors[ImGuiCol_ResizeGripHovered]     = {1.00f, 1.00f, 1.00f, 0.60f};
+	style->Colors[ImGuiCol_ResizeGripActive]      = {1.00f, 1.00f, 1.00f, 0.90f};
+	style->Colors[ImGuiCol_PlotLines]             = {0.61f, 0.61f, 0.61f, 1.00f};
+	style->Colors[ImGuiCol_PlotLinesHovered]      = {1.00f, 0.43f, 0.35f, 1.00f};
+	style->Colors[ImGuiCol_PlotHistogram]         = {0.90f, 0.70f, 0.00f, 1.00f};
+	style->Colors[ImGuiCol_PlotHistogramHovered]  = {1.00f, 0.60f, 0.00f, 1.00f};
+	style->Colors[ImGuiCol_TextSelectedBg]        = {0.18431373f, 0.39607847f, 0.79215693f, 0.90f};
+
 	if (ImGui::BeginMainMenuBar()) {
 		if (ImGui::BeginMenu("File")) {
 			if (ImGui::MenuItem("New")) {
@@ -617,11 +675,139 @@ void TNodeEditor::draw(int w, int h) {
 				ImGuiWindowFlags_NoScrollbar |
 				ImGuiWindowFlags_NoScrollWithMouse |
 				ImGuiWindowFlags_NoBringToFrontOnFocus;
-	if (ImGui::Begin("", nullptr, flags)) {
-		if (ImGui::BeginChild("scrolling_region", ImVec2(0,0), false, flags)) {
-			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 4));
-			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 
+	if (ImGui::Begin("", nullptr, flags)) {
+		static float sz0 = 200;
+		static float sz1 = w - 250;
+		ImGui::Splitter(true, 3.0f, &sz0, &sz1, 100, 300);
+		if (ImGui::BeginChild("side_bar", ImVec2(sz0, -1), true, flags)) {
+			if (!m_nodeGraphs.empty()) {
+				ImGui::BeginGroup();
+				ImGui::Text("Controls");
+				if (ImGui::Button(m_playing ? "Stop" : "Play") && !m_nodeGraphs.empty()) {
+					m_playing = !m_playing;
+				}
+				ImGui::EndGroup();
+				if (ImGui::CollapsingHeader("Properties")) {
+					static const char* GRAPH_TYPES[] = {
+						"Normal\0",
+						"Module\0",
+						0
+					};
+					ImGui::InputText(
+						"Name##graphName",
+						m_nodeGraphs[m_activeGraph]->m_name.data(),
+						m_nodeGraphs[m_activeGraph]->m_name.size()
+					);
+					ImGui::Combo(
+						"Type##graphType",
+						(int*)&m_nodeGraphs[m_activeGraph]->m_type,
+						GRAPH_TYPES,
+						2
+					);
+				}
+				if (ImGui::CollapsingHeader("Recording")) {
+					if (ImGui::Button(m_recording ? "Stop" : "Record", ImVec2(ImGui::GetWindowWidth(), 20))) {
+						m_recording = !m_recording;
+					}
+					if (!m_recording) {
+						if (ImGui::Button("Save", ImVec2(ImGui::GetWindowWidth(), 20))) {
+							const static char* F[] = { 
+								"*.ogg\0"
+							};
+							const char* filePath = tinyfd_saveFileDialog(
+								"Save Recording",
+								"",
+								1,
+								F,
+								"Audio File (*.ogg)"
+							);
+							if (filePath) {
+								saveRecording(std::string(filePath));
+							}
+						}
+						if (ImGui::DragFloat("Dur. (s)##maxdur", &m_recTime, 0.1f, 0.1f, 60.0f)) {
+							m_recordBuffer.resize((int)(m_recTime * sampleRate));
+							m_recordPointer = 0;
+						}
+
+						static const char* FADE_TYPES[] = {
+							"None\0",
+							"In\0",
+							"Out\0",
+							"In/Out\0",
+							0
+						};
+						ImGui::DragFloat("Fade (s)", &m_recordingFadeTime, 0.1f, 0.0f, m_recTime);
+						ImGui::Combo("Fade Type", &m_recordingFadeType, FADE_TYPES, 4);
+					} else {
+						int sec = (int)(float(m_recordPointer) / sampleRate) % 60;
+						int minute = sec / 60;
+						ImGui::Text("RECORDING... %02d:%02d", minute, sec);
+					}
+				}
+				if (ImGui::CollapsingHeader("Nodes")) {
+					std::vector<const char*> nodeNames;
+					std::vector<int> nodeIDs;
+					std::vector<ImVec4> nodeBounds;
+					nodeNames.reserve(m_nodeGraphs[m_activeGraph]->nodes().size());
+					nodeIDs.reserve(m_nodeGraphs[m_activeGraph]->nodes().size());
+					nodeBounds.reserve(m_nodeGraphs[m_activeGraph]->nodes().size());
+					for (auto& nodep : m_nodeGraphs[m_activeGraph]->nodes()) {
+						nodeNames.push_back(nodep.second->m_type.c_str());
+						nodeIDs.push_back(nodep.second->m_id);
+						nodeBounds.push_back(nodep.second->m_bounds);
+					}
+
+					static int selectedNode = 0;
+					ImGui::PushItemWidth(-1);
+					if (ImGui::ListBox("##node_list", &selectedNode, nodeNames.data(), nodeNames.size())) {
+						m_selectedNode = nodeIDs[selectedNode];
+						m_nodeGraphs[m_activeGraph]->m_scrolling.x = -nodeBounds[selectedNode].x + m_mainWindowSize.x * 0.5f - nodeBounds[selectedNode].z * 0.5f;
+						m_nodeGraphs[m_activeGraph]->m_scrolling.y = -nodeBounds[selectedNode].y + m_mainWindowSize.y * 0.5f - nodeBounds[selectedNode].w * 0.5f;
+					}
+					ImGui::PopItemWidth();
+				}
+				if (ImGui::CollapsingHeader("Sample Library")) {
+					static int selectedSample = -1;
+					auto items = m_nodeGraphs[m_activeGraph]->getSampleNames();
+					ImGui::ListBox("##sampleLib", &selectedSample, items.data(), items.size(), 8);
+					ImGui::SameLine();
+
+					ImGui::BeginGroup();
+					float w = ImGui::GetContentRegionAvailWidth();
+					if (ImGui::Button("Load", ImVec2(w, 18))) {
+						const static char* FILTERS[] = {
+							"*.wav\0",
+							"*.aif\0",
+							"*.flac\0",
+							"*.ogg\0"
+						};
+						const char* filePath = tinyfd_openFileDialog(
+							"Load Sample",
+							"",
+							4,
+							FILTERS,
+							"Audio Files (*.wav; *.aif; *.flac; *.ogg)",
+							0
+						);
+						if (filePath) {
+							if (!m_nodeGraphs[m_activeGraph]->addSample(std::string(filePath))) {
+								tinyfd_messageBox("Error", "Ivalid sample. It must have <= 10 seconds.", "ok", "error", 1);
+							}
+						}
+					}
+					if (ImGui::Button("Delete", ImVec2(w, 18))) {
+						m_nodeGraphs[m_activeGraph]->removeSample(selectedSample);
+						selectedSample = -1;
+					}
+					ImGui::EndGroup();
+				}
+			}
+		}
+		ImGui::EndChild();
+		ImGui::SameLine();
+		if (ImGui::BeginChild("scrolling_region", ImVec2(-1, -1), true, flags) && !m_nodeGraphs.empty()) {
 			ImGui::BeginTabBar("##main_tabs", ImGuiTabBarFlags_SizingPolicyFit);
 			for (int i = 0; i < m_nodeGraphs.size(); i++) {
 				std::stringstream stm;
@@ -638,9 +824,10 @@ void TNodeEditor::draw(int w, int h) {
 
 				if (wasOpen && !m_nodeGraphs[i]->m_open) {
 					if (m_nodeGraphs[i]->m_saved) {
-						m_nodeGraphs.erase(m_nodeGraphs.begin() + i);
 						m_playing = false;
 						m_recording = false;
+						m_nodeGraphs[i]->m_solvedNodes.clear();
+						m_nodeGraphs.erase(m_nodeGraphs.begin() + i);
 						break;
 					} else {
 						int res = tinyfd_messageBox(
@@ -651,9 +838,10 @@ void TNodeEditor::draw(int w, int h) {
 							0
 						);
 						if (res == 1) {
-							m_nodeGraphs.erase(m_nodeGraphs.begin() + i);
 							m_playing = false;
 							m_recording = false;
+							m_nodeGraphs[i]->m_solvedNodes.clear();
+							m_nodeGraphs.erase(m_nodeGraphs.begin() + i);
 							break;
 						}
 						m_nodeGraphs[i]->m_open = true;
@@ -661,12 +849,7 @@ void TNodeEditor::draw(int w, int h) {
 				}
 			}
 			ImGui::EndTabBar();
-
-			ImGui::PopStyleVar(2);
-		}
-		ImGui::EndChild();
-
-		if (ImGui::BeginChild("scrolling_region", ImVec2(0,0), false, flags) && !m_nodeGraphs.empty()) {
+			
 			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(1, 1));
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 			ImGui::PushStyleColor(ImGuiCol_ChildWindowBg, IM_COL32(60, 60, 70, 200));
@@ -675,6 +858,7 @@ void TNodeEditor::draw(int w, int h) {
 
 			ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
+			m_mainWindowSize = ImGui::GetWindowSize();
 			drawNodeGraph(m_nodeGraphs[m_activeGraph].get());
 
 			if (m_linking.active && ImGui::IsMouseReleased(0)) {
@@ -691,76 +875,6 @@ void TNodeEditor::draw(int w, int h) {
 	}
 	ImGui::End();
 
-	ImGui::SetNextWindowSize(ImVec2(250, 0));
-	if (ImGui::Begin("Menu", nullptr, 0)) {
-		if (ImGui::CollapsingHeader("Controls")) {
-			if (ImGui::Button(m_playing ? "Stop" : "Play")) {
-				m_playing = !m_playing;
-			}
-		}
-		if (ImGui::CollapsingHeader("Recording")) {
-			if (ImGui::Button(m_recording ? "Stop" : "Record", ImVec2(ImGui::GetWindowWidth(), 20))) {
-				m_recording = !m_recording;
-			}
-			if (!m_recording) {
-				if (ImGui::Button("Save", ImVec2(ImGui::GetWindowWidth(), 20))) {
-					const static char* F[] = { 
-						"*.ogg\0"
-					};
-					const char* filePath = tinyfd_saveFileDialog(
-						"Save Recording",
-						"",
-						1,
-						F,
-						"Audio File (*.ogg)"
-					);
-					if (filePath) {
-						saveRecording(std::string(filePath));
-					}
-				}
-				if (ImGui::DragFloat("Dur. (s)##maxdur", &m_recTime, 0.1f, 0.1f, 60.0f)) {
-					m_recordBuffer.resize((int)(m_recTime * sampleRate));
-					m_recordPointer = 0;
-				}
-
-				static const char* FADE_TYPES[] = {
-					"None\0",
-					"In\0",
-					"Out\0",
-					"In/Out\0",
-					0
-				};
-				ImGui::DragFloat("Fade (s)", &m_recordingFadeTime, 0.1f, 0.0f, m_recTime);
-				ImGui::Combo("Fade Type", &m_recordingFadeType, FADE_TYPES, 4);
-			} else {
-				int sec = (int)(float(m_recordPointer) / sampleRate) % 60;
-				int minute = sec / 60;
-				ImGui::Text("RECORDING... %02d:%02d", minute, sec);
-			}
-		}
-		if (!m_nodeGraphs.empty()) {
-			if (ImGui::CollapsingHeader("Properties")) {
-				static const char* GRAPH_TYPES[] = {
-					"Normal\0",
-					"Module\0",
-					0
-				};
-				ImGui::InputText(
-					"Graph Name##graphName",
-					m_nodeGraphs[m_activeGraph]->m_name.data(),
-					m_nodeGraphs[m_activeGraph]->m_name.size()
-				);
-				ImGui::Combo(
-					"Graph Type##graphType",
-					(int*)&m_nodeGraphs[m_activeGraph]->m_type,
-					GRAPH_TYPES,
-					2
-				);
-			}
-		}
-	}
-	ImGui::End();
-
 	ImGui::PopStyleVar();
 }
 
@@ -771,6 +885,7 @@ TNodeGraph* TNodeEditor::newGraph() {
 	stm << "Untitled Node Graph";
 	stm << m_nodeGraphs.size();
 	graph->m_name = stm.str();
+	graph->m_editor = this;
 
 	m_nodeGraphs.push_back(std::move(graph));
 	return m_nodeGraphs.back().get();
@@ -862,4 +977,12 @@ void TNodeEditor::renderToFile(const std::string& fileName, float time) {
 	snd.writef(data, sampleCount);
 
 	m_rendering = false;
+}
+
+void midiCallback(double dt, std::vector<uint8_t>* message, void* userData) {
+	unsigned int nBytes = message->size();
+	for ( unsigned int i=0; i<nBytes; i++ )
+		std::cout << "Byte " << i << " = " << (int)message->at(i) << ", ";
+	if ( nBytes > 0 )
+		std::cout << "stamp = " << dt << std::endl;
 }

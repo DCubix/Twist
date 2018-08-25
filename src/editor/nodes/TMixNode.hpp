@@ -13,7 +13,7 @@ public:
 	}
 
 	void gui() {
-		ImGui::SliderFloat("Factor", &factor, 0.0f, 1.0f);
+		ImGui::Knob("Factor", &factor, 0.0f, 1.0f);
 	}
 
 	void solve() {

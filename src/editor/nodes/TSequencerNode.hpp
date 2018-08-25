@@ -3,7 +3,8 @@
 
 #include "TNode.h"
 
-#define SEQUENCER_SIZE 8
+#define SEQUENCER_SIZE 16
+#define SEQUENCER_SIZE_VISIBLE (SEQUENCER_SIZE/2)
 class TSequencerNode : public TNode {
 public:
 	TSequencerNode()
@@ -42,53 +43,65 @@ public:
 			0
 		};
 
-		ImGui::BeginHorizontal(this);
-			for (int i = 0; i < SEQUENCER_SIZE; i++) {
-				bool pushed = false;
-				if (i == (noteIndex % SEQUENCER_SIZE)) {
-					pushed = true;
-					ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(120, 250, 120, 255));
+		ImGuiStyle& style = ImGui::GetStyle();
+		ImGuiWindow* window = ImGui::GetCurrentWindow();
+		const float lineHeight = ImGui::GetItemsLineHeightWithSpacing() + style.ItemInnerSpacing.y;
+		const float spacing = 32 + style.ItemSpacing.x;
+
+		ImGui::SetNextWindowContentWidth(SEQUENCER_SIZE * spacing);
+		ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0, 0, 0, 0));
+		
+		const ImGuiID id = window->GetID("sequencer_gui");
+		ImGui::BeginChildFrame(id, ImVec2(SEQUENCER_SIZE_VISIBLE*spacing, 4*lineHeight), ImGuiWindowFlags_HorizontalScrollbar);
+			ImGui::BeginHorizontal(this);
+				for (int i = 0; i < SEQUENCER_SIZE; i++) {
+					bool pushed = false;
+					if (i == (noteIndex % SEQUENCER_SIZE)) {
+						pushed = true;
+						ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(120, 250, 120, 255));
+					}
+					if (ImGui::Button(" ", ImVec2(32, 0))) {
+						noteIndex = i;
+					}
+					if (pushed) {
+						ImGui::PopStyleColor();
+					}
 				}
-				if (ImGui::Button(" ", ImVec2(32, 0))) {
-					noteIndex = i;
+			ImGui::EndHorizontal();
+
+			ImGui::BeginHorizontal(this);
+				ImGui::PushItemWidth(32);
+				for (int i = 0; i < SEQUENCER_SIZE; i++) {
+					char id[4];
+					id[0] = '#'; id[1] = '#'; id[2] = (i+1); id[3] = 0;
+					ImGui::Combo(id, (int*) &notes[i], NOTES, 12);
 				}
-				if (pushed) {
-					ImGui::PopStyleColor();
+				ImGui::PopItemWidth();
+			ImGui::EndHorizontal();
+
+			ImGui::BeginHorizontal(this);
+				ImGui::PushItemWidth(32);
+				for (int i = 0; i < SEQUENCER_SIZE; i++) {
+					char id[5];
+					id[0] = '#'; id[1] = '#'; id[2] = (i+1); id[3] = 'o'; id[4] = 0;
+					ImGui::DragInt(id, &octs[i], 0.1f, -5, 5);
 				}
-			}
-		ImGui::EndHorizontal();
+				ImGui::PopItemWidth();
+			ImGui::EndHorizontal();
 
-		ImGui::BeginHorizontal(this);
-			ImGui::PushItemWidth(32);
-			for (int i = 0; i < SEQUENCER_SIZE; i++) {
-				char id[4];
-				id[0] = '#'; id[1] = '#'; id[2] = (i+1); id[3] = 0;
-				ImGui::Combo(id, (int*) &notes[i], NOTES, 12);
-			}
-			ImGui::PopItemWidth();
-		ImGui::EndHorizontal();
+			ImGui::BeginHorizontal(this);
+				ImGui::PushItemWidth(32);
+				for (int i = 0; i < SEQUENCER_SIZE; i++) {
+					char id[5];
+					id[0] = '#'; id[1] = '#'; id[2] = (i+1); id[3] = 's'; id[4] = 0;
+					ImGui::ToggleButton(id, &enabled[i]);
+				}
+				ImGui::PopItemWidth();
+			ImGui::EndHorizontal();
+		ImGui::EndChildFrame();
+		ImGui::PopStyleColor();
 
-		ImGui::BeginHorizontal(this);
-			ImGui::PushItemWidth(32);
-			for (int i = 0; i < SEQUENCER_SIZE; i++) {
-				char id[5];
-				id[0] = '#'; id[1] = '#'; id[2] = (i+1); id[3] = 'o'; id[4] = 0;
-				ImGui::DragInt(id, &octs[i], 0.1f, -5, 5);
-			}
-			ImGui::PopItemWidth();
-		ImGui::EndHorizontal();
-
-		ImGui::BeginHorizontal(this);
-			ImGui::PushItemWidth(32);
-			for (int i = 0; i < SEQUENCER_SIZE; i++) {
-				char id[5];
-				id[0] = '#'; id[1] = '#'; id[2] = (i+1); id[3] = 's'; id[4] = 0;
-				ImGui::ToggleButton(id, &enabled[i]);
-			}
-			ImGui::PopItemWidth();
-		ImGui::EndHorizontal();
-
-		ImGui::Combo("##key_note", (int*) &key, NOTES, 12);
+		ImGui::Combo("Key##key_note", (int*) &key, NOTES, 12);
 	}
 
 	void solve() {
