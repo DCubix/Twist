@@ -67,9 +67,9 @@ bool Knob(const char* label, float* p_value, float v_min, float v_max) {
 	bool is_active = ImGui::IsItemActive();
 	bool is_hovered = ImGui::IsItemActive();
 	bool is_dblclick = ImGui::IsMouseDoubleClicked(0) && is_hovered;
-	if (is_active && io.MouseDelta.y != 0.0f && !in_drag) {
+	if (is_active && io.MouseDelta.x != 0.0f && !in_drag) {
 		float step = (v_max - v_min) / 200.0f;
-		*p_value -= io.MouseDelta.y * step;
+		*p_value += io.MouseDelta.x * step;
 		if (*p_value < v_min) *p_value = v_min;
 		if (*p_value > v_max) *p_value = v_max;
 		value_changed = true;

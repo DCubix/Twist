@@ -381,11 +381,17 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 	for (float y = fmodf(graph->m_scrolling.y, GRID_SZ); y < canvas_sz.y; y += GRID_SZ)
 		draw_list->AddLine(ImVec2(0.0f, y) + win_pos, ImVec2(canvas_sz.x, y) + win_pos, GRID_COLOR);
 
-	const bool isMouseHoveringWindow = ImGui::IsMouseHoveringRect(window->InnerMainRect.Min, window->InnerMainRect.Max);
+
+	const bool isMouseHoveringWindow = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
+	const bool isLMBClicked = ImGui::IsMouseClicked(0);
+	const bool isLMBDoubleClicked = ImGui::IsMouseDoubleClicked(0);
+	const bool isMouseDraggingForMovingNodes = isMouseHoveringWindow && io.MouseDown[0];
+	const bool isMouseDraggingForScrolling = ImGui::IsMouseDragging(2, 0.0f);
 	const bool mustCheckForNearestLink = isMouseHoveringWindow && !m_linking.active && io.KeyShift;
 
 	// Display links
-	draw_list->ChannelsSplit(2);
+	draw_list->ChannelsSplit(5);
+
 	draw_list->ChannelsSetCurrent(0); // Background
 	const float hoveredLinkDistSqrThres = 100.0f;
 	int nearestLinkId=-1;
@@ -429,16 +435,23 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 	std::vector<int> toDelete;
 
 	m_hoveredNode = -1;
-	m_nodeActive = false;
+
+	std::vector<TNode*> nodeList;
+	nodeList.reserve(graph->nodes().size());
 	for (auto& e : graph->nodes()) {
-		TNode* node = e.second.get();
-		if (node == nullptr) continue;
+		if (e.second.get() == nullptr) continue;
+		nodeList.push_back(e.second.get());
+	}
+
+	bool isNodeMoving = false;
+	for (int node_id = 0; node_id < nodeList.size(); node_id++) {
+		TNode* node = nodeList[node_id];
 
 		ImGui::PushID(node->id());
 		ImVec2 node_rect_min = offset + ImVec2(node->m_bounds.x, node->m_bounds.y) * scl;
 
 		// Display node contents first
-		draw_list->ChannelsSetCurrent(1); // Foreground
+		draw_list->ChannelsSetCurrent(m_activeNodeIndex == node->id() ? 4 : 2); // Foreground
 		m_nodeOldActive = ImGui::IsAnyItemActive();
 
 		ImGui::SetCursorScreenPos(node_rect_min + ImVec2(NODE_PADDING(scl), NODE_PADDING(scl)));
@@ -459,15 +472,17 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 			ImGui::SameLine();
 
 			static const ImVec2 vec2zero(0, 0);
+			const ImVec2 nodeTitleBarButtonsStartCursor = node->open ? ImGui::GetCursorPos() : ImVec2(0,0);
 
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, vec2zero);
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, vec2zero);
 			ImGui::PushID("NodeButtons");
+
 			if (ImGui::Button("C", ImVec2(15, 15))) {
 				int cx = int(node->m_bounds.x + 50);
 				int cy = int(node->m_bounds.y + 50);
 				JSON params; node->save(params);
-				graph->addNode(cx, cy, node->m_type, params);
+				m_activeNodeIndex = graph->addNode(cx, cy, node->m_type, params)->id();
 			}
 			if (ImGui::IsItemHovered()) {
 				ImGui::SetTooltip("Clone");
@@ -475,8 +490,8 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 			ImGui::SameLine();
 			if (ImGui::Button("X", ImVec2(15, 15))) {
 				toDelete.push_back(node->id());
-				m_selectedNodes.clear();
 				m_hoveredNode = -1;
+				m_activeNodeIndex = -1;
 			}
 			if (ImGui::IsItemHovered()) {
 				ImGui::SetTooltip("Delete");
@@ -487,13 +502,13 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 
 			if (node->open) {
 				ImGui::Spacing();
+				ImGui::Spacing();
 				ImGui::BeginGroup();
 					node->gui();
 				ImGui::EndGroup();
 			}
 		ImGui::EndGroup();
 
-		// Save the size of what we have emitted and whether any of the widgets are being used
 		m_nodeAnyActive = (!m_nodeOldActive && ImGui::IsAnyItemActive());
 
 		float pad = NODE_PADDING(scl);
@@ -505,23 +520,72 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 		node->m_selectionBounds = ImRect(node_rect_min, node_rect_max);
 
 		// Display node box
-		draw_list->ChannelsSetCurrent(0); // Background
+		draw_list->ChannelsSetCurrent(m_activeNodeIndex == node->id() ? 3 : 1); // Background
 		ImGui::SetCursorScreenPos(node_rect_min);
 		ImGui::InvisibleButton("node##invbtn", node->size());
 
-		if (!m_nodeActive)
-			m_nodeActive = ImGui::IsItemActive() || m_nodeAnyActive;
+		m_nodeActive = !isMouseDraggingForScrolling && ImGui::IsItemActive() && !m_selectingNodes;
 
 		if (ImGui::IsItemHovered()) {
 			m_hoveredNode = node->id();
 			openContext |= ImGui::IsMouseClicked(1);
 		}
 
-		auto pos = std::find(m_selectedNodes.begin(), m_selectedNodes.end(), node->id());
-		ImU32 node_bg_color = m_hoveredNode == node->id() || pos != m_selectedNodes.end() ? IM_COL32(85, 85, 85, 255) : IM_COL32(60, 60, 60, 255);
+		if (isLMBClicked && (m_nodeAnyActive || m_nodeActive)) {
+			if (!node->m_selected) {
+				if (!io.KeyCtrl) graph->unselectAll();
+				node->m_selected = true;
+				m_activeNodeIndex = node->id();
+			} else if (io.KeyCtrl) {
+				node->m_selected = false;
+				if (node->id() == m_activeNodeIndex) {
+					m_activeNodeIndex = graph->getActiveNode();
+				}
+			} else if (io.KeyShift || io.MouseDoubleClicked[0]) {
+				graph->unselectAll();
+				node->m_selected = true;
+				m_activeNodeIndex = node->id();
+			} else {
+				m_activeNodeIndex = node->id();
+			}
+		}
+
+		if (m_nodeActive && node->m_selected && isMouseDraggingForMovingNodes && !m_linking.active) {
+			for (int j = 0; j < nodeList.size(); j++) {
+				TNode* nd = nodeList[j];
+				if (nd->m_selected) {
+					nd->m_bounds.x += io.MouseDelta.x;
+					nd->m_bounds.y += io.MouseDelta.y;
+				}
+			}
+			isNodeMoving = true;
+		}
+
+		ImU32 node_bg_color = m_hoveredNode == node->id() || node->m_selected ? IM_COL32(75, 75, 75, 255) : IM_COL32(60, 60, 60, 255);
 		draw_list->AddRectFilled(node_rect_min, node_rect_max, node_bg_color, NODE_ROUNDING(scl));
-		draw_list->AddRect(node_rect_min, node_rect_max, IM_COL32(100, 100, 100, 255), NODE_ROUNDING(scl));
+
+		const float nodeTitleBarBgHeight = ImGui::GetTextLineHeightWithSpacing() + NODE_PADDING(scl);
 		
+		draw_list->AddRectFilled(
+			node_rect_min,
+			ImVec2(node_rect_max.x, node_rect_min.y + nodeTitleBarBgHeight),
+			ImGui::GetColorU32(node->open ? ImGuiCol_TitleBgActive : ImGuiCol_TitleBg),
+			NODE_ROUNDING(scl),
+			node->open ? ImDrawCornerFlags_Top : ImDrawCornerFlags_All
+		);
+
+		if (node->open) {
+			draw_list->AddRect(
+				node_rect_min,
+				ImVec2(node_rect_max.x, node_rect_min.y + nodeTitleBarBgHeight),
+				IM_COL32(100, 100, 100, 255),
+				NODE_ROUNDING(scl),
+				ImDrawCornerFlags_Top
+			);
+		}
+		
+		draw_list->AddRect(node_rect_min, node_rect_max, IM_COL32(100, 100, 100, 255), NODE_ROUNDING(scl));
+
 		const float slotRadius = NODE_SLOT_RADIUS(scl);
 		const ImVec2 hsz(slotRadius*1.5f, slotRadius*1.5f);
 
@@ -586,24 +650,15 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 
 		ImGui::PopID();
 	}
+	draw_list->ChannelsMerge();
 
 	/// Selecting nodes
-	if (!m_nodeActive && ImGui::IsMouseClicked(0) && !m_linking.active) {
+	if (!isNodeMoving && ImGui::IsMouseClicked(0) && !m_linking.active && !ImGui::IsAnyItemActive() && !ImGui::IsAnyItemHovered()) {
+		if (!io.KeyCtrl) graph->unselectAll();
 		m_selectionStart = io.MousePos;
 		m_selectingNodes = true;
 	} else if (m_selectingNodes && ImGui::IsMouseReleased(0)) {
 		m_selectingNodes = false;
-	} else if (!m_selectingNodes && ImGui::IsMouseClicked(0) && !m_linking.active) {
-		if (m_nodeActive) {
-			if (io.KeyCtrl && std::find(m_selectedNodes.begin(), m_selectedNodes.end(), m_hoveredNode) == m_selectedNodes.end()) {
-				m_selectedNodes.push_back(m_hoveredNode);
-			} else {
-				if (m_selectedNodes.size() == 1)
-					m_selectedNodes.clear();
-			}
-		} else {
-			m_selectedNodes.clear();
-		}
 	}
 
 	/// Selecting nodes
@@ -630,31 +685,9 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 			ImRect nbounds = node->m_selectionBounds;
 
 			if (selRect.Overlaps(nbounds)) {
-				if (std::find(m_selectedNodes.begin(), m_selectedNodes.end(), node->id()) == m_selectedNodes.end()) {
-					m_selectedNodes.push_back(node->id());
-				}
-			} else {
-				auto pos = std::find(m_selectedNodes.begin(), m_selectedNodes.end(), node->id());
-				if (pos != m_selectedNodes.end()) {
-					m_selectedNodes.erase(pos);
-				}
+				node->m_selected = true;
+				if (m_activeNodeIndex == -1) m_activeNodeIndex = e.first;
 			}
-		}
-	}
-
-	draw_list->ChannelsMerge();
-
-	// Moving selected nodes
-	if (!m_selectingNodes && ImGui::IsMouseDragging(0) && !m_linking.active) {
-		if (m_selectedNodes.empty() && m_hoveredNode != -1) {
-			m_selectedNodes.push_back(m_hoveredNode);
-		}
-		for (int id : m_selectedNodes) {
-			TNode* node = graph->nodes()[id].get();
-			if (node == nullptr) continue;
-			node->m_bounds.x += ImGui::GetIO().MouseDelta.x / scl;
-			node->m_bounds.y += ImGui::GetIO().MouseDelta.y / scl;
-			graph->m_saved = false;
 		}
 	}
 
@@ -667,34 +700,26 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 	// Open context menu
 	if (!ImGui::IsAnyItemHovered() && ImGui::IsMouseHoveringWindow() && ImGui::IsMouseClicked(1)) {
 		m_hoveredNode = -1;
-		m_selectedNodes.clear();
 		openContext = true;
 	}
 	if (openContext) {
 		ImGui::OpenPopup("context_menu");
-		if (m_hoveredNode != -1) {
-			m_selectedNodes.push_back(m_hoveredNode);
-		}
 	}
 
 	// Draw context menu
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 8));
 	if (ImGui::BeginPopup("context_menu")) {
 		ImVec2 scene_pos = ImGui::GetMousePosOnOpeningCurrentPopup() - offset;
-		if (m_selectedNodes.empty()) {
-			for (auto fn : TNodeFactory::factories) {
-				if ((fn.first == TInputsNode::type() ||
-					 fn.first == TOutputsNode::type()) &&
-					graph->type() != TNodeGraph::Module)
-				{
-					continue;
-				}
-				if (ImGui::MenuItem(fn.first.c_str())) {
-					graph->addNode(scene_pos.x, scene_pos.y, fn.first);
-				}
+		for (auto fn : TNodeFactory::factories) {
+			if ((fn.first == TInputsNode::type() ||
+					fn.first == TOutputsNode::type()) &&
+				graph->type() != TNodeGraph::Module)
+			{
+				continue;
 			}
-		} else {
-			ImGui::CloseCurrentPopup();
+			if (ImGui::MenuItem(fn.first.c_str())) {
+				graph->addNode(scene_pos.x, scene_pos.y, fn.first);
+			}
 		}
 		ImGui::EndPopup();
 	}
@@ -900,8 +925,8 @@ void TNodeEditor::draw(int w, int h) {
 					static int selectedNode = 0;
 					ImGui::PushItemWidth(-1);
 					if (ImGui::ListBox("##node_list", &selectedNode, nodeNames.data(), nodeNames.size())) {
-						m_selectedNodes.clear();
-						m_selectedNodes.push_back(nodeIDs[selectedNode]);
+						m_nodeGraphs[m_activeGraph]->unselectAll();
+						m_nodeGraphs[m_activeGraph]->nodes()[nodeIDs[selectedNode]]->m_selected = true;
 						m_nodeGraphs[m_activeGraph]->m_scrolling.x = -nodeBounds[selectedNode].x + m_mainWindowSize.x * 0.5f - nodeBounds[selectedNode].z * 0.5f;
 						m_nodeGraphs[m_activeGraph]->m_scrolling.y = -nodeBounds[selectedNode].y + m_mainWindowSize.y * 0.5f - nodeBounds[selectedNode].w * 0.5f;
 					}

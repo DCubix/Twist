@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <fstream>
 #include <memory>
+#include <mutex>
 
 #include "nodes/TNode.h"
 #include "nodes/TOutNode.hpp"
@@ -55,8 +56,7 @@ private:
 
 	ImVec4 m_bounds;
 
-	TIntList m_selectedNodes;
-	int m_hoveredNode, m_nodeHoveredInList, m_activeGraph = 0;
+	int m_hoveredNode, m_nodeHoveredInList, m_activeGraph = 0, m_activeNodeIndex = -1;
 	bool m_openContextMenu, m_selectingNodes = false, m_nodeActive, m_nodeAnyActive, m_nodeOldActive;
 	float m_oldFontWindowScale, m_currentFontWindowScale;
 
@@ -74,6 +74,7 @@ private:
 	std::unique_ptr<RtMidiIn> m_MIDIin;
 	std::unique_ptr<RtMidiOut> m_MIDIout;
 
+	std::mutex m_lock;
 };
 
 #endif // T_NODE_EDITOR_H

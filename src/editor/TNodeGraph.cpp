@@ -298,6 +298,25 @@ void TNodeGraph::load(const std::string& fileName) {
 	solveNodes();
 }
 
+void TNodeGraph::selectAll() {
+	for (auto& e : m_nodes) {
+		e.second->m_selected = true;
+	}
+}
+
+void TNodeGraph::unselectAll() {
+	for (auto& e : m_nodes) {
+		e.second->m_selected = false;
+	}
+}
+
+int TNodeGraph::getActiveNode() {
+	for (auto& e : m_nodes) {
+		if (e.second->m_selected) return e.first;
+	}
+	return -1;
+}
+
 void TNodeGraph::save(const std::string& fileName) {
 	std::ofstream fp(fileName);
 	JSON json;

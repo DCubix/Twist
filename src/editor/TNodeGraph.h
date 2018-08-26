@@ -180,6 +180,9 @@ public:
 	TNode* addNode(int x, int y, const std::string& type, JSON& params, int id = -1);
 	void deleteNode(int id);
 	void link(int inID, int inSlot, int outID, int outSlot);
+	void selectAll();
+	void unselectAll();
+	int getActiveNode();
 
 	TNodeList& nodes() { return m_nodes; }
 	TLinkList& links() { return m_links; }

@@ -80,7 +80,7 @@ public:
 	}
 
 	ImVec2 size() const { return ImVec2(m_bounds.z, m_bounds.w); }
-
+	bool selected() const { return m_selected; }
 	int id() const { return m_id; }
 
 	static std::string type() { return "Node"; }
@@ -98,6 +98,7 @@ protected:
 	std::string m_title, m_type;
 	ImVec4 m_bounds;
 	ImRect m_selectionBounds;
+	bool m_selected = false;
 
 	std::vector<TValue> m_inputs;
 	std::vector<TValue> m_outputs;
