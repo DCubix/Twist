@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.7)
 project(twist VERSION 1.0 LANGUAGES C CXX)
 
-set(CMAKE_BUILD_TYPE "Debug")
+set(CMAKE_BUILD_TYPE "Release")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -21,26 +21,19 @@ include_directories(
 	${RTMIDI_INCLUDE_DIR}
 )
 
-file(GLOB SRC
+file(GLOB_RECURSE INC
 	"src/*.h"
-	"src/*.cpp"
-	"src/glad/*.h"
-	"src/glad/*.cpp"
-	"src/editor/*.h"
-	"src/editor/*.hpp"
-	"src/editor/imgui/*.h"
-	"src/editor/imgui/*.cpp"
-	"src/editor/nodes/*.h"
-	"src/editor/nodes/*.c"
-	"src/editor/nodes/*.cpp"
-	"src/editor/nodes/*.hpp"
-	"src/editor/*.cpp"
-	"src/editor/*.c"
-	"src/stb/*.h"
-	"src/stb/*.cpp"
+	"src/*.hpp"
 )
 
-add_executable(${PROJECT_NAME} ${SRC})
+# message(STATUS "INCLUDES: ${INC}")
+
+file(GLOB_RECURSE SRC
+	"src/*.c"
+	"src/*.cpp"
+)
+
+add_executable(${PROJECT_NAME} ${INC} ${SRC})
 target_link_libraries(${PROJECT_NAME}
 	${SDL2_LIBRARIES}
 	${LIBSNDFILE_LIBRARIES}

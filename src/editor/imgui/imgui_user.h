@@ -10,6 +10,7 @@ namespace ImGui {
 static TTex* KnobTex = nullptr;
 static TTex* VUTex = nullptr;
 static TTex* SWTex = nullptr;
+static TTex* KBTex = nullptr;
 
 IMGUI_API bool          Knob(const char* label, float* value_p, float minv, float maxv);
 IMGUI_API void          ToggleButton(const char* str_id, bool* v);
@@ -22,7 +23,8 @@ IMGUI_API void          SetTabItemClosed(const char* label);
 IMGUI_API void          SetTabItemSelected(const char* label);
 
 IMGUI_API float         VUMeter(const char* id, float value);
-IMGUI_API void          AudioView(const char* id, float width, float* values, int length, int pos);
+IMGUI_API void          AudioView(const char* id, float width, float* values, int length, int pos, float h=24);
+IMGUI_API bool          KeyBed(const char* id, bool* keys, int keyCount);
 IMGUI_API bool          Splitter(bool split_vertically, float thickness, float* size1, float* size2, float min_size1, float min_size2, float splitter_long_axis_size = -1.0f);
 }
 

@@ -31,9 +31,9 @@ public:
 	}
 
 	void gui() {
-		ImGui::DragFloat("Rate", &chorusRate, 0.01f, 0.001f, 20000.0f);
+		ImGui::DragFloat("Rate", &chorusRate, 0.01f, 0.001f, 10.0f);
 		ImGui::DragFloat("Depth", &chorusDepth, 0.1f, 0.01f, 10.0f);
-		ImGui::DragFloat("Delay", &delayTime, 0.1f, 1, 100);
+		ImGui::DragFloat("Delay", &delayTime, 0.1f, 0.01f, 1.0f);
 	}
 
 	void solve() {

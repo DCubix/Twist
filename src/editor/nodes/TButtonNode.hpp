@@ -27,7 +27,6 @@ public:
 	}
 
 	bool enabled;
-
 	static std::string type() { return "Button"; }
 };
 

@@ -91,13 +91,15 @@ void TNodeGraph::solveNodes() {
 		m_lock.unlock();
 	}
 
-	m_lock.lock();
 	if (m_type == TGraphType::Module) {
-		outNodes.push_back(outputsNode());
+		TNode* n = node(outputsNode());
+		if (n != nullptr && n->m_type == TOutputsNode::type())
+			outNodes.push_back(outputsNode());
 	} else {
-		outNodes.push_back(outputNode());
+		TNode* n = node(outputNode());
+		if (n != nullptr && n->m_type == TOutNode::type())
+			outNodes.push_back(outputNode());
 	}
-	m_lock.unlock();
 
 	m_solvedNodes = buildNodes(outNodes);
 }
@@ -112,14 +114,27 @@ void TNodeGraph::solveNodes(const TIntList& solved) {
 	for (int id : solved) {
 		TNode* nd = node(id);
 		if (nd == nullptr) continue;
-		nd->solve();
+		nd->m_solved = false;
+	}
+
+	for (int id : solved) {
+		TNode* nd = node(id);
+		if (nd == nullptr) continue;
+
+		if (!nd->m_solved) {
+			nd->solve();
+			nd->m_solved = true;
+		}
+			
 		for (int i = 0; i < m_links.size(); i++) {
 			TLink* lnk = m_links[i].get();
 			if (lnk == nullptr) continue;
 			if (lnk->inputID == id) {
 				TNode* tgt = node(lnk->outputID);
 				if (tgt == nullptr) continue;
-				tgt->setInput(lnk->outputSlot, nd->getOutput(lnk->inputSlot));
+
+				for (int k = 0; k < TNODE_MAX_SIMULTANEOUS_VALUES_PER_SLOT; k++)
+					tgt->setMultiInput(lnk->outputSlot, k, nd->getMultiOutput(lnk->inputSlot, k));
 			}
 		}
 	}
@@ -129,9 +144,8 @@ float TNodeGraph::solve() {
 	solveNodes(m_solvedNodes);
 
 	if (m_type == TGraphType::Normal) {
-		TNode* out = m_nodes[outputNode()].get();
+		TNode* out = node(outputNode());
 		if (out != nullptr && out->m_type == TOutNode::type()) {
-			out->solve();
 			return out->getInput(0);
 		}
 	}
@@ -142,6 +156,7 @@ float TNodeGraph::solve() {
 int TNodeGraph::getID() {
 	int id = 0;
 	for (auto& n : m_nodes) {
+		if (n.second == nullptr) continue;
 		id = std::max(id, n.second->id());
 	}
 	return id + 1;
@@ -156,31 +171,34 @@ TNode* TNodeGraph::addNode(int x, int y, const std::string& type, JSON& params, 
 	TNodeCtor* ctor = TNodeFactory::factories[type];
 	if (ctor == nullptr) return nullptr;
 
-	std::unique_ptr<TNode> node = std::unique_ptr<TNode>(ctor(params));
-	TNode* tnode = node.get();
-	node->m_id = id == -1 ? getID() : id;
-	node->m_bounds.x = x;
-	node->m_bounds.y = y;
-	node->m_parent = this;
-	node->m_type = type;
+	std::unique_ptr<TNode> n = std::unique_ptr<TNode>(ctor(params));
+	int nid = id == -1 ? getID() : id;
+	n->m_id = nid;
+	n->m_bounds.x = x;
+	n->m_bounds.y = y;
+	n->m_parent = this;
+	n->m_type = type;
 
-	m_nodes.insert({ node->m_id, std::move(node) });
+	m_nodes.insert({ nid, std::move(n) });
 
 	if (type == TOutputsNode::type()) {
-		m_outputsNode = tnode->m_id;
+		m_outputsNode = nid;
 	}
 	if (type == TInputsNode::type()) {
-		m_inputsNode = tnode->m_id;
+		m_inputsNode = nid;
 	}
 	if (type == TOutNode::type()) {
-		m_outputNode = tnode->m_id;
+		m_outputNode = nid;
 	}
 
-	tnode->setup();
+	TNode* nd = node(nid);
+	nd->setup();
 
 	m_saved = false;
 
-	return tnode;
+	solveNodes();
+
+	return nd;
 }
 
 void TNodeGraph::deleteNode(int id) {

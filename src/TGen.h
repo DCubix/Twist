@@ -58,10 +58,9 @@ public:
 		Noise
 	};
 
-	TOsc() : m_modulator(nullptr) {}
+	TOsc() {}
 	TOsc(float sampleRate)
-	 : m_modulator(nullptr), 
-		m_sampleRate(sampleRate),
+	 : m_sampleRate(sampleRate),
 		m_amplitude(0.2f),
 		m_phase(0.0f),
 		m_frequency(220.0f),
@@ -81,16 +80,11 @@ public:
 
 	float sampleRate() const { return m_sampleRate; }
 
-	void modulator(TSampler* s) {
-		m_modulator = s;
-	}
+	void reset() { m_phase = 0; }
 
 private:
 	float m_sampleRate, m_phase, m_amplitude, m_frequency, m_noise;
 	TWave m_waveform;
-
-	TSampler* m_modulator;
-
 };
 
 class TADSR : public TSampler{

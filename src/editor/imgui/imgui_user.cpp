@@ -17,6 +17,7 @@ using namespace ImGui;
 #include "knob.h"
 #include "vu.h"
 #include "sw.h"
+#include "keys.h"
 
 namespace ImGui {
 bool Splitter(bool split_vertically, float thickness, float* size1, float* size2, float min_size1, float min_size2, float splitter_long_axis_size) {
@@ -193,12 +194,11 @@ float VUMeter(const char* id, float value) {
 	return height;
 }
 
-void AudioView(const char* id, float width, float* values, int length, int pos) {
+void AudioView(const char* id, float width, float* values, int length, int pos, float h) {
 	const int col = IM_COL32(0, 200, 100, 255);
 
 	int pos_r = int((float(pos) / length) * width);
 
-	const float h = 34.0f;
 	const ImVec2 wp = ImGui::GetCursorScreenPos();
 	ImGui::InvisibleButton(id, ImVec2(width, h*2));
 
@@ -250,6 +250,107 @@ void AudioView(const char* id, float width, float* values, int length, int pos) 
 	);
 
 }
+
+bool KeyBed(const char* id, bool* keys, int keyCount) {
+	if (keyCount <= 0) return false;
+
+	if (KBTex == nullptr) {
+		KBTex = new TTex(keys_n_png, keys_n_png_len);
+	}
+
+	const int kW = 48;
+	const int kH = 12;
+	const int khH = kH/2;
+
+	float height = keyCount * kH;
+
+	const ImVec2 wp = ImGui::GetCursorScreenPos();
+	ImGui::InvisibleButton(id, ImVec2(kW, height));
+
+	ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+	const float uW = 1.0f / 2;
+	const float uH = 1.0f / 2;
+
+	float y = 0;
+
+	// White keys
+	for (int i = keyCount-1; i >= 0; i--) {
+		int ki = i % 12;
+
+		bool pressed = keys[i];
+		int ti = pressed ? 1 : 0;
+
+		float ay = y;
+		switch (ki) {
+			case 11:
+			case 9:
+			case 7:
+			case 5:
+			case 4:
+			case 2:
+			case 0:
+				y += kH;
+				break;
+			default: continue;
+		}
+
+		float uX = (ti % 2) * uW;
+		float uY = int(ti / 2) * uH;
+		draw_list->AddImage(
+			(ImTextureID)(KBTex->id()),
+			ImVec2(0, ay) + wp,
+			ImVec2(kW, ay + kH) + wp,
+			ImVec2(uX, uY),
+			ImVec2(uX+uW, uY+uH)
+		);
+	}
+
+	// Black keys
+	y = khH-1;
+	for (int i = keyCount-1; i >= 0; i--) {
+		int ki = i % 12;
+
+		bool pressed = keys[i];
+		int ti = pressed ? 3 : 2;
+
+		float ay = y;
+		switch (ki) {
+			case 10: y += kH+2; break;
+			case 8:  y += kH+2-1; break;
+			case 6:  y += kH*2-2; break;
+			case 3:  y += kH+1; break;
+			case 1:  y += kH*2-2; break;
+			default: continue;
+		}
+
+		float uX = (ti % 2) * uW;
+		float uY = int(ti / 2) * uH;
+		draw_list->AddImage(
+			(ImTextureID)(KBTex->id()),
+			ImVec2(0, ay) + wp,
+			ImVec2(kW, ay + kH) + wp,
+			ImVec2(uX, uY),
+			ImVec2(uX+uW, uY+uH)
+		);
+	}
+
+	float ay = 0;
+	for (int i = keyCount-1; i >= 0; i--) {
+		int ki = i % 12;
+		ImRect kr;
+		kr.Min = ImVec2(0, ay) + wp;
+		kr.Max = ImVec2(kW, ay + 7) + wp;
+
+		if (ImGui::IsMouseDown(0) && kr.Contains(ImGui::GetMousePos())) {
+			keys[i] = true;
+		}
+		ay += 7;
+	}
+
+	return false;
+}
+
 }
 
 #define TAB_SMOOTH_DRAG 0   // This work nicely but has overlapping issues (maybe render dragged tab separately, at end)

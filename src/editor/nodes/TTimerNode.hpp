@@ -13,6 +13,7 @@ public:
 		addOutput("Index");
 		addOutput("Gate");
 		addOutput("Freq");
+		addOutput("Time");
 	}
 
 	void gui() {
@@ -31,11 +32,13 @@ public:
 		currTime += step;
 
 		float sw = swing * delay;
+		float delaySw = index % 2 == 0 ? delay + sw * 0.5f : delay - sw * 0.5f;
 		updateIndex(index, currTime, gate, sw, delay);
 
 		setOutput(0, index);
 		setOutput(1, gate ? 1 : 0);
 		setOutput(2, bpm / 60.0f);
+		setOutput(3, tmath::remap(currTime, 0.0f, delaySw, 0.0f, 1.0f));
 	}
 
 	void save(JSON& json) {

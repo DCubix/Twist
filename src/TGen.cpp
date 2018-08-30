@@ -7,8 +7,7 @@ constexpr float PI2 = M_PI * 2.0f;
 
 namespace tgen {
 	float note(int index) {
-		int oct = octave(index);
-		return note(index, oct);
+		return note(index % 12, octave(index));
 	}
 
 	float note(int index, int octave) {

@@ -2,6 +2,7 @@
 #define T_NODE_H
 
 #include <string>
+#include <array>
 
 #include "../json.hpp"
 using JSON = nlohmann::json;
@@ -19,15 +20,26 @@ namespace tmath {
 	static float remap(float value, float from1, float to1, float from2, float to2) {
 		return (value - from1) / (to1 - from1) * (to2 - from2) + from2;
 	}
+
+	static float cyclef(float f) {
+		auto m2 = std::fmod(f, 2.0f);
+		return m2 < 1.0 ? m2 : 2 - m2;
+	}
 }
 
+#define TNODE_MAX_SIMULTANEOUS_VALUES_PER_SLOT 8
+using TValueList = std::array<float, TNODE_MAX_SIMULTANEOUS_VALUES_PER_SLOT>;
+
 struct TValue {
-	float value;
+	TValueList values;
+
 	std::string label;
 	bool connected;
 
 	TValue() {}
-	TValue(const std::string& label) : label(label), value(0), connected(false) {}
+	TValue(const std::string& label) : label(label), connected(false) {
+		values.fill(0.0f);
+	}
 };
 
 struct TNodeType {
@@ -40,10 +52,12 @@ class TNode : public TNodeType {
 	friend class TNodeEditor;
 	friend class TNodeGraph;
 public:
-	TNode() : m_bounds(ImVec4(0, 0, 1, 1)), m_title("TNode") {}
+	TNode() : m_bounds(ImVec4(0, 0, 1, 1)), m_title("TNode") { m_defaultValues.fill(0.0f); }
 	TNode(const std::string& title, int width, int height)
 		 : m_bounds(ImVec4(0, 0, width, height)), m_title(title)
-	{}
+	{
+		m_defaultValues.fill(0.0f);
+	}
 
 	virtual ~TNode() {}
 	virtual void setup() {}
@@ -60,17 +74,39 @@ public:
 	std::vector<TValue>& inputs() { return m_inputs; }
 	std::vector<TValue>& outputs() { return m_outputs; }
 
-	void setOutput(int id, float value) { m_outputs[id].value = value; }
-	void setInput(int id, float value) { m_inputs[id].value = value; }
-
-	float getOutput(int id) { return m_outputs[id].value; }
-	float getInput(int id) { return m_inputs[id].value; }
-
-	float getInputOr(int id, float def=0.0f) {
+	// Multi-value
+	float getMultiOutput(int id, int pos) const { return m_outputs[id].values[pos]; }
+	float getMultiInput(int id, int pos) const { return m_inputs[id].values[pos]; }
+	float getMultiInputOr(int id, int pos, float def=0.0f) const {
 		if (!m_inputs[id].connected)
 			return def;
-		return m_inputs[id].value;
+		return m_inputs[id].values[pos];
 	}
+
+	TValueList& getMultiOutputValues(int id, float def=0.0f) {
+		if (!m_outputs[id].connected) {
+			m_defaultValues[0] = def;
+			return m_defaultValues;
+		}
+		return m_outputs[id].values;
+	}
+	TValueList& getMultiInputValues(int id, float def=0.0f) {
+		if (!m_inputs[id].connected) {
+			m_defaultValues[0] = def;
+			return m_defaultValues;
+		}
+		return m_inputs[id].values;
+	}
+
+	float setMultiOutput(int id, int pos, float value) { m_outputs[id].values[pos] = value; }
+	float setMultiInput(int id, int pos, float value) { m_inputs[id].values[pos] = value; }
+
+	float getOutput(int id) const { return getMultiOutput(id, 0); }
+	float getInput(int id) const { return getMultiInput(id, 0); }
+	float getInputOr(int id, float def=0.0f) const { return getMultiInputOr(id, 0, def); }
+
+	void setOutput(int id, float value) { setMultiOutput(id, 0, value); }
+	void setInput(int id, float value) { setMultiInput(id, 0, value); }
 
 	ImVec2 inputSlotPos(int s, float x=1) const {
 		return ImVec2(m_bounds.x*x, m_bounds.y*x + m_bounds.w * ((float)s + 1) / ((float)m_inputs.size() + 1));
@@ -98,12 +134,14 @@ protected:
 	std::string m_title, m_type;
 	ImVec4 m_bounds;
 	ImRect m_selectionBounds;
-	bool m_selected = false;
+	bool m_selected = false, m_solved = false;
 
 	std::vector<TValue> m_inputs;
 	std::vector<TValue> m_outputs;
 
 	TNodeGraph* m_parent;
+
+	TValueList m_defaultValues;
 };
 
 struct TLink {

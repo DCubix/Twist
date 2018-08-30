@@ -7,20 +7,17 @@
 class TOscillatorNode : public TNode {
 public:
 	TOscillatorNode(float sampleRate, TOsc::TWave wf=TOsc::Sine, float freq=440.0f, float amp=1.0f)
-		: TNode("Oscillator", 140, 130),
-			m_osc(new TOsc(sampleRate)),
-			value(0.0f), wf(wf),
-			frequency(freq), amplitude(amp)
+		: TNode("Oscillator", 140, 130), wf(wf), frequency(freq), amplitude(amp), sampleRate(sampleRate)
 	{
 		addInput("Freq");
 		addInput("Amp");
 		addOutput("Out");
-	}
 
-	~TOscillatorNode() {
-		delete m_osc;
-		m_osc = nullptr;
-	}
+		for (int i = 0; i < TNODE_MAX_SIMULTANEOUS_VALUES_PER_SLOT; i++) {
+			m_osc[i] = TOsc(sampleRate);
+		}
+
+	}	
 
 	void gui() {
 		static const char* WAVES[] = {
@@ -38,14 +35,20 @@ public:
 	}
 
 	void solve() {
-		float freq = getInputOr(0, frequency);
-		float amp = getInputOr(1, amplitude);
+		TValueList freqs = getMultiInputValues(0, frequency);
+		TValueList amps = getMultiInputValues(1, amplitude);
 
-		m_osc->amplitude(amp);
-		m_osc->frequency(freq);
-		m_osc->waveForm((TOsc::TWave) wf);
-
-		value = m_osc->sample(freq);
+		int count = 0;
+		float value = 0.0f;
+		for (int i = 0; i < TNODE_MAX_SIMULTANEOUS_VALUES_PER_SLOT; i++) {
+			if (std::abs(freqs[i]) > 0.0f) {
+				m_osc[i].waveForm((TOsc::TWave) wf);
+				m_osc[i].amplitude(amps[i]);
+				value += m_osc[i].sample(freqs[i]);
+				count++;
+			}
+		}
+		value /= (count == 0 ? 1 : count);
 
 		setOutput(0, value);
 	}
@@ -53,19 +56,19 @@ public:
 	void save(JSON& json) {
 		TNode::save(json);
 		json["type"] = type();
-		json["sampleRate"] = m_osc->sampleRate();
+		json["sampleRate"] = sampleRate;
 		json["waveForm"] = wf;
 		json["freq"] = frequency;
 		json["amp"] = amplitude;
 	}
 
-	float value, frequency, amplitude;
+	float frequency, amplitude, sampleRate;
 	int wf;
 
 	static std::string type() { return "Oscillator"; }
 
 private:
-	TOsc* m_osc;
+	TOsc m_osc[TNODE_MAX_SIMULTANEOUS_VALUES_PER_SLOT];
 };
 
 #endif // T_OSCILLATOR_NODE_H

@@ -23,6 +23,7 @@
 #include "nodes/TDelayLineNode.hpp"
 #include "nodes/TStorageNodes.hpp"
 #include "nodes/TSampleNode.hpp"
+#include "nodes/TArpNode.hpp"
 
 #include "tinyfiledialogs.h"
 #include "sndfile.hh"
@@ -139,7 +140,7 @@ TNodeEditor::TNodeEditor() {
 	TNodeFactory::registerNode<TChorusNode>(NODE_CTOR {
 		return new TChorusNode{
 			GET(float, "sampleRate", 44100),
-			GET(float, "delayTime", 50),
+			GET(float, "delayTime", 1),
 			GET(float, "chorusRate", 1),
 			GET(float, "chorusDepth", 1)
 		};
@@ -305,6 +306,28 @@ TNodeEditor::TNodeEditor() {
 		);
 	});
 
+	TNodeFactory::registerNode<TPianoRollNode>(NODE_CTOR {
+		TPianoRollNode *prn = new TPianoRollNode();
+		prn->measures = GET(int, "measures", 1);
+		prn->timeSignature = (TPianoRollNode::TTimeSignature)GET(int, "timeSignature", 0);
+		if (json["notes"].is_array()) {
+			for (int i = 0; i < json["notes"].size(); i++) {
+				JSON& note = json["notes"][i];
+				prn->notes.push_back({ note["position"], note["length"], note["note"], { 0, 0, 0, 0 } });
+			}
+		}
+		return prn;
+	});
+
+	TNodeFactory::registerNode<TArpNode>(NODE_CTOR {
+		return new TArpNode{
+			(Notes) GET(int, "note", 0),
+			GET(int, "oct", 0),
+			(TArpNode::TChord) GET(int, "chordType", 0),
+			(TArpNode::TDirection) GET(int, "direction", 0)
+		};
+	});
+
 }
 
 void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
@@ -436,22 +459,24 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 
 	m_hoveredNode = -1;
 
-	std::vector<TNode*> nodeList;
+	std::vector<int> nodeList;
 	nodeList.reserve(graph->nodes().size());
 	for (auto& e : graph->nodes()) {
 		if (e.second.get() == nullptr) continue;
-		nodeList.push_back(e.second.get());
+		nodeList.push_back(e.second->id());
 	}
 
 	bool isNodeMoving = false;
 	for (int node_id = 0; node_id < nodeList.size(); node_id++) {
-		TNode* node = nodeList[node_id];
+		const int rnode_id = nodeList[node_id];
+		TNode* node = graph->node(rnode_id);
+		if (node == nullptr) continue;
 
-		ImGui::PushID(node->id());
+		ImGui::PushID(rnode_id);
 		ImVec2 node_rect_min = offset + ImVec2(node->m_bounds.x, node->m_bounds.y) * scl;
 
 		// Display node contents first
-		draw_list->ChannelsSetCurrent(m_activeNodeIndex == node->id() ? 4 : 2); // Foreground
+		draw_list->ChannelsSetCurrent(m_activeNodeIndex == rnode_id ? 4 : 2); // Foreground
 		m_nodeOldActive = ImGui::IsAnyItemActive();
 
 		ImGui::SetCursorScreenPos(node_rect_min + ImVec2(NODE_PADDING(scl), NODE_PADDING(scl)));
@@ -489,7 +514,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 			}
 			ImGui::SameLine();
 			if (ImGui::Button("X", ImVec2(15, 15))) {
-				toDelete.push_back(node->id());
+				toDelete.push_back(rnode_id);
 				m_hoveredNode = -1;
 				m_activeNodeIndex = -1;
 			}
@@ -520,39 +545,38 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 		node->m_selectionBounds = ImRect(node_rect_min, node_rect_max);
 
 		// Display node box
-		draw_list->ChannelsSetCurrent(m_activeNodeIndex == node->id() ? 3 : 1); // Background
+		draw_list->ChannelsSetCurrent(m_activeNodeIndex == rnode_id ? 3 : 1); // Background
 		ImGui::SetCursorScreenPos(node_rect_min);
 		ImGui::InvisibleButton("node##invbtn", node->size());
 
 		m_nodeActive = !isMouseDraggingForScrolling && ImGui::IsItemActive() && !m_selectingNodes;
 
 		if (ImGui::IsItemHovered()) {
-			m_hoveredNode = node->id();
-			openContext |= ImGui::IsMouseClicked(1);
+			m_hoveredNode = rnode_id;
 		}
 
 		if (isLMBClicked && (m_nodeAnyActive || m_nodeActive)) {
 			if (!node->m_selected) {
 				if (!io.KeyCtrl) graph->unselectAll();
 				node->m_selected = true;
-				m_activeNodeIndex = node->id();
+				m_activeNodeIndex = rnode_id;
 			} else if (io.KeyCtrl) {
 				node->m_selected = false;
-				if (node->id() == m_activeNodeIndex) {
+				if (rnode_id == m_activeNodeIndex) {
 					m_activeNodeIndex = graph->getActiveNode();
 				}
 			} else if (io.KeyShift || io.MouseDoubleClicked[0]) {
 				graph->unselectAll();
 				node->m_selected = true;
-				m_activeNodeIndex = node->id();
+				m_activeNodeIndex = rnode_id;
 			} else {
-				m_activeNodeIndex = node->id();
+				m_activeNodeIndex = rnode_id;
 			}
 		}
 
 		if (m_nodeActive && node->m_selected && isMouseDraggingForMovingNodes && !m_linking.active) {
 			for (int j = 0; j < nodeList.size(); j++) {
-				TNode* nd = nodeList[j];
+				TNode* nd = graph->node(nodeList[j]);
 				if (nd->m_selected) {
 					nd->m_bounds.x += io.MouseDelta.x;
 					nd->m_bounds.y += io.MouseDelta.y;
@@ -561,7 +585,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 			isNodeMoving = true;
 		}
 
-		ImU32 node_bg_color = m_hoveredNode == node->id() || node->m_selected ? IM_COL32(75, 75, 75, 255) : IM_COL32(60, 60, 60, 255);
+		ImU32 node_bg_color = m_hoveredNode == rnode_id || node->m_selected ? IM_COL32(75, 75, 75, 255) : IM_COL32(60, 60, 60, 255);
 		draw_list->AddRectFilled(node_rect_min, node_rect_max, node_bg_color, NODE_ROUNDING(scl));
 
 		const float nodeTitleBarBgHeight = ImGui::GetTextLineHeightWithSpacing() + NODE_PADDING(scl);
@@ -625,7 +649,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 			if (ImGui::IsMouseHoveringRect(pos - hsz, pos + hsz) && ImGui::IsMouseClicked(0)) {
 				m_linking.active = true;
 				m_linking.node = node;
-				m_linking.inputID = node->id();
+				m_linking.inputID = rnode_id;
 				m_linking.inputSlot = i;
 			}
 
@@ -686,7 +710,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 
 			if (selRect.Overlaps(nbounds)) {
 				node->m_selected = true;
-				if (m_activeNodeIndex == -1) m_activeNodeIndex = e.first;
+				if (m_activeNodeIndex == -1) m_activeNodeIndex = node->id();
 			}
 		}
 	}
@@ -907,6 +931,14 @@ void TNodeEditor::draw(int w, int h) {
 						int sec = (int)(float(m_recordPointer) / sampleRate) % 60;
 						int minute = sec / 60;
 						ImGui::Text("RECORDING... %02d:%02d", minute, sec);
+						ImGui::AudioView(
+							"##recview",
+							ImGui::GetContentRegionAvailWidth(),
+							m_recordBuffer.data(),
+							m_recordBuffer.size(),
+							0,
+							16
+						);
 					}
 				}
 				if (ImGui::CollapsingHeader("Nodes")) {
@@ -1012,7 +1044,7 @@ void TNodeEditor::draw(int w, int h) {
 			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(1, 1));
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 			ImGui::PushStyleColor(ImGuiCol_ChildWindowBg, IM_COL32(60, 60, 70, 200));
-			ImGui::BeginChild("scrolling_region_", ImVec2(0, 0), true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoMove);
+			ImGui::BeginChild("scrolling_region_", ImVec2(0, 0), true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollWithMouse);
 			ImGui::PushItemWidth(120.0f);
 
 			ImDrawList* draw_list = ImGui::GetWindowDrawList();
@@ -1150,8 +1182,12 @@ void TNodeEditor::renderToFile(const std::string& fileName, float time) {
 
 void midiCallback(double dt, std::vector<uint8_t>* message, void* userData) {
 	unsigned int nBytes = message->size();
-	for ( unsigned int i=0; i<nBytes; i++ )
-		std::cout << "Byte " << i << " = " << (int)message->at(i) << ", ";
-	if ( nBytes > 0 )
-		std::cout << "stamp = " << dt << std::endl;
+	if (nBytes > 3) return;
+
+	TRawMidiMessage rawMsg;
+	for (int i = 0; i < nBytes; i++)
+		rawMsg[i] = (*message)[i];
+	TMidiMessage msg(rawMsg);
+
+	msg.debugPrint();
 }

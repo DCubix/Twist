@@ -15,17 +15,14 @@
 
 #include "nodes/TNode.h"
 #include "nodes/TOutNode.hpp"
+#include "nodes/TPianoRollNode.hpp"
 
 #include "imgui.h"
-#include "RtMidi.h"
 
 #include "TNodeGraph.h"
+#include "TMidi.h"
 
 void midiCallback(double dt, std::vector<uint8_t>* message, void* userData);
-
-struct TMIDIMessage {
-	
-};
 
 class TNodeEditor {
 public:
