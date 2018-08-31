@@ -24,6 +24,7 @@
 #include "nodes/TStorageNodes.hpp"
 #include "nodes/TSampleNode.hpp"
 #include "nodes/TArpNode.hpp"
+#include "nodes/TMIDINode.hpp"
 
 #include "tinyfiledialogs.h"
 #include "sndfile.hh"
@@ -306,18 +307,21 @@ TNodeEditor::TNodeEditor() {
 		);
 	});
 
-	TNodeFactory::registerNode<TPianoRollNode>(NODE_CTOR {
-		TPianoRollNode *prn = new TPianoRollNode();
-		prn->measures = GET(int, "measures", 1);
-		prn->timeSignature = (TPianoRollNode::TTimeSignature)GET(int, "timeSignature", 0);
-		if (json["notes"].is_array()) {
-			for (int i = 0; i < json["notes"].size(); i++) {
-				JSON& note = json["notes"][i];
-				prn->notes.push_back({ note["position"], note["length"], note["note"], { 0, 0, 0, 0 } });
-			}
-		}
-		return prn;
-	});
+	// NOTE: Due to this not turning out to be nice the way I thought It would,
+	//       I'm commenting this. It's very inefficient, so beware!
+	//
+	// TNodeFactory::registerNode<TPianoRollNode>(NODE_CTOR {
+	// 	TPianoRollNode *prn = new TPianoRollNode();
+	// 	prn->measures = GET(int, "measures", 1);
+	// 	prn->timeSignature = (TPianoRollNode::TTimeSignature)GET(int, "timeSignature", 0);
+	// 	if (json["notes"].is_array()) {
+	// 		for (int i = 0; i < json["notes"].size(); i++) {
+	// 			JSON& note = json["notes"][i];
+	// 			prn->notes.push_back({ note["position"], note["length"], note["note"], { 0, 0, 0, 0 } });
+	// 		}
+	// 	}
+	// 	return prn;
+	// });
 
 	TNodeFactory::registerNode<TArpNode>(NODE_CTOR {
 		return new TArpNode{
@@ -328,6 +332,15 @@ TNodeEditor::TNodeEditor() {
 		};
 	});
 
+	TNodeFactory::registerNode<TMIDINode>(NODE_CTOR {
+		TMIDINode* midi = new TMIDINode();
+		TMessageBus::subscribe(midi);
+		return midi;
+	});
+	
+	TNodeFactory::registerNode<TFreqNode>(NODE_CTOR {
+		return new TFreqNode();
+	});
 }
 
 void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
@@ -1097,6 +1110,7 @@ float TNodeEditor::output() {
 
 	float sample = 0.0f;
 	if (m_playing || m_recording) {
+		TMessageBus::process();
 		sample = m_nodeGraphs[m_activeGraph]->solve();
 	}
 
@@ -1187,7 +1201,7 @@ void midiCallback(double dt, std::vector<uint8_t>* message, void* userData) {
 	TRawMidiMessage rawMsg;
 	for (int i = 0; i < nBytes; i++)
 		rawMsg[i] = (*message)[i];
-	TMidiMessage msg(rawMsg);
 
-	msg.debugPrint();
+	TMidiMessage msg(rawMsg);
+	TMessageBus::broadcast(msg.channel, msg.command, msg.param0, msg.param1);
 }

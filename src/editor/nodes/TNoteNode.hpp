@@ -52,4 +52,28 @@ public:
 	static std::string type() { return "Note"; }
 };
 
+class TFreqNode : public TNode {
+public:
+	TFreqNode() : TNode("Frequency", 0, 0) {
+		addInput("Nt");
+		addOutput("Freq");
+	}
+
+	void gui() {
+
+	}
+
+	void solve() {
+		setOutput(0, tgen::note(int(getInput(0))));
+	}
+
+	void save(JSON& json) {
+		TNode::save(json);
+		json["type"] = type();
+	}
+	
+
+	static std::string type() { return "Frequency"; }
+};
+
 #endif // T_NOTE_NODE_H

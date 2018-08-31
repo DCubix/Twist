@@ -34,6 +34,7 @@ public:
 		addInput("Time");
 		addOutput("Freq");
 		addOutput("Gate");
+		addOutput("Nt");
 	}
 
 	void gui() {
@@ -114,47 +115,49 @@ public:
 
 	void solve() {
 		float ntime = getInputOr(0, 0);
-		#define INDEX(n) index(ntime, n)
+		int noteIn = note;
 
+#define INDEX(n) index(ntime, n)
 		int nt = 0;
 		switch (chordType) {
 			case Major: {
 				const int n[] = { 0, 4, 7 };
-				nt = n[INDEX(3)] + int(note);
+				nt = n[INDEX(3)] + int(noteIn);
 			} break;
 			case Minor: {
 				const int n[] = { 0, 3, 7 };
-				nt = n[INDEX(3)] + int(note);
+				nt = n[INDEX(3)] + int(noteIn);
 			} break;
 			case Sus2: {
 				const int n[] = { 0, 2, 7 };
-				nt = n[INDEX(3)] + int(note);
+				nt = n[INDEX(3)] + int(noteIn);
 			} break;
 			case Sus4: {
 				const int n[] = { 0, 5, 7 };
-				nt = n[INDEX(3)] + int(note);
+				nt = n[INDEX(3)] + int(noteIn);
 			} break;
 			case Major7: {
 				const int n[] = { 0, 4, 7, 11 };
-				nt = n[INDEX(4)] + int(note);
+				nt = n[INDEX(4)] + int(noteIn);
 			} break;
 			case Minor7: {
 				const int n[] = { 0, 3, 7, 10 };
-				nt = n[INDEX(4)] + int(note);
+				nt = n[INDEX(4)] + int(noteIn);
 			} break;
 			case Nineth: {
 				const int n[] = { 2, 4, 7 };
-				nt = n[INDEX(3)] + int(note);
+				nt = n[INDEX(3)] + int(noteIn);
 			} break;
 			case Octave: {
 				const int n[] = { 0, 12 };
-				nt = n[INDEX(2)] + int(note);
+				nt = n[INDEX(2)] + int(noteIn);
 			} break;
 			default: break;
 		}
 
 		setOutput(0, tgen::note(nt, oct));
 		setOutput(1, gate ? 1 : 0);
+		setOutput(2, nt*oct);
 	}
 
 	void save(JSON& json) {

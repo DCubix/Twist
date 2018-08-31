@@ -22,6 +22,8 @@
 #include "TNodeGraph.h"
 #include "TMidi.h"
 
+#include "SDL2/SDL.h"
+
 void midiCallback(double dt, std::vector<uint8_t>* message, void* userData);
 
 class TNodeEditor {
