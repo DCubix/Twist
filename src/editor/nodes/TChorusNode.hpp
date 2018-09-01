@@ -12,22 +12,15 @@ public:
 		: TNode("Chorus", 140, 140),
 			sampleRate(sampleRate), delayTime(dt), chorusRate(cr), chorusDepth(cd)
 	{
-		m_lfo = new TOsc(sampleRate);
-		m_lfo->amplitude(1.0f);
-		m_lfo->waveForm(TOsc::Sine);
+		m_lfo = TOsc(sampleRate);
+		m_lfo.amplitude(1.0f);
+		m_lfo.waveForm(TOsc::Sine);
 
-		m_wv = new TWaveGuide(sampleRate);
-		m_wv->clear();
+		m_wv = TWaveGuide(sampleRate);
+		m_wv.clear();
 
 		addInput("In");
 		addOutput("Out");
-	}
-
-	~TChorusNode() {
-		delete m_lfo;
-		m_lfo = nullptr;
-		delete m_wv;
-		m_wv = nullptr;
 	}
 
 	void gui() {
@@ -37,10 +30,10 @@ public:
 	}
 
 	void solve() {
-		float sgn = m_lfo->sample(chorusRate) * chorusDepth;
+		float sgn = m_lfo.sample(chorusRate) * chorusDepth;
 		float sgnDT = sgn * delayTime;
 		dt = sgnDT + delayTime;
-		float out = m_wv->sample(getInput(0), 0.0f, dt);
+		float out = m_wv.sample(getInput(0), 0.0f, dt);
 		setOutput(0, (out + getInput(0)) * 0.5f);
 	}
 
@@ -61,8 +54,8 @@ public:
 
 	static std::string type() { return "Chorus"; }
 private:
-	TOsc* m_lfo;
-	TWaveGuide* m_wv;
+	TOsc m_lfo;
+	TWaveGuide m_wv;
 };
 
 #endif // T_CHORUS_NODE_H

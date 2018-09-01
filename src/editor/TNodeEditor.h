@@ -16,6 +16,8 @@
 #include "nodes/TNode.h"
 #include "nodes/TOutNode.hpp"
 #include "nodes/TPianoRollNode.hpp"
+#include "nodes/TModuleNode.hpp"
+#include "TCommands.h"
 
 #include "imgui.h"
 
@@ -34,6 +36,7 @@ public:
 
 	bool rendering() const { return m_rendering; }
 	bool loading() const { return m_loading; }
+	bool snapToGrid() const { return m_snapToGrid; }
 
 	float output();
 
@@ -50,14 +53,21 @@ public:
 private:
 	TNodeGraph* newGraph();
 	void drawNodeGraph(TNodeGraph* graph);
+	void menuActionOpen();
+	void menuActionSave();
 
 	TLinking m_linking;
 
 	ImVec4 m_bounds;
 
 	int m_hoveredNode, m_nodeHoveredInList, m_activeGraph = 0, m_activeNodeIndex = -1;
-	bool m_openContextMenu, m_selectingNodes = false, m_nodeActive, m_nodeAnyActive, m_nodeOldActive;
+	bool m_openContextMenu, m_selectingNodes = false,
+		m_nodeActive, m_nodeAnyActive, m_nodeOldActive,
+		m_nodesMoving, m_snapToGrid = false, m_snapToGridDisabled = false;
 	float m_oldFontWindowScale, m_currentFontWindowScale;
+
+	TIntList m_movingIDs;
+	std::map<int, TMoveCommand::Point> m_moveDeltas;
 
 	ImVec2 m_mainWindowSize, m_selectionStart, m_selectionEnd;
 

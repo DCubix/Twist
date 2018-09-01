@@ -3,6 +3,9 @@
 #include "glad/glad.h"
 #include "editor/TMidi.h"
 
+#include "icon.h"
+#include "stb/stb_image.h"
+
 TAudio::TAudio(SDL_AudioCallback callback, void* udata, int sampleRate, int samples, int channels) {
 	SDL_SetHint(SDL_HINT_VIDEO_HIGHDPI_DISABLED, "0");
 
@@ -39,6 +42,7 @@ TAudio::TAudio(SDL_AudioCallback callback, void* udata, int sampleRate, int samp
 		1024, 640, 
 		SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
 	);
+	setupIcon();
 
 	m_context = SDL_GL_CreateContext(m_window);
 	if (!gladLoadGLLoader(SDL_GL_GetProcAddress)) {
@@ -52,6 +56,37 @@ TAudio::TAudio(SDL_AudioCallback callback, void* udata, int sampleRate, int samp
 	SDL_PauseAudioDevice(m_device, 0);
 
 	ImGuiSystem::Init(m_window);
+}
+
+void TAudio::setupIcon() {
+	int w, h, comp;
+	unsigned char* data = stbi_load_from_memory(twist_png, twist_png_len, &w, &h, &comp, STBI_rgb_alpha);
+	if (data == nullptr) {
+		return;
+	}
+
+	int depth, pitch;
+	Uint32 pixel_format;
+	if (comp == STBI_rgb) {
+		depth = 24;
+		pitch = 3 * w;
+		pixel_format = SDL_PIXELFORMAT_RGB24;
+	} else {
+		depth = 32;
+		pitch = 4 * w;
+		pixel_format = SDL_PIXELFORMAT_RGBA32;
+	}
+
+	SDL_Surface* surf = SDL_CreateRGBSurfaceWithFormatFrom(
+		(void*)data, w, h, depth, pitch, pixel_format
+	);
+
+	if (surf != nullptr) {
+		SDL_SetWindowIcon(m_window, surf);
+	}
+
+	stbi_image_free(data);
+	if (surf != nullptr) SDL_FreeSurface(surf);
 }
 
 void TAudio::destroy() {

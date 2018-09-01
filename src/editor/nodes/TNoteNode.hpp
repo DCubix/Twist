@@ -9,8 +9,6 @@ public:
 	TNoteNode(Notes note=Notes::C, int oct=0)
 		: TNode("Note", 160, 125), note(note), oct(oct)
 	{
-		addInput("Mod");
-		addOutput("Out");
 		addOutput("Nt");
 	}
 
@@ -30,13 +28,14 @@ public:
 			"B\0",
 			0
 		};
+		ImGui::PushItemWidth(45);
 		ImGui::Combo("Note", (int*)&note, NOTES, 12, -1);
-		ImGui::DragInt("Oct", &oct, 0.1f, -5, 5);
+		ImGui::DragInt("Oct", &oct, 0.1f, 0, 5);
+		ImGui::PopItemWidth();
 	}
 
 	void solve() {
-		setOutput(0, getInput(0) + tgen::note(note, oct));
-		setOutput(1, (int)note + (oct * 12));
+		setOutput(0, (int)note + (oct * 12));
 	}
 
 	void save(JSON& json) {
@@ -54,13 +53,13 @@ public:
 
 class TFreqNode : public TNode {
 public:
-	TFreqNode() : TNode("Frequency", 0, 0) {
+	TFreqNode() : TNode("Freq", 0, 0) {
 		addInput("Nt");
 		addOutput("Freq");
 	}
 
 	void gui() {
-
+		
 	}
 
 	void solve() {

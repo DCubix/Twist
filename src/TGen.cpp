@@ -11,14 +11,6 @@ namespace tgen {
 	}
 
 	float note(int index, int octave) {
-		if (index >= Notes::Count) {
-			index -= Notes::Count;
-			octave++;
-		}
-		if (index < 0) {
-			index = Notes::Count + index;
-			octave--;
-		}
 		return NOTE[index] * std::pow(2, octave);
 	}
 

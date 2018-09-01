@@ -19,12 +19,13 @@
 #include "nodes/TValueNode.hpp"
 #include "nodes/TTimerNode.hpp"
 #include "nodes/TReverbNode.hpp"
-#include "nodes/TModuleNode.hpp"
 #include "nodes/TDelayLineNode.hpp"
 #include "nodes/TStorageNodes.hpp"
 #include "nodes/TSampleNode.hpp"
 #include "nodes/TArpNode.hpp"
 #include "nodes/TMIDINode.hpp"
+
+#include "TUndoRedo.h"
 
 #include "tinyfiledialogs.h"
 #include "sndfile.hh"
@@ -343,61 +344,49 @@ TNodeEditor::TNodeEditor() {
 	});
 }
 
+void TNodeEditor::menuActionOpen() {
+	const static char* FILTERS[] = { "*.tng\0" };
+	const char* filePath = tinyfd_openFileDialog(
+		"Open",
+		"",
+		1,
+		FILTERS,
+		"Twist Node-Graph",
+		0
+	);
+	if (filePath) {
+		TNodeGraph* graph = newGraph();
+		graph->load(std::string(filePath));
+	}
+}
+
+void TNodeEditor::menuActionSave() {
+	if (!m_nodeGraphs.empty()) {
+		if (m_nodeGraphs[m_activeGraph]->m_fileName.empty()) {
+			const static char* FILTERS[] = { "*.tng\0" };
+			const char* filePath = tinyfd_saveFileDialog(
+				"Save",
+				"",
+				1,
+				FILTERS,
+				"Twist Node-Graph"
+			);
+			if (filePath) {
+				m_nodeGraphs[m_activeGraph]->save(std::string(filePath));
+			}
+		} else {
+			m_nodeGraphs[m_activeGraph]->save(m_nodeGraphs[m_activeGraph]->m_fileName);
+		}
+	}
+}
+
 void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 	if (graph == nullptr) return;
 
 	const ImGuiIO io = ImGui::GetIO();
 
-	// Zooming
 	ImGuiContext& g = *GImGui;
 	ImGuiWindow* window = ImGui::GetCurrentWindow();
-
-	// float oldFontScaleToReset = g.Font->Scale; // We'll clean up at the bottom
-	// float fontScaleStored = m_oldFontWindowScale ? m_oldFontWindowScale : oldFontScaleToReset;
-	// float& fontScaleToTrack = g.Font->Scale;
-
-	// if (!io.FontAllowUserScaling) {
-	// 	// Set the correct font scale (3 lines)
-	// 	fontScaleToTrack = fontScaleStored;
-	// 	g.FontBaseSize = io.FontGlobalScale * g.Font->Scale * g.Font->FontSize;
-	// 	g.FontSize = window->CalcFontSize();
-
-	// 	if (ImGui::IsMouseHoveringRect(window->InnerMainRect.Min, window->InnerMainRect.Max) && io.MouseWheel)   {
-
-	// 		// Zoom / Scale window
-	// 		float new_font_scale = ImClamp(fontScaleToTrack + g.IO.MouseWheel * 0.075f, 0.50f, 2.50f);
-	// 		float scale = new_font_scale / fontScaleToTrack;
-	// 		if (scale != 1)	{
-	// 			graph->m_scrolling = graph->m_scrolling * scale;
-	// 			// Set the correct font scale (3 lines), and store it
-	// 			fontScaleStored = fontScaleToTrack = new_font_scale;
-	// 			g.FontBaseSize = io.FontGlobalScale * g.Font->Scale * g.Font->FontSize;
-	// 			g.FontSize = window->CalcFontSize();
-	// 		}
-	// 	}
-	// }
-
-	// fixes zooming just a bit
-	// bool nodesHaveZeroSize = false;
-	// m_currentFontWindowScale = !io.FontAllowUserScaling ? fontScaleStored : ImGui::GetCurrentWindow()->FontWindowScale;
-	// if (m_oldFontWindowScale == 0.0f) {
-	// 	m_oldFontWindowScale = m_currentFontWindowScale;
-	// 	nodesHaveZeroSize = true;   // at start or after clear()
-	// 	graph->m_scrolling = ImGui::GetWindowSize() * 0.5f;
-	// } else if (m_oldFontWindowScale != m_currentFontWindowScale) {
-	// 	nodesHaveZeroSize = true;
-	// 	for (auto& e : graph->nodes())    {
-	// 		TNode* node = e.second.get();
-	// 		node->m_bounds.z = 0.0f;  // we must reset the size
-	// 		node->m_bounds.w = 0.0f;  // we must reset the size
-	// 	}
-	// 	// These two lines makes the scaling work around the mouse position AFAICS
-	// 	if (io.FontAllowUserScaling) {
-	// 		const ImVec2 delta = (io.MousePos - ImGui::GetCursorScreenPos());
-	// 		graph->m_scrolling -= (delta * m_currentFontWindowScale - delta * m_oldFontWindowScale) / m_currentFontWindowScale;
-	// 	}
-	// 	m_oldFontWindowScale = m_currentFontWindowScale;
-	// }
 
 	m_currentFontWindowScale = 1;
 
@@ -409,9 +398,17 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 
 	// Display grid
 	ImU32 GRID_COLOR = IM_COL32(200, 200, 200, 40);
+	ImU32 GRID_COLOR_SM = IM_COL32(200, 200, 200, 20);
 	float GRID_SZ = 64.0f * scl;
+	float GRID_SZ_SMALL = 8.0f * scl;
 	ImVec2 win_pos = ImGui::GetCursorScreenPos();
 	ImVec2 canvas_sz = ImGui::GetWindowSize();
+
+	for (float x = fmodf(graph->m_scrolling.x, GRID_SZ_SMALL); x < canvas_sz.x; x += GRID_SZ_SMALL)
+		draw_list->AddLine(ImVec2(x, 0.0f) + win_pos, ImVec2(x, canvas_sz.y) + win_pos, GRID_COLOR_SM);
+	for (float y = fmodf(graph->m_scrolling.y, GRID_SZ_SMALL); y < canvas_sz.y; y += GRID_SZ_SMALL)
+		draw_list->AddLine(ImVec2(0.0f, y) + win_pos, ImVec2(canvas_sz.x, y) + win_pos, GRID_COLOR_SM);
+
 	for (float x = fmodf(graph->m_scrolling.x, GRID_SZ); x < canvas_sz.x; x += GRID_SZ)
 		draw_list->AddLine(ImVec2(x, 0.0f) + win_pos, ImVec2(x, canvas_sz.y) + win_pos, GRID_COLOR);
 	for (float y = fmodf(graph->m_scrolling.y, GRID_SZ); y < canvas_sz.y; y += GRID_SZ)
@@ -431,8 +428,8 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 	draw_list->ChannelsSetCurrent(0); // Background
 	const float hoveredLinkDistSqrThres = 100.0f;
 	int nearestLinkId=-1;
-	for (int link_idx = 0; link_idx < graph->m_links.size(); link_idx++) {
-		auto& link = graph->m_links[link_idx];
+	for (auto&& e : graph->m_links) {
+		TLink* link = e.second.get();
 		
 		TNode* ni = graph->node(link->inputID);
 		TNode* no = graph->node(link->outputID);
@@ -457,7 +454,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 		if (mustCheckForNearestLink && nearestLinkId == -1 && cullLink.Contains(io.MousePos)) {
 			const float d = GetSquaredDistanceToBezierCurve(io.MousePos, p1, cp1, cp2, p2);
 			if (d < hoveredLinkDistSqrThres) {
-				nearestLinkId = link_idx;
+				nearestLinkId = e.first;
 				draw_list->AddBezierCurve(p1, cp1, cp2, p2, IM_COL32(200, 200, 100, 128), thick*2);
 			}
 		}
@@ -479,14 +476,23 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 		nodeList.push_back(e.second->id());
 	}
 
-	bool isNodeMoving = false;
 	for (int node_id = 0; node_id < nodeList.size(); node_id++) {
 		const int rnode_id = nodeList[node_id];
 		TNode* node = graph->node(rnode_id);
 		if (node == nullptr) continue;
 
+		if (m_snapToGridDisabled) {
+			node->m_bounds.x = node->m_gridPosition.x;
+			node->m_bounds.y = node->m_gridPosition.y;
+		}
+
+		if (!m_snapToGrid) {
+			node->m_gridPosition.x = node->m_bounds.x;
+			node->m_gridPosition.y = node->m_bounds.y;
+		}
+
 		ImGui::PushID(rnode_id);
-		ImVec2 node_rect_min = offset + ImVec2(node->m_bounds.x, node->m_bounds.y) * scl;
+		ImVec2 node_rect_min = offset + ImVec2(node->m_gridPosition.x, node->m_gridPosition.y) * scl;
 
 		// Display node contents first
 		draw_list->ChannelsSetCurrent(m_activeNodeIndex == rnode_id ? 4 : 2); // Foreground
@@ -587,17 +593,6 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 			}
 		}
 
-		if (m_nodeActive && node->m_selected && isMouseDraggingForMovingNodes && !m_linking.active) {
-			for (int j = 0; j < nodeList.size(); j++) {
-				TNode* nd = graph->node(nodeList[j]);
-				if (nd->m_selected) {
-					nd->m_bounds.x += io.MouseDelta.x;
-					nd->m_bounds.y += io.MouseDelta.y;
-				}
-			}
-			isNodeMoving = true;
-		}
-
 		ImU32 node_bg_color = m_hoveredNode == rnode_id || node->m_selected ? IM_COL32(75, 75, 75, 255) : IM_COL32(60, 60, 60, 255);
 		draw_list->AddRectFilled(node_rect_min, node_rect_max, node_bg_color, NODE_ROUNDING(scl));
 
@@ -628,7 +623,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 
 		for (int i = 0; i < node->inputs().size(); i++) {
 			const char* label = node->inputs()[i].label.c_str();
-			ImVec2 pos = offset + node->inputSlotPos(i, scl);
+			ImVec2 pos = offset + node->inputSlotPos(i, scl, m_snapToGrid);
 			ImVec2 tsz = ImGui::CalcTextSize(label);
 			ImVec2 off = ImVec2(-(tsz.x + slotRadius + 3), -tsz.y * 0.5f);
 			ImVec2 off1 = ImVec2(-(tsz.x + slotRadius + 3), -tsz.y * 0.5f + 1);
@@ -649,7 +644,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 		
 		for (int i = 0; i < node->outputs().size(); i++) {
 			const char* label = node->outputs()[i].label.c_str();
-			ImVec2 pos = offset + node->outputSlotPos(i, scl);
+			ImVec2 pos = offset + node->outputSlotPos(i, scl, m_snapToGrid);
 			ImVec2 tsz = ImGui::CalcTextSize(label);
 			ImVec2 off = ImVec2(slotRadius + 3, -tsz.y * 0.5f);
 			ImVec2 off1 = ImVec2(slotRadius + 3, -tsz.y * 0.5f + 1);
@@ -684,13 +679,53 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 				draw_list->AddBezierCurve(p1, cp1, cp2, p2, col, 5.0f);
 			}
 		}
-
 		ImGui::PopID();
+
+		if (m_nodeActive && node->m_selected && isMouseDraggingForMovingNodes && !m_linking.active) {
+			if (!m_nodesMoving) {
+				m_movingIDs.clear();
+				m_moveDeltas.clear();
+				for (int j = 0; j < nodeList.size(); j++) {
+					TNode* nd = graph->node(nodeList[j]);
+					if (nd->m_selected) {
+						m_movingIDs.push_back(nodeList[j]);
+						m_moveDeltas[nodeList[j]] = TMoveCommand::Point{0, 0};
+					}
+				}
+				m_nodesMoving = true;
+			}
+
+			for (int j = 0; j < nodeList.size(); j++) {
+				TNode* nd = graph->node(nodeList[j]);
+				if (nd->m_selected) {
+					nd->m_bounds.x += io.MouseDelta.x;
+					nd->m_bounds.y += io.MouseDelta.y;
+					m_moveDeltas[nodeList[j]].x += io.MouseDelta.x;
+					m_moveDeltas[nodeList[j]].y += io.MouseDelta.y;
+
+					if (m_snapToGrid) {
+						nd->m_gridPosition.x = (int(nd->m_bounds.x) / 8) * 8;
+						nd->m_gridPosition.y = (int(nd->m_bounds.y) / 8) * 8;
+					}
+				}
+			}
+		} else {
+			if (!m_nodeOldActive && m_nodesMoving) {
+				m_nodeGraphs[m_activeGraph]->undoRedo()->performedAction<TMoveCommand>(
+					m_nodeGraphs[m_activeGraph].get(),
+					m_movingIDs,
+					m_moveDeltas
+				);
+				m_nodesMoving = false;
+			}
+		}
+
 	}
 	draw_list->ChannelsMerge();
+	m_snapToGridDisabled = false;
 
 	/// Selecting nodes
-	if (!isNodeMoving && ImGui::IsMouseClicked(0) && !m_linking.active && !ImGui::IsAnyItemActive() && !ImGui::IsAnyItemHovered()) {
+	if (!m_nodesMoving && ImGui::IsMouseClicked(0) && !m_linking.active && !ImGui::IsAnyItemActive() && !ImGui::IsAnyItemHovered()) {
 		if (!io.KeyCtrl) graph->unselectAll();
 		m_selectionStart = io.MousePos;
 		m_selectingNodes = true;
@@ -817,47 +852,55 @@ void TNodeEditor::draw(int w, int h) {
 	style->Colors[ImGuiCol_TextSelectedBg]        = {0.18431373f, 0.39607847f, 0.79215693f, 0.90f};
 
 	if (ImGui::BeginMainMenuBar()) {
+		/// Shortcut handling
+		if (ImGui::HotKey(CTRL, SDL_SCANCODE_N)) {
+			newGraph();
+		} else if (ImGui::HotKey(CTRL, SDL_SCANCODE_O)) {
+			menuActionOpen();
+		} else if (ImGui::HotKey(CTRL, SDL_SCANCODE_S)) {
+			menuActionSave();
+		} else if (ImGui::HotKey(CTRL, SDL_SCANCODE_Z)) {
+			m_nodeGraphs[m_activeGraph]->undoRedo()->undo();
+		} else if (ImGui::HotKey(CTRL, SDL_SCANCODE_Y)) {
+			m_nodeGraphs[m_activeGraph]->undoRedo()->redo();
+		}
+
 		if (ImGui::BeginMenu("File")) {
-			if (ImGui::MenuItem("New")) {
+			if (ImGui::MenuItem("New", "Ctrl+N")) {
 				newGraph();
 			}
 			ImGui::Separator();
 			if (ImGui::MenuItem("Open (*.tng)", "Ctrl+O")) {
-				const static char* FILTERS[] = { "*.tng\0" };
-				const char* filePath = tinyfd_openFileDialog(
-					"Open",
-					"",
-					1,
-					FILTERS,
-					"Twist Node-Graph",
-					0
-				);
-				if (filePath) {
-					TNodeGraph* graph = newGraph();
-					graph->load(std::string(filePath));
-				}
+				menuActionOpen();
 			}
 			if (ImGui::MenuItem("Save (*.tng)", "Ctrl+S")) {
-				if (!m_nodeGraphs.empty()) {
-					if (m_nodeGraphs[m_activeGraph]->m_fileName.empty()) {
-						const static char* FILTERS[] = { "*.tng\0" };
-						const char* filePath = tinyfd_saveFileDialog(
-							"Save",
-							"",
-							1,
-							FILTERS,
-							"Twist Node-Graph"
-						);
-						if (filePath) {
-							m_nodeGraphs[m_activeGraph]->save(std::string(filePath));
-						}
-					} else {
-						m_nodeGraphs[m_activeGraph]->save(m_nodeGraphs[m_activeGraph]->m_fileName);
-					}
+				menuActionSave();
+			}
+			ImGui::EndMenu();
+		}
+		ImGui::SameLine();
+		if (ImGui::BeginMenu("Edit")) {
+			bool active = !m_nodeGraphs.empty() && m_nodeGraphs[m_activeGraph] != nullptr;
+			bool uactive = active && m_nodeGraphs[m_activeGraph]->undoRedo()->canUndo();
+			bool ractive = active && m_nodeGraphs[m_activeGraph]->undoRedo()->canRedo();
+			if (ImGui::MenuItem("Undo", "Ctrl+Z", false, uactive)) {
+				m_nodeGraphs[m_activeGraph]->undoRedo()->undo();
+			}
+			if (ImGui::MenuItem("Redo", "Ctrl+Y", false, ractive)) {
+				m_nodeGraphs[m_activeGraph]->undoRedo()->redo();
+			}
+			ImGui::EndMenu();
+		}
+		ImGui::SameLine();
+		if (ImGui::BeginMenu("View")) {
+			if (ImGui::MenuItem("Snap to Grid", nullptr, &m_snapToGrid)) {
+				if (!m_snapToGrid) {
+					m_snapToGridDisabled = true;
 				}
 			}
 			ImGui::EndMenu();
 		}
+
 		ImGui::EndMainMenuBar();
 	}
 
@@ -875,8 +918,7 @@ void TNodeEditor::draw(int w, int h) {
 				ImGuiWindowFlags_NoScrollbar |
 				ImGuiWindowFlags_NoScrollWithMouse |
 				ImGuiWindowFlags_NoBringToFrontOnFocus;
-
-	if (ImGui::Begin("", nullptr, flags)) {
+	if (ImGui::Begin("main", nullptr, flags)) {
 		static float sz0 = 200;
 		static float sz1 = w - 250;
 		ImGui::Splitter(true, 3.0f, &sz0, &sz1, 100, 300);
@@ -894,11 +936,10 @@ void TNodeEditor::draw(int w, int h) {
 						"Module\0",
 						0
 					};
-					ImGui::InputText(
-						"Name##graphName",
-						m_nodeGraphs[m_activeGraph]->m_name.data(),
-						m_nodeGraphs[m_activeGraph]->m_name.size()
-					);
+					static char graphName[128] = { 0 };
+					if (ImGui::InputText("Name##graphName", graphName, 128)) {
+						m_nodeGraphs[m_activeGraph]->m_name = std::string(graphName);
+					}
 					ImGui::Combo(
 						"Type##graphType",
 						(int*)&m_nodeGraphs[m_activeGraph]->m_type,
@@ -977,7 +1018,7 @@ void TNodeEditor::draw(int w, int h) {
 					}
 					ImGui::PopItemWidth();
 				}
-				if (ImGui::CollapsingHeader("Sample Library")) {
+				if (ImGui::CollapsingHeader("Samples")) {
 					static int selectedSample = -1;
 					auto items = m_nodeGraphs[m_activeGraph]->getSampleNames();
 					ImGui::ListBox("##sampleLib", &selectedSample, items.data(), items.size(), 8);
@@ -1096,7 +1137,7 @@ TNodeGraph* TNodeEditor::newGraph() {
 	std::unique_ptr<TNodeGraph> graph = std::unique_ptr<TNodeGraph>(new TNodeGraph());
 
 	std::stringstream stm;
-	stm << "Untitled Node Graph";
+	stm << "Untitled";
 	stm << m_nodeGraphs.size();
 	graph->m_name = stm.str();
 	graph->m_editor = this;

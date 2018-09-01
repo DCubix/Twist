@@ -11,8 +11,9 @@ public:
 	}
 
 	void gui() {
-		if (ImGui::Button(enabled ? "OFF" : "ON", ImVec2(32, 32))) {
-			enabled = !enabled;
+		enabled = false;
+		if (ImGui::Button("PRESS", ImVec2(32, 32))) {
+			enabled = true;
 		}
 	}
 

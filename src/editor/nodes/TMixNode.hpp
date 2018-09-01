@@ -8,7 +8,7 @@ public:
 	TMixNode(float fac = 0.5f) : TNode("Mix", 140, 90), factor(fac) {
 		addInput("A");
 		addInput("B");
-		addInput("Factor");
+		addInput("Fac");
 		addOutput("Out");
 	}
 

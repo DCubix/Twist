@@ -32,7 +32,6 @@ public:
 		note(note), chordType(ct), direction(dir), oct(oct)
 	{
 		addInput("Time");
-		addOutput("Freq");
 		addOutput("Gate");
 		addOutput("Nt");
 	}
@@ -81,7 +80,7 @@ public:
 
 		ImGui::Combo("Note", (int*)&note, NOTES, 12, -1);
 		ImGui::SameLine();
-		ImGui::DragInt("Oct", &oct, 0.1f, -5, 5);
+		ImGui::DragInt("Oct", &oct, 0.1f, 0, 5);
 		ImGui::PopItemWidth();
 	}
 
@@ -155,9 +154,8 @@ public:
 			default: break;
 		}
 
-		setOutput(0, tgen::note(nt, oct));
-		setOutput(1, gate ? 1 : 0);
-		setOutput(2, nt*oct);
+		setOutput(0, gate ? 1 : 0);
+		setOutput(1, nt + (12 * oct));
 	}
 
 	void save(JSON& json) {

@@ -41,6 +41,8 @@ public:
 	SDL_Window* window() { return m_window; }
 
 private:
+	void setupIcon();
+
 	SDL_GLContext m_context;
 	SDL_Window* m_window;
 

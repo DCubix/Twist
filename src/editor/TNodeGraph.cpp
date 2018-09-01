@@ -4,24 +4,26 @@ TNodeFactories TNodeFactory::factories;
 
 #include "nodes/TOutNode.hpp"
 #include "nodes/TStorageNodes.hpp"
+#include "TCommands.h"
 
 #include "sndfile.hh"
 
 TNodeGraph::TNodeGraph() {
 	m_name = "Untitled Node Graph";
 	m_type = TGraphType::Normal;
+	m_undoRedo = std::unique_ptr<TUndoRedo>(new TUndoRedo());
 	m_globalStorage.fill(0.0f);
 }
 
 TIntList TNodeGraph::getAllLinksRelatedToNode(int id) {
 	TIntList links;
-	for (int i = 0; i < m_links.size(); i++) {
-		auto& lnk = m_links[i];
+	for (auto&& e : m_links) {
+		TLink* lnk = e.second.get();
 		if (lnk->inputID == id) {
 			m_lock.lock();
-			auto pos = std::find(links.begin(), links.end(), i);
+			auto pos = std::find(links.begin(), links.end(), e.first);
 			if (pos == links.end()) {
-				links.push_back(i);
+				links.push_back(e.first);
 			}
 			m_lock.unlock();
 		}
@@ -31,7 +33,8 @@ TIntList TNodeGraph::getAllLinksRelatedToNode(int id) {
 
 TIntList TNodeGraph::getNodeInputs(int id) {
 	TIntList ins;
-	for (auto& lnk : m_links) {
+	for (auto& e : m_links) {
+		TLink* lnk = e.second.get();
 		if (lnk->outputID == id && node(lnk->inputID) != nullptr) {
 			m_lock.lock();
 			ins.push_back(lnk->inputID);
@@ -110,6 +113,12 @@ TNode* TNodeGraph::node(int id) {
 	return m_nodes[id].get();
 }
 
+TLink* TNodeGraph::link(int id) {
+	if (m_links.find(id) == m_links.end())
+		return nullptr;
+	return m_links[id].get();
+}
+
 void TNodeGraph::solveNodes(const TIntList& solved) {
 	for (int id : solved) {
 		TNode* nd = node(id);
@@ -126,8 +135,8 @@ void TNodeGraph::solveNodes(const TIntList& solved) {
 			nd->m_solved = true;
 		}
 			
-		for (int i = 0; i < m_links.size(); i++) {
-			TLink* lnk = m_links[i].get();
+		for (auto&& e : m_links) {
+			TLink* lnk = e.second.get();
 			if (lnk == nullptr) continue;
 			if (lnk->inputID == id) {
 				TNode* tgt = node(lnk->outputID);
@@ -162,12 +171,21 @@ int TNodeGraph::getID() {
 	return id + 1;
 }
 
+int TNodeGraph::getLinkID() {
+	int id = 0;
+	for (auto& n : m_links) {
+		if (n.second == nullptr) continue;
+		id = std::max(id, n.first);
+	}
+	return id + 1;
+}
+
 TNode* TNodeGraph::addNode(int x, int y, const std::string& type) {
 	JSON params;
 	return addNode(x, y, type, params);
 }
 
-TNode* TNodeGraph::addNode(int x, int y, const std::string& type, JSON& params, int id) {
+TNode* TNodeGraph::addNode(int x, int y, const std::string& type, JSON& params, int id, bool canundo) {
 	TNodeCtor* ctor = TNodeFactory::factories[type];
 	if (ctor == nullptr) return nullptr;
 
@@ -176,6 +194,8 @@ TNode* TNodeGraph::addNode(int x, int y, const std::string& type, JSON& params, 
 	n->m_id = nid;
 	n->m_bounds.x = x;
 	n->m_bounds.y = y;
+	n->m_gridPosition.x = x;
+	n->m_gridPosition.y = y;
 	n->m_parent = this;
 	n->m_type = type;
 
@@ -198,11 +218,20 @@ TNode* TNodeGraph::addNode(int x, int y, const std::string& type, JSON& params, 
 
 	solveNodes();
 
+	if (canundo)
+		m_undoRedo->performedAction<TAddNodeCommand>(this, nid,	x, y, type, params);
+
 	return nd;
 }
 
-void TNodeGraph::deleteNode(int id) {
+void TNodeGraph::deleteNode(int id, bool canundo) {
 	TIntList brokenLinks = getAllLinksRelatedToNode(id);
+
+	TNode* nd = node(id);
+	std::string type = nd->type();
+	int x = nd->m_bounds.x, y = nd->m_bounds.y;
+	JSON params;
+	nd->save(params);
 
 	m_lock.lock();
 	auto pos = m_nodes.find(id);
@@ -212,25 +241,28 @@ void TNodeGraph::deleteNode(int id) {
 	m_lock.unlock();
 
 	// Find some more broken links...
-	for (int i = 0; i < m_links.size(); i++) {
-		TLink* lnk = m_links[i].get();
+	for (auto&& e : m_links) {
+		TLink* lnk = e.second.get();
 		if (node(lnk->inputID) == nullptr || node(lnk->outputID) == nullptr) {
-			if (std::find(brokenLinks.begin(), brokenLinks.end(), i) == brokenLinks.end())
-				brokenLinks.push_back(i);
+			if (std::find(brokenLinks.begin(), brokenLinks.end(), e.first) == brokenLinks.end())
+				brokenLinks.push_back(e.first);
 		}
 	}
 
 	std::sort(brokenLinks.begin(), brokenLinks.end());
 	for (int i = brokenLinks.size() - 1; i >= 0; i--) {
-		m_links.erase(m_links.begin() + brokenLinks[i]);
+		m_links.erase(brokenLinks[i]);
 	}
 
 	solveNodes();
 
+	if (canundo)
+		m_undoRedo->performedAction<TDeleteNodeCommand>(this, id, x, y, type, params);
+
 	m_saved = false;
 }
 
-void TNodeGraph::link(int inID, int inSlot, int outID, int outSlot) {
+int TNodeGraph::link(int inID, int inSlot, int outID, int outSlot, bool canundo) {
 	TLink* link = new TLink();
 	link->inputID = inID;
 	link->inputSlot = inSlot;
@@ -241,22 +273,39 @@ void TNodeGraph::link(int inID, int inSlot, int outID, int outSlot) {
 	node(inID)->outputs()[inSlot].connected = true;
 
 	m_lock.lock();
-	m_links.push_back(std::unique_ptr<TLink>(link));
+	int id = getLinkID();
+	m_links[id] = std::unique_ptr<TLink>(link);
 	m_lock.unlock();
 
 	m_saved = false;
 
 	solveNodes();
+
+	if (canundo)
+		m_undoRedo->performedAction<TLinkCommand>(this, id, inID, inSlot, outID, outSlot);
+
+	return id;
 }
 
-void TNodeGraph::removeLink(int id) {
-	TLink* lnk = m_links[id].get();
+void TNodeGraph::removeLink(int id, bool canundo) {
+	TLink* lnk = link(id);
 	if (lnk == nullptr) return;
+
 	node(lnk->outputID)->inputs()[lnk->outputSlot].connected = false;
 	node(lnk->inputID)->outputs()[lnk->inputSlot].connected = false;
+
+	if (canundo) {
+		m_undoRedo->performedAction<TUnLinkCommand>(
+			this,
+			id, lnk->inputID, lnk->inputSlot,
+			lnk->outputID, lnk->outputSlot
+		);
+	}
+
 	m_lock.lock();
-	m_links.erase(m_links.begin() + id);
+	m_links.erase(id);
 	m_lock.unlock();
+
 	m_saved = false;
 }
 
@@ -349,8 +398,9 @@ void TNodeGraph::save(const std::string& fileName) {
 	}
 
 	i = 0;
-	for (auto& link : m_links) {
-		if (link.get() == nullptr) continue;
+	for (auto& e : m_links) {
+		TLink* link = e.second.get();
+		if (link == nullptr) continue;
 		JSON& links = json["links"][i++];
 		links["inID"] = link->inputID;
 		links["inSlot"] = link->inputSlot;

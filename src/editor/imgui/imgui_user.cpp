@@ -350,7 +350,16 @@ bool KeyBed(const char* id, bool* keys, int keyCount) {
 
 	return false;
 }
+bool HotKey(int mod, int key) {
+	ImGuiIO& io = ImGui::GetIO();
 
+	int gmod = 0;
+	if (io.KeyCtrl) gmod |= CTRL;
+	if (io.KeyShift) gmod |= SHIFT;
+	if (io.KeyAlt) gmod |= ALT;
+
+	return (gmod == mod) && ImGui::IsKeyPressed(key, false);
+}
 }
 
 #define TAB_SMOOTH_DRAG 0   // This work nicely but has overlapping issues (maybe render dragged tab separately, at end)

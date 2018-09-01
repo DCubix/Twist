@@ -10,7 +10,6 @@ class TMIDINode : public TNode, public TMidiMessageSubscriber {
 public:
 	TMIDINode() : TNode("MIDI In", 0, 0) {
 		addOutput("Nt");
-		addOutput("Freq");
 		addOutput("Gate");
 		gates.fill(false);
 	}
@@ -41,14 +40,13 @@ public:
 
 	void solve() {
 		for (int i = 0; i < TNODE_MAX_SIMULTANEOUS_VALUES_PER_SLOT; i++) {
-			setMultiOutput(2, i, 0.0f);
+			setMultiOutput(1, i, 0.0f);
 		}
 		for (int i = 0, s = 0; i < 128; i++) {
 			if (gates[i]) {
 				s = s % TNODE_MAX_SIMULTANEOUS_VALUES_PER_SLOT;
 				setMultiOutput(0, s, i);
-				setMultiOutput(1, s, tgen::note(i));
-				setMultiOutput(2, s, 1.0f);
+				setMultiOutput(1, s, 1.0f);
 				s++;
 			}
 		}

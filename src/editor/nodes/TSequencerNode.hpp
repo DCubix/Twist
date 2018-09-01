@@ -2,20 +2,19 @@
 #define T_SEQUENCER_NODE_H
 
 #include "TNode.h"
+#include "../../TGen.h"
 
-#define SEQUENCER_SIZE 16
-#define SEQUENCER_SIZE_VISIBLE (SEQUENCER_SIZE/2)
+#define SEQUENCER_SIZE 8
+#define SEQUENCER_SIZE_VISIBLE SEQUENCER_SIZE
 class TSequencerNode : public TNode {
 public:
 	TSequencerNode()
 		: TNode("Sequencer", 410, 150),
 			noteIndex(0), out(0.0f), key((int) Notes::C)
 	{
-		addInput("Mod");
 		addInput("Index");
 		addInput("Key");
 
-		addOutput("Freq");
 		addOutput("Nt");
 		addOutput("Gate");
 
@@ -52,7 +51,7 @@ public:
 		ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0, 0, 0, 0));
 		
 		const ImGuiID id = window->GetID("sequencer_gui");
-		ImGui::BeginChildFrame(id, ImVec2(SEQUENCER_SIZE_VISIBLE*spacing, 4*lineHeight), ImGuiWindowFlags_HorizontalScrollbar);
+		ImGui::BeginChildFrame(id, ImVec2(SEQUENCER_SIZE_VISIBLE*spacing, 4*lineHeight), 0);
 			ImGui::BeginHorizontal(this);
 				for (int i = 0; i < SEQUENCER_SIZE; i++) {
 					bool pushed = false;
@@ -105,28 +104,24 @@ public:
 	}
 
 	void solve() {
-		int ni = noteIndex = (int) getInputOr(1, 0);
+		int ni = noteIndex = (int) getInputOr(0, 0);
 		int nid = ni % SEQUENCER_SIZE;
 		Notes note = notes[nid];
 
 		// Transpose note
-		int nkey = (int) getInputOr(2, key);
+		int nkey = (int) getInputOr(1, key);
 
 		int fnote = (int) notes[0];
 		int noteDiff = (nkey - fnote);
 		int nnote = ((int)note + noteDiff);
 		int oct = octs[nid] + tgen::octave(nnote);
 
-		if (enabled[nid]) {
-			out = tgen::note(nnote, oct);
-		} else {
-			out = 0.0f;
+		if (!enabled[nid]) {
 			globGate = true;
-			setOutput(2, 0.0f);
+			setOutput(1, 0.0f);
 		}
 
-		setOutput(0, getInput(0) + out);
-		setOutput(1, nnote + (oct * 12));
+		setOutput(0, nnote + (oct * 12));
 
 		if (prevNoteIndex != noteIndex) {
 			globGate = true;
@@ -134,10 +129,10 @@ public:
 		}
 
 		if (globGate) {
-			setOutput(2, 0.0f);
+			setOutput(1, 0.0f);
 			globGate = false;
 		} else {
-			setOutput(2, 1.0f);
+			setOutput(1, 1.0f);
 		}
 	}
 

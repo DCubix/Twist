@@ -70,6 +70,7 @@ public:
 
 	const ImVec4& bounds() const { return m_bounds; }
 	ImVec4& bounds() { return m_bounds; }
+	ImVec2& gridPosition() { return m_gridPosition; }
 
 	std::vector<TValue>& inputs() { return m_inputs; }
 	std::vector<TValue>& outputs() { return m_outputs; }
@@ -108,11 +109,13 @@ public:
 	void setOutput(int id, float value) { setMultiOutput(id, 0, value); }
 	void setInput(int id, float value) { setMultiInput(id, 0, value); }
 
-	ImVec2 inputSlotPos(int s, float x=1) const {
-		return ImVec2(m_bounds.x*x, m_bounds.y*x + m_bounds.w * ((float)s + 1) / ((float)m_inputs.size() + 1));
+	ImVec2 inputSlotPos(int s, float x=1, bool snap=false) const {
+		ImVec2 p = snap ? m_gridPosition : ImVec2(m_bounds.x, m_bounds.y);
+		return ImVec2(p.x*x, p.y*x + m_bounds.w * ((float)s + 1) / ((float)m_inputs.size() + 1));
 	}
-	ImVec2 outputSlotPos(int s, float x=1) const {
-		return ImVec2(m_bounds.x*x + m_bounds.z, m_bounds.y*x + m_bounds.w * ((float)s + 1) / ((float)m_outputs.size() + 1));
+	ImVec2 outputSlotPos(int s, float x=1, bool snap=false) const {
+		ImVec2 p = snap ? m_gridPosition : ImVec2(m_bounds.x, m_bounds.y);
+		return ImVec2(p.x*x + m_bounds.z, p.y*x + m_bounds.w * ((float)s + 1) / ((float)m_outputs.size() + 1));
 	}
 
 	ImVec2 size() const { return ImVec2(m_bounds.z, m_bounds.w); }
@@ -133,6 +136,7 @@ protected:
 	int m_id;
 	std::string m_title, m_type;
 	ImVec4 m_bounds;
+	ImVec2 m_gridPosition;
 	ImRect m_selectionBounds;
 	bool m_selected = false, m_solved = false;
 

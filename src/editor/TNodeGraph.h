@@ -14,17 +14,18 @@
 
 #include "nodes/TNode.h"
 #include "../TGen.h"
+#include "TUndoRedo.h"
 
 using TNodeCtor = TNode*(JSON&);
 
 using TNodePtr = std::unique_ptr<TNode>;
+using TLinkPtr = std::unique_ptr<TLink>;
 using TNodeFactories = std::map<std::string, TNodeCtor*>;
 using TNodeList = std::map<int, TNodePtr>;
-using TLinkList = std::vector<std::unique_ptr<TLink>>;
+using TLinkList = std::map<int, TLinkPtr>;
 using TIntList = std::vector<int>;
 
 #define GLOBAL_STORAGE_SIZE 32
-
 #define GET(type, v, d) (json[v].is_null() ? d : json[v].get<type>())
 
 class TInputsNode : public TNode {
@@ -177,18 +178,19 @@ public:
 	};
 
 	TNode* addNode(int x, int y, const std::string& type);
-	TNode* addNode(int x, int y, const std::string& type, JSON& params, int id = -1);
-	void deleteNode(int id);
-	void link(int inID, int inSlot, int outID, int outSlot);
+	TNode* addNode(int x, int y, const std::string& type, JSON& params, int id = -1, bool canundo=true);
+	void deleteNode(int id, bool canundo=true);
+	int link(int inID, int inSlot, int outID, int outSlot, bool canundo=true);
 	void selectAll();
 	void unselectAll();
 	int getActiveNode();
 
 	TNodeList& nodes() { return m_nodes; }
 	TLinkList& links() { return m_links; }
-	void removeLink(int id);
+	void removeLink(int id, bool canundo=true);
 
 	TNode* node(int id);
+	TLink* link(int id);
 	float solve();
 
 	int outputNode() const { return m_outputNode; }
@@ -217,6 +219,8 @@ public:
 	TNodeEditor* editor() { return m_editor; }
 	void editor(TNodeEditor* ed) { m_editor = ed; }
 
+	TUndoRedo* undoRedo() { return m_undoRedo.get(); }
+
 	std::string name() const { return m_name; }
 
 	void solveNodes();
@@ -224,6 +228,7 @@ public:
 protected:
 	void addSample(const std::string& fname, const std::vector<float>& data, float sr, float dur);
 	int getID();
+	int getLinkID();
 	TIntList getAllLinksRelatedToNode(int id);
 	TIntList getNodeInputs(int id);
 	TIntList buildNodes(int id);
@@ -231,6 +236,7 @@ protected:
 	void solveNodes(const TIntList& solved);
 
 	TNodeEditor* m_editor;
+	std::unique_ptr<TUndoRedo> m_undoRedo;
 
 	int m_outputNode = 0, m_inputsNode = 0, m_outputsNode = 0;
 
