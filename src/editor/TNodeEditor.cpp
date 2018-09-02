@@ -102,6 +102,7 @@ TNodeEditor::TNodeEditor() {
 	m_bounds.z = 1;
 	m_bounds.w = 1;
 	m_oldFontWindowScale = 0;
+	m_envelope = 1000;
 
 	m_MIDIin = std::unique_ptr<RtMidiIn>(new RtMidiIn(
 		RtMidi::UNSPECIFIED, "Twist MIDI In"
@@ -435,8 +436,8 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 		TNode* no = graph->node(link->outputID);
 		if (ni == nullptr || no == nullptr) continue;
 
-		ImVec2 p1 = offset + ni->outputSlotPos(link->inputSlot, scl);
-		ImVec2 p2 = offset + no->inputSlotPos(link->outputSlot, scl);
+		ImVec2 p1 = offset + ni->outputSlotPos(link->inputSlot, scl, m_snapToGrid);
+		ImVec2 p2 = offset + no->inputSlotPos(link->outputSlot, scl, m_snapToGrid);
 		ImVec2 cp1 = p1 + ImVec2(50, 0);
 		ImVec2 cp2 = p2 - ImVec2(50, 0);
 
@@ -1088,8 +1089,9 @@ void TNodeEditor::draw(int w, int h) {
 						if (res == 1) {
 							closeGraph(i);
 							break;
+						} else {
+							m_nodeGraphs[i]->m_open = true;
 						}
-						m_nodeGraphs[i]->m_open = true;
 					}
 				}
 			}
@@ -1104,7 +1106,8 @@ void TNodeEditor::draw(int w, int h) {
 			ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
 			m_mainWindowSize = ImGui::GetWindowSize();
-			drawNodeGraph(m_nodeGraphs[m_activeGraph].get());
+			if (m_nodeGraphs[m_activeGraph]->m_open)
+				drawNodeGraph(m_nodeGraphs[m_activeGraph].get());
 
 			if (m_linking.active && ImGui::IsMouseReleased(0)) {
 				m_linking.active = false;

@@ -78,7 +78,7 @@ public:
 		ImGui::SameLine();
 		ImGui::Combo("Dir.", (int*)&direction, DIRT, DirectionCount);
 
-		ImGui::Combo("Note", (int*)&note, NOTES, 12, -1);
+		ImGui::Combo("Note", (int*)&note, NOTES, 12);
 		ImGui::SameLine();
 		ImGui::DragInt("Oct", &oct, 0.1f, 0, 5);
 		ImGui::PopItemWidth();

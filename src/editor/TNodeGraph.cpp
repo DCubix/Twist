@@ -5,6 +5,7 @@ TNodeFactories TNodeFactory::factories;
 #include "nodes/TOutNode.hpp"
 #include "nodes/TStorageNodes.hpp"
 #include "TCommands.h"
+#include "TNodeEditor.h"
 
 #include "sndfile.hh"
 
@@ -394,6 +395,10 @@ void TNodeGraph::save(const std::string& fileName) {
 
 	int i = 0;
 	for (auto& nd : m_nodes) {
+		if (m_editor->snapToGrid()) {
+			nd.second->m_bounds.x = nd.second->m_gridPosition.x;
+			nd.second->m_bounds.y = nd.second->m_gridPosition.y;
+		}
 		nd.second->save(json["nodes"][i++]);
 	}
 
