@@ -9,16 +9,21 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 
+set(BUILD_SHARED_LIBS CACHE BOOL OFF)
+set(BUILD_TESTING CACHE BOOL OFF)
+add_subdirectory("${CMAKE_SOURCE_DIR}/deps/rtmidi")
+
 find_package(SDL2 REQUIRED)
 find_package(SndFile REQUIRED)
-find_package(RtMIDI REQUIRED)
+# find_package(RtMIDI REQUIRED)
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/editor/imgui/")
 
 include_directories(
 	${SDL2_INCLUDE_DIRS}
 	${LIBSNDFILE_INCLUDE_DIRS}
-	${RTMIDI_INCLUDE_DIR}
+	# ${RTMIDI_INCLUDE_DIR}
+	"deps/rtmidi"
 )
 
 file(GLOB_RECURSE INC
@@ -37,7 +42,8 @@ add_executable(${PROJECT_NAME} ${INC} ${SRC})
 target_link_libraries(${PROJECT_NAME}
 	${SDL2_LIBRARIES}
 	${LIBSNDFILE_LIBRARIES}
-	${RTMIDI_LIBRARY}
+	# ${RTMIDI_LIBRARY}
+	rtmidi_static
 	ImGUI
 )
 

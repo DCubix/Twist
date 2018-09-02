@@ -23,4 +23,4 @@ file(GLOB ImGUISRC
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ImGUISRC})
 
 add_library(ImGUI STATIC ${ImGUISRC})
-target_include_directories(ImGUI PUBLIC  ${CMAKE_CURRENT_SOURCE_DIR}/)
+target_include_directories(ImGUI PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/)
