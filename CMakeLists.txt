@@ -7,6 +7,14 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+if((CMAKE_CXX_COMPILER_ID MATCHES "GNU") OR (CMAKE_CXX_COMPILER_ID MATCHES "Clang"))
+	add_compile_options(-msse3)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "Intel")
+	add_compile_options(/QxSSE3)
+elseif((CMAKE_CXX_COMPILER_ID MATCHES "MSVC") AND NOT CMAKE_CL_64)
+	add_compile_options(/arch:SSE2) # VC doesn't support /arch:SSE3
+endif()
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 
 add_definitions(-DJACK_HAS_PORT_RENAME)
@@ -19,12 +27,14 @@ find_package(SDL2 REQUIRED)
 find_package(SndFile REQUIRED)
 # find_package(RtMIDI REQUIRED)
 
-add_subdirectory("${CMAKE_SOURCE_DIR}/src/editor/imgui/")
+add_subdirectory("${CMAKE_SOURCE_DIR}/src/editor/imgui")
+add_subdirectory("${CMAKE_SOURCE_DIR}/deps/xsimd")
 
 include_directories(
 	${SDL2_INCLUDE_DIRS}
 	${LIBSNDFILE_INCLUDE_DIRS}
 	# ${RTMIDI_INCLUDE_DIR}
+	"deps/xsimd/include"
 	"deps/rtmidi"
 )
 
@@ -45,6 +55,7 @@ target_link_libraries(${PROJECT_NAME}
 	${SDL2_LIBRARIES}
 	${LIBSNDFILE_LIBRARIES}
 	# ${RTMIDI_LIBRARY}
+	xsimd
 	rtmidi_static
 	ImGUI
 )

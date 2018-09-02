@@ -2,6 +2,7 @@
 #define T_MATH_NODE_H
 
 #include "TNode.h"
+#include "xsimd/xsimd.hpp"
 
 class TMathNode : public TNode {
 public:
@@ -18,8 +19,8 @@ public:
 		: TNode("Math", 120, 90), op(op), aValue(a), bValue(b)
 	{
 		addOutput("Out");
-		addInput("In 0");
-		addInput("In 1");
+		addInput("A");
+		addInput("B");
 	}
 
 	void gui() {
@@ -30,7 +31,7 @@ public:
 			"Negate",
 			"Average"
 		};
-		ImGui::PushItemWidth(80);
+		ImGui::PushItemWidth(70);
 		ImGui::Combo("Op", (int*)&op, OPS, OpCount, -1);
 		ImGui::DragFloat("A", &aValue, 0.01f);
 		ImGui::DragFloat("B", &bValue, 0.01f);
@@ -38,17 +39,17 @@ public:
 	}
 
 	void solve() {
-		float a = getInputOr(0, aValue);
-		float b = getInputOr(1, bValue);
-		float out = 0.0f;
+		FloatArray a = getMultiInputValues(0, aValue);
+		FloatArray b = getMultiInputValues(1, bValue);
+		FloatArray out;
 		switch (op) {
-			case Add: out = a + b; break;
-			case Sub: out = a - b; break;
-			case Mul: out = a * b; break;
-			case Neg: out = -a; break;
-			case Average: out = (a + b) * 0.5f; break;
+			case Add: out = SIMD::add(a, b); break;
+			case Sub: out = SIMD::sub(a, b); break;
+			case Mul: out = SIMD::mul(a, b); break;
+			case Neg: out = SIMD::neg(a); break;
+			case Average: out = SIMD::avg(a, b); break;
 		}
-		setOutput(0, out);
+		setMultiOutputValues(0, out);
 	}
 
 	void save(JSON& json) {

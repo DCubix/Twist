@@ -154,8 +154,8 @@ public:
 			default: break;
 		}
 
-		setOutput(0, gate ? 1 : 0);
-		setOutput(1, nt + (12 * oct));
+		setOutput(0, gate ? 1 : 0, true);
+		setOutput(1, nt + (12 * oct), true);
 	}
 
 	void save(JSON& json) {

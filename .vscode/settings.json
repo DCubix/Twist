@@ -60,5 +60,6 @@
 		"mutex": "cpp"
 	},
 	"C_Cpp.default.configurationProvider": "vector-of-bool.cmake-tools",
-	"C_Cpp.configurationWarnings": "Disabled"
+	"C_Cpp.configurationWarnings": "Disabled",
+	"C_Cpp.intelliSenseEngineFallback": "Disabled"
 }

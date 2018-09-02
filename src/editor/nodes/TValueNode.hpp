@@ -15,7 +15,8 @@ public:
 	}
 
 	void solve() {
-		setOutput(0, value);
+		for (int i = 0; i < FLT_ARR_MAX; i++)
+			setMultiOutput(0, i, value);
 	}
 
 	void save(JSON& json) {

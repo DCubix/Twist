@@ -4,6 +4,8 @@
 #include <string>
 #include <array>
 
+#include "../../TSIMD.hpp"
+
 #include "../json.hpp"
 using JSON = nlohmann::json;
 
@@ -27,11 +29,10 @@ namespace tmath {
 	}
 }
 
-#define TNODE_MAX_SIMULTANEOUS_VALUES_PER_SLOT 8
-using TValueList = std::array<float, TNODE_MAX_SIMULTANEOUS_VALUES_PER_SLOT>;
+#define TNODE_MAX_SIMULTANEOUS_VALUES_PER_SLOT FLT_ARR_MAX
 
 struct TValue {
-	TValueList values;
+	FloatArray values;
 
 	std::string label;
 	bool connected;
@@ -84,19 +85,26 @@ public:
 		return m_inputs[id].values[pos];
 	}
 
-	TValueList& getMultiOutputValues(int id, float def=0.0f) {
+	FloatArray& getMultiOutputValues(int id, float def=0.0f) {
 		if (!m_outputs[id].connected) {
-			m_defaultValues[0] = def;
+			m_defaultValues.fill(def);
 			return m_defaultValues;
 		}
 		return m_outputs[id].values;
 	}
-	TValueList& getMultiInputValues(int id, float def=0.0f) {
+	FloatArray& getMultiInputValues(int id, float def=0.0f) {
 		if (!m_inputs[id].connected) {
-			m_defaultValues[0] = def;
+			m_defaultValues.fill(def);
 			return m_defaultValues;
 		}
 		return m_inputs[id].values;
+	}
+
+	float setMultiOutputValues(int id, const FloatArray& v) {
+		m_outputs[id].values = v;
+	}
+	float setMultiInputValues(int id, const FloatArray& v) {
+		m_inputs[id].values = v;
 	}
 
 	float setMultiOutput(int id, int pos, float value) { m_outputs[id].values[pos] = value; }
@@ -106,7 +114,13 @@ public:
 	float getInput(int id) const { return getMultiInput(id, 0); }
 	float getInputOr(int id, float def=0.0f) const { return getMultiInputOr(id, 0, def); }
 
-	void setOutput(int id, float value) { setMultiOutput(id, 0, value); }
+	void setOutput(int id, float value, bool fill=false) {
+		if (fill) {
+			m_outputs[id].values.fill(value);
+		} else {
+			setMultiOutput(id, 0, value);
+		}
+	}
 	void setInput(int id, float value) { setMultiInput(id, 0, value); }
 
 	ImVec2 inputSlotPos(int s, float x=1, bool snap=false) const {
@@ -145,7 +159,7 @@ protected:
 
 	TNodeGraph* m_parent;
 
-	TValueList m_defaultValues;
+	FloatArray m_defaultValues;
 };
 
 struct TLink {

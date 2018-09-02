@@ -63,7 +63,11 @@ public:
 	}
 
 	void solve() {
-		setOutput(0, tgen::note(int(getInput(0))));
+		FloatArray in = getMultiInputValues(0);
+		FloatArray out;
+		for (int i = 0; i < FLT_ARR_MAX; i++)
+			out[i] = tgen::note(int(in[i]));
+		setMultiOutputValues(0, out);
 	}
 
 	void save(JSON& json) {

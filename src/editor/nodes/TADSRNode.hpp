@@ -15,7 +15,7 @@ public:
 		addOutput("Out");
 		addInput("Gate");
 
-		for (int i = 0; i < TNODE_MAX_SIMULTANEOUS_VALUES_PER_SLOT; i++) {
+		for (int i = 0; i < FLT_ARR_MAX; i++) {
 			m_adsr[i] = TADSR(a, d, s, r);
 		}
 
@@ -33,7 +33,7 @@ public:
 	}
 
 	void solve() {
-		for (int i = 0; i < TNODE_MAX_SIMULTANEOUS_VALUES_PER_SLOT; i++) {
+		for (int i = 0; i < FLT_ARR_MAX; i++) {
 			m_adsr[i].attack(a * sr);
 			m_adsr[i].decay(d * sr);
 			m_adsr[i].sustain(s * sr);

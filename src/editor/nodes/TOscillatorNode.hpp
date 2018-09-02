@@ -35,8 +35,8 @@ public:
 	}
 
 	void solve() {
-		TValueList freqs = getMultiInputValues(0, frequency);
-		TValueList amps = getMultiInputValues(1, amplitude);
+		FloatArray freqs = getMultiInputValues(0, frequency);
+		FloatArray amps = getMultiInputValues(1, amplitude);
 
 		int count = 0;
 		float value = 0.0f;
