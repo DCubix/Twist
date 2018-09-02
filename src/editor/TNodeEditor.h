@@ -37,6 +37,7 @@ public:
 	bool rendering() const { return m_rendering; }
 	bool loading() const { return m_loading; }
 	bool snapToGrid() const { return m_snapToGrid; }
+	bool exit() const { return m_exit; }
 
 	float output();
 
@@ -50,11 +51,14 @@ public:
 
 	float sampleRate;
 
+	void menuActionExit();
+
 private:
 	TNodeGraph* newGraph();
 	void drawNodeGraph(TNodeGraph* graph);
 	void menuActionOpen();
-	void menuActionSave();
+	void menuActionSave(int id = -1);
+	void menuActionSnapAllToGrid();
 
 	TLinking m_linking;
 
@@ -73,7 +77,7 @@ private:
 
 	float m_signalDC = 0.0f, m_envelope = 0.0f, m_outDuration = 0, m_recTime = 0.1f,
 			m_recordingFadeTime = 0.0f, m_recordingFade = 0.0f;
-	bool m_rendering = false, m_loading = false, m_playing = false, m_recording = false;
+	bool m_rendering = false, m_loading = false, m_playing = false, m_recording = false, m_exit=false;
 
 	std::vector<float> m_recordBuffer;
 	int m_recordPointer = 0, m_recordingFadeType = 0;

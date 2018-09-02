@@ -37,7 +37,7 @@ TAudio::TAudio(SDL_AudioCallback callback, void* udata, int sampleRate, int samp
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
 	m_window = SDL_CreateWindow(
-		"TAudio",
+		TWIST_NAME,
 		SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
 		1024, 640, 
 		SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
@@ -97,13 +97,11 @@ void TAudio::destroy() {
 	SDL_Quit();
 }
 
-void TAudio::sync() {
+void TAudio::sync(const InputCallback& cb) {
 	SDL_Event e;
 
 	while (SDL_PollEvent(&e)) {
-		if (e.type == SDL_QUIT) {
-			m_shouldClose = true;
-		}
+		if (cb) cb(this, e);
 
 		/// Keyboard Input
 		static const int KEYS[] = {

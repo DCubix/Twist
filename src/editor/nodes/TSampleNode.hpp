@@ -8,8 +8,6 @@
 #include "../TNodeGraph.h"
 #include "../../TGen.h"
 
-#include "../tinyfiledialogs.h"
-
 class TSampleNode : public TNode {
 public:
 	TSampleNode(int sampleID, int sel, float amp)

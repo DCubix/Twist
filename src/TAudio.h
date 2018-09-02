@@ -20,6 +20,7 @@
 
 class TAudio;
 using GUICallback = std::function<void(TAudio*, int, int)>;
+using InputCallback = std::function<void(TAudio*, SDL_Event&)>;
 
 class TAudio {
 public:
@@ -34,8 +35,9 @@ public:
 
 	void guiCallback(const GUICallback& cb) { m_guiCallback = cb; }
 
+	void exit() { m_shouldClose = true; }
 	bool shouldClose() const { return m_shouldClose; }
-	void sync();
+	void sync(const InputCallback& cb = nullptr);
 
 	SDL_AudioSpec spec() const { return m_spec; }
 	SDL_Window* window() { return m_window; }

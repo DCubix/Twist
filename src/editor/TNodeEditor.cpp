@@ -27,12 +27,14 @@
 
 #include "TUndoRedo.h"
 
-#include "tinyfiledialogs.h"
+#include "OsDialog.hpp"
 #include "sndfile.hh"
 
 #include "imgui/imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui/imgui_internal.h"
+
+#include "icon_small.h"
 
 #define NODE_CTOR [](JSON& json) -> TNode*
 
@@ -346,39 +348,81 @@ TNodeEditor::TNodeEditor() {
 }
 
 void TNodeEditor::menuActionOpen() {
-	const static char* FILTERS[] = { "*.tng\0" };
-	const char* filePath = tinyfd_openFileDialog(
-		"Open",
-		"",
-		1,
-		FILTERS,
-		"Twist Node-Graph",
-		0
+	auto filePath = osd::Dialog::file(
+		osd::DialogAction::OpenFile,
+		".",
+		osd::Filters("Twist Node-Graph:tng")
 	);
-	if (filePath) {
+
+	if (filePath.has_value()) {
 		TNodeGraph* graph = newGraph();
-		graph->load(std::string(filePath));
+		graph->load(filePath.value());
 	}
 }
 
-void TNodeEditor::menuActionSave() {
+void TNodeEditor::menuActionSave(int id) {
+	if (id == -1) id = m_activeGraph;
 	if (!m_nodeGraphs.empty()) {
-		if (m_nodeGraphs[m_activeGraph]->m_fileName.empty()) {
-			const static char* FILTERS[] = { "*.tng\0" };
-			const char* filePath = tinyfd_saveFileDialog(
-				"Save",
-				"",
-				1,
-				FILTERS,
-				"Twist Node-Graph"
+		if (m_nodeGraphs[id]->m_fileName.empty()) {
+			auto filePath = osd::Dialog::file(
+				osd::DialogAction::SaveFile,
+				".",
+				osd::Filters("Twist Node-Graph:tng")
 			);
-			if (filePath) {
-				m_nodeGraphs[m_activeGraph]->save(std::string(filePath));
+			
+			if (filePath.has_value()) {
+				m_nodeGraphs[id]->save(filePath.value());
 			}
 		} else {
-			m_nodeGraphs[m_activeGraph]->save(m_nodeGraphs[m_activeGraph]->m_fileName);
+			m_nodeGraphs[id]->save(m_nodeGraphs[id]->m_fileName);
 		}
 	}
+}
+
+void TNodeEditor::menuActionExit() {
+	if (!m_nodeGraphs.empty()) {
+		TIntList unsaved;
+		for (int i = 0; i < m_nodeGraphs.size(); i++) {
+			if (!m_nodeGraphs[i]->m_saved) unsaved.push_back(i);
+		}
+
+		if (!unsaved.empty()) {
+			if (osd::Dialog::message(
+				osd::MessageLevel::Warning,
+				osd::MessageButtons::YesNo,
+				"You have unsaved changes. Continue?")
+			) {
+				m_exit = true;
+			}
+		} else {
+			m_exit = true;
+		}
+	} else {
+		m_exit = true;
+	}
+}
+
+void TNodeEditor::menuActionSnapAllToGrid() {
+	TIntList movIDs;
+	std::map<int, TMoveCommand::Point> movDel;
+
+	for (auto&& e : m_nodeGraphs[m_activeGraph]->nodes()) {
+		TNode* nd = e.second.get();
+		nd->m_gridPosition.x = (int(nd->m_bounds.x) / 8) * 8;
+		nd->m_gridPosition.y = (int(nd->m_bounds.y) / 8) * 8;
+		movIDs.push_back(nd->id());
+		movDel[nd->id()] = TMoveCommand::Point(
+			nd->m_gridPosition.x - nd->m_bounds.x,
+			nd->m_gridPosition.y - nd->m_bounds.y
+		);
+	}
+	m_snapToGridDisabled = true;
+
+	m_nodeGraphs[m_activeGraph]->undoRedo()->performedAction<TMoveCommand>(
+		m_nodeGraphs[m_activeGraph].get(),
+		movIDs,
+		movDel
+	);
 }
 
 void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
@@ -864,18 +908,34 @@ void TNodeEditor::draw(int w, int h) {
 			m_nodeGraphs[m_activeGraph]->undoRedo()->undo();
 		} else if (ImGui::HotKey(CTRL, SDL_SCANCODE_Y)) {
 			m_nodeGraphs[m_activeGraph]->undoRedo()->redo();
+		} else if (ImGui::HotKey(CTRL, SDL_SCANCODE_Q)) {
+			menuActionExit();
 		}
+
+		if (ImGui::TwistTex == nullptr) {
+			ImGui::TwistTex = new TTex(twist_small_png, twist_small_png_len);
+		}
+
+		ImGui::Image(
+			(ImTextureID)(ImGui::TwistTex->id()),
+			ImVec2(16, 16)
+		);
+		ImGui::SameLine();
 
 		if (ImGui::BeginMenu("File")) {
 			if (ImGui::MenuItem("New", "Ctrl+N")) {
 				newGraph();
 			}
 			ImGui::Separator();
-			if (ImGui::MenuItem("Open (*.tng)", "Ctrl+O")) {
+			if (ImGui::MenuItem("Open", "Ctrl+O")) {
 				menuActionOpen();
 			}
-			if (ImGui::MenuItem("Save (*.tng)", "Ctrl+S")) {
+			if (ImGui::MenuItem("Save", "Ctrl+S")) {
 				menuActionSave();
+			}
+			ImGui::Separator();
+			if (ImGui::MenuItem("Exit", "Ctrl+Q")) {
+				menuActionExit();
 			}
 			ImGui::EndMenu();
 		}
@@ -889,6 +949,12 @@ void TNodeEditor::draw(int w, int h) {
 			}
 			if (ImGui::MenuItem("Redo", "Ctrl+Y", false, ractive)) {
 				m_nodeGraphs[m_activeGraph]->undoRedo()->redo();
+			}
+			ImGui::Separator();
+
+			bool sntgEnabled = !m_nodeGraphs.empty();
+			if (ImGui::MenuItem("Snap nodes to grid", nullptr, false, sntgEnabled)) {
+				menuActionSnapAllToGrid();
 			}
 			ImGui::EndMenu();
 		}
@@ -954,18 +1020,14 @@ void TNodeEditor::draw(int w, int h) {
 					}
 					if (!m_recording) {
 						if (ImGui::Button("Save", ImVec2(ImGui::GetWindowWidth(), 20))) {
-							const static char* F[] = { 
-								"*.ogg\0"
-							};
-							const char* filePath = tinyfd_saveFileDialog(
-								"Save Recording",
-								"",
-								1,
-								F,
-								"Audio File (*.ogg)"
+							auto filePath = osd::Dialog::file(
+								osd::DialogAction::SaveFile,
+								".",
+								osd::Filters("Ogg/Vorbis:ogg")
 							);
-							if (filePath) {
-								saveRecording(std::string(filePath));
+
+							if (filePath.has_value()) {
+								saveRecording(filePath.value());
 							}
 						}
 						if (ImGui::DragFloat("Dur. (s)##maxdur", &m_recTime, 0.1f, 0.1f, 60.0f)) {
@@ -1034,17 +1096,19 @@ void TNodeEditor::draw(int w, int h) {
 							"*.flac\0",
 							"*.ogg\0"
 						};
-						const char* filePath = tinyfd_openFileDialog(
-							"Load Sample",
-							"",
-							4,
-							FILTERS,
-							"Audio Files (*.wav; *.aif; *.flac; *.ogg)",
-							0
+						auto filePath = osd::Dialog::file(
+							osd::DialogAction::OpenFile,
+							".",
+							osd::Filters("Audio Files:wav,ogg,aif,flac")
 						);
-						if (filePath) {
-							if (!m_nodeGraphs[m_activeGraph]->addSample(std::string(filePath))) {
-								tinyfd_messageBox("Error", "Ivalid sample. It must have <= 10 seconds.", "ok", "error", 1);
+						
+						if (filePath.has_value()) {
+							if (!m_nodeGraphs[m_activeGraph]->addSample(filePath.value())) {
+								osd::Dialog::message(
+									osd::MessageLevel::Error,
+									osd::MessageButtons::Ok,
+									"Ivalid sample. It must have <= 10 seconds."
+								);
 							}
 						}
 					}
@@ -1079,14 +1143,11 @@ void TNodeEditor::draw(int w, int h) {
 						closeGraph(i);
 						break;
 					} else {
-						int res = tinyfd_messageBox(
-							"Warning!",
-							"You have unsaved changes! Continue?",
-							"yesno",
-							"warning",
-							0
-						);
-						if (res == 1) {
+						if (osd::Dialog::message(
+							osd::MessageLevel::Warning,
+							osd::MessageButtons::YesNo,
+							"You have unsaved changes. Continue?")
+						) {
 							closeGraph(i);
 							break;
 						} else {

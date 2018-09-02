@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.7)
-project(twist VERSION 1.0 LANGUAGES C CXX)
+project(Twist VERSION 1.0 LANGUAGES C CXX)
+
+set(TWIST_VERSION ${PROJECT_VERSION})
+set(TWIST_NAME "${PROJECT_NAME}")
 
 set(CMAKE_BUILD_TYPE "Release")
 
@@ -18,6 +21,8 @@ endif()
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 
 add_definitions(-DJACK_HAS_PORT_RENAME)
+add_definitions(-DTWIST_NAME="${TWIST_NAME}")
+add_definitions(-DTWIST_VERSION=${TWIST_VERSION})
 
 set(BUILD_SHARED_LIBS CACHE BOOL OFF)
 set(BUILD_TESTING CACHE BOOL OFF)
@@ -29,6 +34,7 @@ find_package(SndFile REQUIRED)
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/editor/imgui")
 add_subdirectory("${CMAKE_SOURCE_DIR}/deps/xsimd")
+add_subdirectory("${CMAKE_SOURCE_DIR}/deps/osdialog")
 
 include_directories(
 	${SDL2_INCLUDE_DIRS}
@@ -36,6 +42,7 @@ include_directories(
 	# ${RTMIDI_INCLUDE_DIR}
 	"deps/xsimd/include"
 	"deps/rtmidi"
+	"deps/osdialog"
 )
 
 file(GLOB_RECURSE INC
@@ -55,6 +62,7 @@ target_link_libraries(${PROJECT_NAME}
 	${SDL2_LIBRARIES}
 	${LIBSNDFILE_LIBRARIES}
 	# ${RTMIDI_LIBRARY}
+	osdialog
 	xsimd
 	rtmidi_static
 	ImGUI

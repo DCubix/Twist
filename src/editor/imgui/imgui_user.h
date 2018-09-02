@@ -11,6 +11,7 @@ static TTex* KnobTex = nullptr;
 static TTex* VUTex = nullptr;
 static TTex* SWTex = nullptr;
 static TTex* KBTex = nullptr;
+static TTex* TwistTex = nullptr;
 
 IMGUI_API bool          Knob(const char* label, float* value_p, float minv, float maxv);
 IMGUI_API void          ToggleButton(const char* str_id, bool* v);

@@ -18,12 +18,21 @@ public:
 
 		m_sys->guiCallback([this](TAudio* au, int w, int h) {
 			m_editor->draw(w, h);
+			if (m_editor->exit()) {
+				m_sys->exit();
+			}
 		});
 	}
 
 	void start() {
 		while (!m_sys->shouldClose()) {
-			m_sys->sync();
+			m_sys->sync([this](TAudio* au, SDL_Event& e) {
+				switch (e.type) {
+					case SDL_QUIT: {
+						m_editor->menuActionExit();
+					} break;
+				}
+			});
 		}
 		m_sys->destroy();
 		delete m_editor;

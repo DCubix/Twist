@@ -2,7 +2,7 @@
 #define T_MODULE_NODE
 
 #include "../TNodeGraph.h"
-#include "../tinyfiledialogs.h"
+#include "OsDialog.hpp"
 
 class TModuleNode : public TNode {
 public:
@@ -15,17 +15,14 @@ public:
 			if (nodeGraph) {
 				load(filePath);
 			} else {
-				const static char* FILTERS[] = { "*.tng\0" };
-				const char* filePath = tinyfd_openFileDialog(
-					"Open",
-					"",
-					1,
-					FILTERS,
-					"Twist Node-Graph",
-					0
+				auto filePath = osd::Dialog::file(
+					osd::DialogAction::OpenFile,
+					".",
+					osd::Filters("Twist Node-Graph:tng")
 				);
-				if (filePath) {
-					this->filePath = std::string(filePath);
+
+				if (filePath.has_value()) {
+					this->filePath = filePath.value();
 					load(this->filePath);
 				}
 			}
@@ -65,7 +62,11 @@ public:
 		m_outputs.clear();
 
 		if (nodeGraph->type() != TNodeGraph::Module) {
-			tinyfd_messageBox("Error", "The selected node graph is not a Module.", "ok", "error", 1);
+			osd::Dialog::message(
+				osd::MessageLevel::Error,
+				osd::MessageButtons::Ok,
+				"The selected node graph is not a Module."
+			);
 			nodeGraph.reset();
 		} else {
 			m_title = nodeGraph->name();
