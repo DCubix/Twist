@@ -118,15 +118,15 @@ TNodeEditor::TNodeEditor() {
 	));
 	m_MIDIout->openPort(0, "Twist - Main Out");
 
-	TNodeFactory::registerNode<TValueNode>(NODE_CTOR {
+	TNodeFactory::registerNode<TValueNode>("General", NODE_CTOR {
 		return new TValueNode{ GET(float, "value", 0.0f) };
 	});
 
-	TNodeFactory::registerNode<TMixNode>(NODE_CTOR {
+	TNodeFactory::registerNode<TMixNode>("Operators", NODE_CTOR {
 		return new TMixNode{ GET(float, "factor", 0.5f) };
 	});
 
-	TNodeFactory::registerNode<TOscillatorNode>(NODE_CTOR {
+	TNodeFactory::registerNode<TOscillatorNode>("Generators", NODE_CTOR {
 		return new TOscillatorNode{
 			GET(float, "sampleRate", 44100),
 			(TOsc::TWave) GET(int, "waveForm", 0),
@@ -135,14 +135,14 @@ TNodeEditor::TNodeEditor() {
 		};
 	});
 
-	TNodeFactory::registerNode<TNoteNode>(NODE_CTOR {
+	TNodeFactory::registerNode<TNoteNode>("Generators", NODE_CTOR {
 		return new TNoteNode{
 			(Notes) GET(int, "note", 0),
 			GET(int, "oct", 0)
 		};
 	});
 
-	TNodeFactory::registerNode<TChorusNode>(NODE_CTOR {
+	TNodeFactory::registerNode<TChorusNode>("Filters", NODE_CTOR {
 		return new TChorusNode{
 			GET(float, "sampleRate", 44100),
 			GET(float, "delayTime", 1),
@@ -151,7 +151,7 @@ TNodeEditor::TNodeEditor() {
 		};
 	});
 
-	TNodeFactory::registerNode<TRemapNode>(NODE_CTOR {
+	TNodeFactory::registerNode<TRemapNode>("Operators", NODE_CTOR {
 		return new TRemapNode{
 			GET(float, "omin", 0),
 			GET(float, "omax", 1),
@@ -160,7 +160,7 @@ TNodeEditor::TNodeEditor() {
 		};
 	});
 
-	TNodeFactory::registerNode<TSequencerNode>(NODE_CTOR {
+	TNodeFactory::registerNode<TSequencerNode>("Generators", NODE_CTOR {
 		TSequencerNode* seq = new TSequencerNode{};
 		if (json["key"].is_number_integer()) {
 			seq->key = json["key"];
@@ -183,13 +183,13 @@ TNodeEditor::TNodeEditor() {
 		return seq;
 	});
 
-	TNodeFactory::registerNode<TButtonNode>(NODE_CTOR {
+	TNodeFactory::registerNode<TButtonNode>("General", NODE_CTOR {
 		return new TButtonNode{
 			GET(bool, "on", false)
 		};
 	});
 
-	TNodeFactory::registerNode<TFilterNode>(NODE_CTOR {
+	TNodeFactory::registerNode<TFilterNode>("Filters", NODE_CTOR {
 		return new TFilterNode{
 			GET(float, "sampleRate", 44100),
 			GET(float, "cutOff", 20),
@@ -197,7 +197,7 @@ TNodeEditor::TNodeEditor() {
 		};
 	});
 
-	TNodeFactory::registerNode<TMathNode>(NODE_CTOR {
+	TNodeFactory::registerNode<TMathNode>("Operators", NODE_CTOR {
 		return new TMathNode{
 			(TMathNode::TMathNodeOp) GET(int, "op", 0),
 			GET(float, "a", 0),
@@ -205,7 +205,7 @@ TNodeEditor::TNodeEditor() {
 		};
 	});
 
-	TNodeFactory::registerNode<TADSRNode>(NODE_CTOR {
+	TNodeFactory::registerNode<TADSRNode>("Generators", NODE_CTOR {
 		return new TADSRNode{
 			GET(float, "sampleRate", 44100),
 			GET(float, "a", 0),
@@ -215,7 +215,7 @@ TNodeEditor::TNodeEditor() {
 		};
 	});
 
-	TNodeFactory::registerNode<TTimerNode>(NODE_CTOR {
+	TNodeFactory::registerNode<TTimerNode>("General", NODE_CTOR {
 		return new TTimerNode{
 			GET(float, "sampleRate", 44100),
 			GET(float, "bpm", 120),
@@ -223,7 +223,7 @@ TNodeEditor::TNodeEditor() {
 		};
 	});
 
-	TNodeFactory::registerNode<TReverbNode>(NODE_CTOR {
+	TNodeFactory::registerNode<TReverbNode>("Filters", NODE_CTOR {
 		TReverbNode* rv = new TReverbNode{
 			GET(float, "sampleRate", 44100)
 		};
@@ -250,13 +250,13 @@ TNodeEditor::TNodeEditor() {
 		return rv;
 	});
 
-	TNodeFactory::registerNode<TOutNode>(NODE_CTOR {
+	TNodeFactory::registerNode<TOutNode>("General", NODE_CTOR {
 		TOutNode* out = new TOutNode();
 		out->volume = GET(float, "volume", 1.0f);
 		return out;
 	});
 
-	TNodeFactory::registerNode<TInputsNode>(NODE_CTOR {
+	TNodeFactory::registerNode<TInputsNode>("General", NODE_CTOR {
 		TInputsNode* tin = new TInputsNode();
 		if (json["inputs"].is_array()) {
 			for (int i = 0; i < json["inputs"].size(); i++) {
@@ -266,7 +266,7 @@ TNodeEditor::TNodeEditor() {
 		return tin;
 	});
 
-	TNodeFactory::registerNode<TOutputsNode>(NODE_CTOR {
+	TNodeFactory::registerNode<TOutputsNode>("General", NODE_CTOR {
 		TOutputsNode* tout = new TOutputsNode();
 		if (json["outputs"].is_array()) {
 			for (int i = 0; i < json["outputs"].size(); i++) {
@@ -276,14 +276,14 @@ TNodeEditor::TNodeEditor() {
 		return tout;
 	});
 
-	TNodeFactory::registerNode<TModuleNode>(NODE_CTOR {
+	TNodeFactory::registerNode<TModuleNode>("General", NODE_CTOR {
 		TModuleNode* mod = new TModuleNode();
 		mod->filePath = json["filePath"].is_string() ? json["filePath"] : "";
 		mod->load(mod->filePath);
 		return mod;
 	});
 
-	TNodeFactory::registerNode<TDelayLineNode>(NODE_CTOR {
+	TNodeFactory::registerNode<TDelayLineNode>("Filters", NODE_CTOR {
 		return new TDelayLineNode{
 			GET(float, "sampleRate", 44100.0f),
 			GET(float, "feedback", 0.0f),
@@ -291,19 +291,19 @@ TNodeEditor::TNodeEditor() {
 		};
 	});
 
-	TNodeFactory::registerNode<TReaderNode>(NODE_CTOR {
+	TNodeFactory::registerNode<TReaderNode>("General", NODE_CTOR {
 		return new TReaderNode{
 			GET(int, "idx", 0)
 		};
 	});
 
-	TNodeFactory::registerNode<TWriterNode>(NODE_CTOR {
+	TNodeFactory::registerNode<TWriterNode>("General", NODE_CTOR {
 		return new TWriterNode{
 			GET(int, "idx", 0)
 		};
 	});
 
-	TNodeFactory::registerNode<TSampleNode>(NODE_CTOR {
+	TNodeFactory::registerNode<TSampleNode>("Generators", NODE_CTOR {
 		return new TSampleNode(
 			GET(int, "sample", 0),
 			GET(int, "selectedID", 0),
@@ -327,7 +327,7 @@ TNodeEditor::TNodeEditor() {
 	// 	return prn;
 	// });
 
-	TNodeFactory::registerNode<TArpNode>(NODE_CTOR {
+	TNodeFactory::registerNode<TArpNode>("Generators", NODE_CTOR {
 		return new TArpNode{
 			(Notes) GET(int, "note", 0),
 			GET(int, "oct", 0),
@@ -336,13 +336,13 @@ TNodeEditor::TNodeEditor() {
 		};
 	});
 
-	TNodeFactory::registerNode<TMIDINode>(NODE_CTOR {
+	TNodeFactory::registerNode<TMIDINode>("General", NODE_CTOR {
 		TMIDINode* midi = new TMIDINode();
 		TMessageBus::subscribe(midi);
 		return midi;
 	});
 	
-	TNodeFactory::registerNode<TFreqNode>(NODE_CTOR {
+	TNodeFactory::registerNode<TFreqNode>("General", NODE_CTOR {
 		return new TFreqNode();
 	});
 }
@@ -826,7 +826,9 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 	// Draw context menu
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8, 8));
 	if (ImGui::BeginPopup("context_menu")) {
-		ImVec2 scene_pos = ImGui::GetMousePosOnOpeningCurrentPopup() - offset;
+		ImGui::Text("Add Node");
+
+		std::map<std::string, std::vector<std::string>> facts;
 		for (auto fn : TNodeFactory::factories) {
 			if ((fn.first == TInputsNode::type() ||
 					fn.first == TOutputsNode::type()) &&
@@ -834,8 +836,19 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 			{
 				continue;
 			}
-			if (ImGui::MenuItem(fn.first.c_str())) {
-				graph->addNode(scene_pos.x, scene_pos.y, fn.first);
+			facts[fn.second.category].push_back(fn.first);
+		}
+
+		ImVec2 scene_pos = ImGui::GetMousePosOnOpeningCurrentPopup() - offset;
+
+		for (auto&& e : facts) {
+			if (ImGui::BeginMenu(e.first.c_str())) {
+				for (auto&& type : e.second) {
+					if (ImGui::MenuItem(type.c_str())) {
+						graph->addNode(scene_pos.x, scene_pos.y, type);
+					}
+				}
+				ImGui::EndMenu();
 			}
 		}
 		ImGui::EndPopup();
@@ -1004,8 +1017,10 @@ void TNodeEditor::draw(int w, int h) {
 						0
 					};
 					static char graphName[128] = { 0 };
+					strcpy(graphName, m_nodeGraphs[m_activeGraph]->m_name.c_str());
 					if (ImGui::InputText("Name##graphName", graphName, 128)) {
 						m_nodeGraphs[m_activeGraph]->m_name = std::string(graphName);
+						m_nodeGraphs[m_activeGraph]->m_saved = false;
 					}
 					ImGui::Combo(
 						"Type##graphType",

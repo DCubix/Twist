@@ -187,7 +187,7 @@ TNode* TNodeGraph::addNode(int x, int y, const std::string& type) {
 }
 
 TNode* TNodeGraph::addNode(int x, int y, const std::string& type, JSON& params, int id, bool canundo) {
-	TNodeCtor* ctor = TNodeFactory::factories[type];
+	TNodeCtor* ctor = TNodeFactory::factories[type].ctor;
 	if (ctor == nullptr) return nullptr;
 
 	std::unique_ptr<TNode> n = std::unique_ptr<TNode>(ctor(params));
@@ -325,9 +325,6 @@ void TNodeGraph::load(const std::string& fileName) {
 	m_scrolling = ImVec2(json["scrolling"][0], json["scrolling"][1]);
 	m_type = (TGraphType)json["graphType"];
 	m_name = json["graphName"];
-	// m_outputsNode = json["outputsNode"].is_number_integer() ? json["outputsNode"].get<int>() : 0;
-	// m_inputsNode = json["inputsNode"].is_number_integer() ? json["inputsNode"].get<int>() : 0;
-	// m_outputNode = json["outNode"].is_number_integer() ? json["outNode"].get<int>() : 0;
 
 	if (json["nodes"].is_array()) {
 		for (int i = 0; i < json["nodes"].size(); i++) {
@@ -337,7 +334,8 @@ void TNodeGraph::load(const std::string& fileName) {
 			std::string type = node["type"].get<std::string>();
 
 			int id = node["id"].is_number_integer() ? node["id"].get<int>() : -1;
-			addNode(node["pos"][0], node["pos"][1], type, node, id);
+			TNode* nd = addNode(node["pos"][0], node["pos"][1], type, node, id);
+			nd->open = node["open"].is_boolean() ? node["open"].get<bool>() : true;
 		}
 	}
 

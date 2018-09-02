@@ -18,9 +18,14 @@
 
 using TNodeCtor = TNode*(JSON&);
 
+struct TNodeBuilder {
+	std::string category;
+	TNodeCtor* ctor;
+};
+
 using TNodePtr = std::unique_ptr<TNode>;
 using TLinkPtr = std::unique_ptr<TLink>;
-using TNodeFactories = std::map<std::string, TNodeCtor*>;
+using TNodeFactories = std::map<std::string, TNodeBuilder>;
 using TNodeList = std::map<int, TNodePtr>;
 using TLinkList = std::map<int, TLinkPtr>;
 using TIntList = std::vector<int>;
@@ -138,23 +143,26 @@ public:
 class TNodeFactory {
 public:
 	template <class T>
-	static void registerNode(TNodeCtor* ctor) {
+	static void registerNode(const std::string& category, TNodeCtor* ctor) {
 		if (factories.find(T::type()) != factories.end()) {
 			return;
 		}
-		factories[T::type()] = ctor;
-		
+
+		TNodeBuilder b;
+		b.category = category;
+		b.ctor = ctor;
+		factories[T::type()] = b;
 	}
 
 	template <class T>
 	static T* create(const std::string& name, JSON& params) {
-		return (T*) factories[name](params);
+		return (T*) factories[name].ctor(params);
 	}
 
 	template <class T>
 	static T* createNew(const std::string& name) {
 		JSON js;
-		return (T*) factories[name](js);
+		return (T*) factories[name].ctor(js);
 	}
 
 	static TNodeFactories factories;
