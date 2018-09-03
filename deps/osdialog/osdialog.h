@@ -90,6 +90,11 @@ TODO Implement on Mac
 int osdialog_color_picker(osdialog_color *color, int opacity);
 
 
+/**
+ * Launches a web browser
+ * */
+void osdialog_web(const char* url);
+
 #ifdef __cplusplus
 }
 #endif

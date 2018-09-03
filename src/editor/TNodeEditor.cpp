@@ -35,6 +35,8 @@
 #include "imgui/imgui_internal.h"
 
 #include "icon_small.h"
+#include "icon_big.h"
+#include "about.h"
 
 #define NODE_CTOR [](JSON& json) -> TNode*
 
@@ -908,7 +910,9 @@ void TNodeEditor::draw(int w, int h) {
 	style->Colors[ImGuiCol_PlotHistogram]         = {0.90f, 0.70f, 0.00f, 1.00f};
 	style->Colors[ImGuiCol_PlotHistogramHovered]  = {1.00f, 0.60f, 0.00f, 1.00f};
 	style->Colors[ImGuiCol_TextSelectedBg]        = {0.18431373f, 0.39607847f, 0.79215693f, 0.90f};
+	style->Colors[ImGuiCol_ModalWindowDarkening]  = {0.0f, 0.0f, 0.0f, 0.5f};
 
+	bool showAbout = false;
 	if (ImGui::BeginMainMenuBar()) {
 		/// Shortcut handling
 		if (ImGui::HotKey(CTRL, SDL_SCANCODE_N)) {
@@ -927,6 +931,10 @@ void TNodeEditor::draw(int w, int h) {
 
 		if (ImGui::TwistTex == nullptr) {
 			ImGui::TwistTex = new TTex(twist_small_png, twist_small_png_len);
+		}
+
+		if (ImGui::TwistBigTex == nullptr) {
+			ImGui::TwistBigTex = new TTex(twist_big_png, twist_big_png_len);
 		}
 
 		ImGui::Image(
@@ -980,8 +988,50 @@ void TNodeEditor::draw(int w, int h) {
 			}
 			ImGui::EndMenu();
 		}
+		ImGui::SameLine();
+		if (ImGui::BeginMenu("Help")) {
+			if (ImGui::MenuItem("About")) {
+				showAbout = true;
+			}
+			ImGui::EndMenu();
+		}
 
 		ImGui::EndMainMenuBar();
+	}
+
+	if (showAbout)
+		ImGui::OpenPopup("About Twist");
+	if (ImGui::BeginPopupModal("About Twist", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+		ImGui::Image(
+			(ImTextureID)(ImGui::TwistBigTex->id()),
+			ImVec2(96, 96)
+		);
+		ImGui::SameLine();
+		ImGui::BeginGroup();
+
+		std::stringstream stm;
+		stm << TWIST_NAME << " v" << TWIST_VERSION;
+
+		ImGui::Text("%s", stm.str().c_str());
+		ImGui::Separator();
+		ImGui::Text("%s", ABOUT_INFO.c_str());
+		ImGui::Text("Web: ");
+		ImGui::SameLine(0, 0);
+		if (ImGui::LinkText("http://dcubix.github.io")) {
+			osd::Dialog::web("http://dcubix.github.io");
+		}
+		ImGui::Text("E-mail: ");
+		ImGui::SameLine(0, 0);
+		if (ImGui::LinkText("diego95lopes@gmail.com")) {
+			osd::Dialog::web("mailto:diego95lopes@gmail.com");
+		}
+		ImGui::EndGroup();
+
+		ImGui::Separator();
+		ImGui::SetCursorPosX(ImGui::GetContentRegionAvailWidth()-60);
+		if (ImGui::Button("Ok", ImVec2(60, 22)))
+			ImGui::CloseCurrentPopup();
+		ImGui::EndPopup();
 	}
 
 	ImGui::SetNextWindowSize(ImVec2(w, h-18), 0);
@@ -1005,8 +1055,7 @@ void TNodeEditor::draw(int w, int h) {
 		if (ImGui::BeginChild("side_bar", ImVec2(sz0, -1), true, flags)) {
 			if (!m_nodeGraphs.empty()) {
 				ImGui::BeginGroup();
-				ImGui::Text("Controls");
-				if (ImGui::Button(m_playing ? "Stop" : "Play") && !m_nodeGraphs.empty()) {
+				if (ImGui::Button(m_playing ? "Stop" : "Play", ImVec2(ImGui::GetContentRegionAvailWidth(), 26)) && !m_nodeGraphs.empty()) {
 					m_playing = !m_playing;
 				}
 				ImGui::EndGroup();
@@ -1175,7 +1224,7 @@ void TNodeEditor::draw(int w, int h) {
 			
 			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(1, 1));
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-			ImGui::PushStyleColor(ImGuiCol_ChildWindowBg, IM_COL32(60, 60, 70, 200));
+			ImGui::PushStyleColor(ImGuiCol_ChildWindowBg, IM_COL32(40, 40, 50, 200));
 			ImGui::BeginChild("scrolling_region_", ImVec2(0, 0), true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollWithMouse);
 			ImGui::PushItemWidth(120.0f);
 
@@ -1200,6 +1249,7 @@ void TNodeEditor::draw(int w, int h) {
 	ImGui::End();
 
 	ImGui::PopStyleVar();
+
 }
 
 void TNodeEditor::closeGraph(int id) {

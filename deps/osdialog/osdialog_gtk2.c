@@ -1,6 +1,7 @@
 #include "osdialog.h"
 #include <assert.h>
 #include <string.h>
+#include <stdio.h>
 #include <gtk/gtk.h>
 
 int osdialog_message(osdialog_message_level level, osdialog_message_buttons buttons, const char *message) {
@@ -151,4 +152,10 @@ int osdialog_color_picker(osdialog_color *color, int opacity) {
 		gtk_main_iteration();
 
 	return result;
+}
+
+void osdialog_web(const char* url) {
+	char cmd[256] = {0};
+	sprintf(cmd, "xdg-open %s", url);
+	system(cmd);
 }

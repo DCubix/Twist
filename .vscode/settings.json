@@ -57,7 +57,9 @@
 		"complex": "cpp",
 		"string": "cpp",
 		"condition_variable": "cpp",
-		"mutex": "cpp"
+		"mutex": "cpp",
+		"gtk.h": "c",
+		"string.h": "c"
 	},
 	"C_Cpp.default.configurationProvider": "vector-of-bool.cmake-tools",
 	"C_Cpp.configurationWarnings": "Disabled",

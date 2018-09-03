@@ -87,6 +87,10 @@ namespace osd {
 			}
 			return {};
 		}
+
+		static void web(const std::string& url) {
+			osdialog_web(url.c_str());
+		}
 	};
 };
 

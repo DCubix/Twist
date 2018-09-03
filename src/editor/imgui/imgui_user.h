@@ -12,6 +12,7 @@ static TTex* VUTex = nullptr;
 static TTex* SWTex = nullptr;
 static TTex* KBTex = nullptr;
 static TTex* TwistTex = nullptr;
+static TTex* TwistBigTex = nullptr;
 
 IMGUI_API bool          Knob(const char* label, float* value_p, float minv, float maxv);
 IMGUI_API void          ToggleButton(const char* str_id, bool* v);
@@ -19,7 +20,6 @@ IMGUI_API void          BeginTabBar(const char* str_id, ImGuiTabBarFlags flags =
 IMGUI_API void          EndTabBar();
 IMGUI_API bool          TabItem(const char* label, bool* p_open = NULL, ImGuiTabItemFlags = 0);
 
-// FIXME-WIP: Obsolete API
 IMGUI_API void          SetTabItemClosed(const char* label);
 IMGUI_API void          SetTabItemSelected(const char* label);
 
@@ -27,6 +27,7 @@ IMGUI_API float         VUMeter(const char* id, float value);
 IMGUI_API void          AudioView(const char* id, float width, float* values, int length, int pos, float h=24);
 IMGUI_API bool          KeyBed(const char* id, bool* keys, int keyCount);
 IMGUI_API bool          Splitter(bool split_vertically, float thickness, float* size1, float* size2, float min_size1, float min_size2, float splitter_long_axis_size = -1.0f);
+IMGUI_API bool          LinkText(const char* text);
 
 #define CTRL (1 << 0)
 #define SHIFT (1 << 1)

@@ -130,3 +130,7 @@ int osdialog_color_picker(osdialog_color *color, int opacity) {
 
 	return 0;
 }
+
+void osdialog_web(const char* url) {
+	ShellExecute(NULL, "open", url, NULL, NULL, SW_SHOWNORMAL);
+}

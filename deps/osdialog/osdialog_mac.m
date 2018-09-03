@@ -148,3 +148,10 @@ int osdialog_color_picker(osdialog_color *color, int opacity) {
 
 	return 0;
 }
+
+/// XXX: I don't know if this works :P
+void osdialog_web(const char* url) {
+	NSString *url_str = [NSString stringWithUTF8String:url];
+	NSURL* nurl = [[NSURL alloc] initWithString: url_str];
+	[[UIApplication sharedApplication] openURL: nurl];
+}

@@ -194,6 +194,49 @@ float VUMeter(const char* id, float value) {
 	return height;
 }
 
+bool LinkText(const char* text) {
+	const ImVec4 LINK_COLOR = ImVec4(0.25f, 0.64f, 0.85f, 1.0f);
+
+	ImVec2 sz = ImGui::CalcTextSize(text);
+
+	ImGuiWindow* window = ImGui::GetCurrentWindow();
+	if (window->SkipItems)
+		return false;
+
+	ImGuiContext& g = *GImGui;
+	const ImGuiStyle& style = g.Style;
+	const ImGuiID id = window->GetID(text);
+	const ImVec2 label_size = ImGui::CalcTextSize(text, NULL, true);
+	ImVec2 pos = window->DC.CursorPos;
+	ImVec2 size = ImGui::CalcItemSize(ImVec2(0.0f, 0.0f), label_size.x + style.FramePadding.x * 1.0f, label_size.y);
+	const ImRect bb(pos, pos + size);
+	ImGui::ItemSize(bb, 0.0f);
+	if (!ImGui::ItemAdd(bb, id))
+		return false;
+	ImGuiButtonFlags flags = 0;
+	bool hovered, held;
+	bool pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held, flags);
+	//ImGuiMouseCursor_Hand
+	if (held || (g.HoveredId == id && g.HoveredIdPreviousFrame == id))
+		ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+	// Render
+	ImGui::RenderNavHighlight(bb, id);
+	ImVec4 col = LINK_COLOR;
+	ImVec2 p0 = bb.Min;
+	ImVec2 p1 = bb.Max;
+	if (hovered && held)
+	{
+		p0 += ImVec2(1, 1);
+		p1 += ImVec2(1, 1);
+	}
+	window->DrawList->AddLine(ImVec2(p0.x + style.FramePadding.x, p1.y), ImVec2(p1.x - style.FramePadding.x, p1.y), ImGui::GetColorU32(col));
+	ImGui::PushStyleColor(ImGuiCol_Text, col);
+	ImGui::RenderTextClipped(p0, p1, text, NULL, &label_size, style.ButtonTextAlign, &bb);
+	ImGui::PopStyleColor(1);
+
+	return pressed;
+}
+
 void AudioView(const char* id, float width, float* values, int length, int pos, float h) {
 	const int col = IM_COL32(0, 200, 100, 255);
 
