@@ -39,7 +39,7 @@ public:
 			m_adsr[i].sustain(s * sr);
 			m_adsr[i].release(r * sr);
 
-			if (getMultiInput(0, i) >= 1.0f) {
+			if (getMultiInput(0, i) >= 0.9f) {
 				if (!trigger[i]) {
 					m_adsr[i].gate(true);
 					trigger[i] = true;
@@ -66,7 +66,7 @@ public:
 	}
 
 	float value, sr, a, d, s, r;
-	std::array<bool, TNODE_MAX_SIMULTANEOUS_VALUES_PER_SLOT> trigger;
+	std::array<bool, FLT_ARR_MAX> trigger;
 
 	static std::string type() { return "ADSR"; }
 

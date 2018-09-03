@@ -15,10 +15,12 @@ public:
 	}
 
 	void gui() {
+		ImGui::PushItemWidth(90);
 		ImGui::InputFloat("Old Min", &oldMin, 0.01f, 0.1f, 3);
 		ImGui::InputFloat("Old Max", &oldMax, 0.01f, 0.1f, 3);
 		ImGui::InputFloat("New Min", &newMin, 0.01f, 0.1f, 3);
 		ImGui::InputFloat("New Max", &newMax, 0.01f, 0.1f, 3);
+		ImGui::PopItemWidth();
 	}
 
 	void solve() {

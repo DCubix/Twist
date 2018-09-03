@@ -18,6 +18,7 @@ using namespace ImGui;
 #include "vu.h"
 #include "sw.h"
 #include "keys.h"
+#include "button.h"
 
 namespace ImGui {
 bool Splitter(bool split_vertically, float thickness, float* size1, float* size2, float min_size1, float min_size2, float splitter_long_axis_size) {
@@ -393,6 +394,7 @@ bool KeyBed(const char* id, bool* keys, int keyCount) {
 
 	return false;
 }
+
 bool HotKey(int mod, int key) {
 	ImGuiIO& io = ImGui::GetIO();
 
@@ -403,6 +405,39 @@ bool HotKey(int mod, int key) {
 
 	return (gmod == mod) && ImGui::IsKeyPressed(key, false);
 }
+
+bool RubberButton(const char* id) {
+	if (ButtonTex == nullptr) {
+		ButtonTex = new TTex(button_png, button_png_len);
+	}
+
+	const ImVec2 wp = ImGui::GetCursorScreenPos();
+	ImGui::InvisibleButton(id, ImVec2(32, 32));
+
+	ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+	const float tw = 0.5f;
+	const float th = 1.0f;
+
+	int idx = 0;
+	bool ret = ImGui::IsItemActive();
+	if (ret) {
+		idx = 1;
+	}
+
+	float x = tw * (idx % 2);
+
+	draw_list->AddImage(
+		(ImTextureID)(ButtonTex->id()),
+		ImVec2(0, 0) + wp,
+		ImVec2(32, 32) + wp,
+		ImVec2(x, 0.0f),
+		ImVec2(x + tw, th)
+	);
+
+	return ret;
+}
+
 }
 
 #define TAB_SMOOTH_DRAG 0   // This work nicely but has overlapping issues (maybe render dragged tab separately, at end)

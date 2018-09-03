@@ -24,9 +24,11 @@ public:
 	}
 
 	void gui() {
+		ImGui::PushItemWidth(75);
 		ImGui::DragFloat("Rate", &chorusRate, 0.01f, 0.001f, 10.0f);
 		ImGui::DragFloat("Depth", &chorusDepth, 0.1f, 0.01f, 10.0f);
 		ImGui::DragFloat("Delay", &delayTime, 0.1f, 0.01f, 1.0f);
+		ImGui::PopItemWidth();
 	}
 
 	void solve() {

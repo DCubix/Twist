@@ -15,8 +15,10 @@ public:
 	}
 
 	void gui() {
+		ImGui::PushItemWidth(75);
 		ImGui::DragFloat("Feedback", &feedback, 0.1f, 0.0f, 0.99f);
 		ImGui::InputInt("Delay (ms)", &delay);
+		ImGui::PopItemWidth();
 	}
 
 	void solve() {

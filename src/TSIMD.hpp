@@ -115,6 +115,27 @@ namespace SIMD {
 		return res;
 	}
 
+	static FloatArray div(const FloatArray& a, const FloatArray& b) {
+		FloatArray res;
+		std::size_t inc = Float::size;
+		std::size_t size = FLT_ARR_MAX;
+		std::size_t vec_size = size - size % inc;
+		
+		for (std::size_t i = 0; i < vec_size; i += inc) {
+			Float avec = xsimd::load_unaligned(&a[i]);
+			Float bvec = xsimd::load_unaligned(&b[i]);
+			Float rvec = (avec / bvec);
+			xsimd::store_unaligned(&res[i], rvec);
+		}
+
+		// Remaining part that cannot be vectorized
+		for(std::size_t i = vec_size; i < size; ++i) {
+			res[i] = (a[i] / b[i]);
+		}
+
+		return res;
+	}
+
 	static void set(const FloatArray& a, FloatArray& res) {
 		std::size_t inc = Float::size;
 		std::size_t size = FLT_ARR_MAX;

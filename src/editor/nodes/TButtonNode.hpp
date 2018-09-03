@@ -6,25 +6,23 @@
 
 class TButtonNode : public TNode {
 public:
-	TButtonNode(bool on) : TNode("Button", 80, 120), enabled(on) {
+	TButtonNode() : TNode("Button", 80, 120) {
 		addOutput("Out");
 	}
 
 	void gui() {
-		enabled = false;
-		if (ImGui::Button("PRESS", ImVec2(32, 32))) {
-			enabled = true;
-		}
+		enabled = ImGui::RubberButton("##button");
 	}
 
 	void solve() {
-		setOutput(0, enabled ? 1.0f : 0.0f);
+		setOutput(0, 0.0f, true);
+		if (enabled)
+			setOutput(0, 1.0f, true);
 	}
 
 	void save(JSON& json) {
 		TNode::save(json);
 		json["type"] = type();
-		json["on"] = enabled;
 	}
 
 	bool enabled;

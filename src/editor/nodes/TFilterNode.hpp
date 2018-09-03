@@ -22,8 +22,10 @@ public:
 
 	void gui() {
 		static const char* OPS[] = { "Low-Pass\0", "High-Pass\0" };
+		ImGui::PushItemWidth(80);
 		ImGui::Combo("Filter", (int*)&filter, OPS, 2, -1);
 		ImGui::DragFloat("Cut-Off", &cut, 0.5f, 20.0f, 20000.0f);
+		ImGui::PopItemWidth();
 	}
 
 	void solve() {

@@ -34,17 +34,19 @@ public:
 	}
 
 	void gui() {
+		ImGui::PushItemWidth(75);
 		ImGui::InputInt("Chan.", &channel, 1, 2);
 		channel = ImClamp(channel, 0x0, 0xF);
+		ImGui::PopItemWidth();
 	}
 
 	void solve() {
-		for (int i = 0; i < TNODE_MAX_SIMULTANEOUS_VALUES_PER_SLOT; i++) {
-			setMultiOutput(1, i, 0.0f);
-		}
+		setOutput(0, 0.0f, true);
+		setOutput(1, 0.0f, true);
+
 		for (int i = 0, s = 0; i < 128; i++) {
 			if (gates[i]) {
-				s = s % TNODE_MAX_SIMULTANEOUS_VALUES_PER_SLOT;
+				s = s % FLT_ARR_MAX;
 				setMultiOutput(0, s, i);
 				setMultiOutput(1, s, 1.0f);
 				s++;

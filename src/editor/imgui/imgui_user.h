@@ -13,6 +13,7 @@ static TTex* SWTex = nullptr;
 static TTex* KBTex = nullptr;
 static TTex* TwistTex = nullptr;
 static TTex* TwistBigTex = nullptr;
+static TTex* ButtonTex = nullptr;
 
 IMGUI_API bool          Knob(const char* label, float* value_p, float minv, float maxv);
 IMGUI_API void          ToggleButton(const char* str_id, bool* v);
@@ -28,6 +29,7 @@ IMGUI_API void          AudioView(const char* id, float width, float* values, in
 IMGUI_API bool          KeyBed(const char* id, bool* keys, int keyCount);
 IMGUI_API bool          Splitter(bool split_vertically, float thickness, float* size1, float* size2, float min_size1, float min_size2, float splitter_long_axis_size = -1.0f);
 IMGUI_API bool          LinkText(const char* text);
+IMGUI_API bool          RubberButton(const char* id);
 
 #define CTRL (1 << 0)
 #define SHIFT (1 << 1)

@@ -17,12 +17,14 @@ public:
 	}
 
 	void gui() {
-		if (ImGui::Button("Reset", ImVec2(120, 24))) {
+		ImGui::PushItemWidth(75);
+		if (ImGui::Button("Reset", ImVec2(75, 24))) {
 			currTime = 0.0f;
 			index = 0;
 		}
-		ImGui::DragFloat("Swing##sw", &swing, 0.1f, 0.0f, 1.0f);
 		ImGui::DragFloat("BPM##bpm", &bpm, 0.5f, 40.0f, 256.0f);
+		ImGui::DragFloat("Swing##sw", &swing, 0.1f, 0.0f, 1.0f);
+		ImGui::PopItemWidth();
 	}
 
 	void solve() {

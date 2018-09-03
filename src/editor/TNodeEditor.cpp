@@ -186,9 +186,7 @@ TNodeEditor::TNodeEditor() {
 	});
 
 	TNodeFactory::registerNode<TButtonNode>("General", NODE_CTOR {
-		return new TButtonNode{
-			GET(bool, "on", false)
-		};
+		return new TButtonNode();
 	});
 
 	TNodeFactory::registerNode<TFilterNode>("Filters", NODE_CTOR {
@@ -1226,13 +1224,15 @@ void TNodeEditor::draw(int w, int h) {
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 			ImGui::PushStyleColor(ImGuiCol_ChildWindowBg, IM_COL32(40, 40, 50, 200));
 			ImGui::BeginChild("scrolling_region_", ImVec2(0, 0), true, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollWithMouse);
-			ImGui::PushItemWidth(120.0f);
+			ImGui::PushItemWidth(80);
 
 			ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
 			m_mainWindowSize = ImGui::GetWindowSize();
-			if (m_nodeGraphs[m_activeGraph]->m_open)
-				drawNodeGraph(m_nodeGraphs[m_activeGraph].get());
+			if (!m_nodeGraphs.empty()) {
+				if (m_nodeGraphs[m_activeGraph]->m_open)
+					drawNodeGraph(m_nodeGraphs[m_activeGraph].get());
+			}
 
 			if (m_linking.active && ImGui::IsMouseReleased(0)) {
 				m_linking.active = false;

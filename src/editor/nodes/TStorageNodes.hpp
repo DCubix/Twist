@@ -11,7 +11,9 @@ public:
 	}
 
 	void gui() {
+		ImGui::PushItemWidth(75);
 		ImGui::DragInt("Loc", &idx, 0.1f, 0, GLOBAL_STORAGE_SIZE);
+		ImGui::PopItemWidth();
 	}
 
 	void solve() {
@@ -36,7 +38,9 @@ public:
 	}
 
 	void gui() {
+		ImGui::PushItemWidth(75);
 		ImGui::DragInt("Loc", &idx, 0.1f, 0, GLOBAL_STORAGE_SIZE);
+		ImGui::PopItemWidth();
 	}
 
 	void solve() {
