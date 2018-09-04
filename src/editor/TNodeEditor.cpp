@@ -463,9 +463,9 @@ void TNodeEditor::saveRecentFiles() {
 		}
 		fp.close();
 #ifdef WINDOWS
-	int attr = GetFileAttributes(L".recent");
+	int attr = GetFileAttributes(".recent");
 	if ((attr & FILE_ATTRIBUTE_HIDDEN) == 0) {
-		SetFileAttributes(L".recent", attr | FILE_ATTRIBUTE_HIDDEN);
+		SetFileAttributes(".recent", attr | FILE_ATTRIBUTE_HIDDEN);
 	}
 #endif
 	}
