@@ -463,10 +463,9 @@ void TNodeEditor::saveRecentFiles() {
 		}
 		fp.close();
 #ifdef WINDOWS
-	wchar_t* fileLPCWSTR = L".recent";
-	int attr = GetFileAttributes(fileLPCWSTR);
+	int attr = GetFileAttributes(L".recent");
 	if ((attr & FILE_ATTRIBUTE_HIDDEN) == 0) {
-		SetFileAttributes(fileLPCWSTR, attr | FILE_ATTRIBUTE_HIDDEN);
+		SetFileAttributes(L".recent", attr | FILE_ATTRIBUTE_HIDDEN);
 	}
 #endif
 	}
