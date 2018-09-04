@@ -26,6 +26,8 @@
 
 #include "SDL2/SDL.h"
 
+#define MAX_RECENT_FILES 6
+
 void midiCallback(double dt, std::vector<uint8_t>* message, void* userData);
 
 class TNodeEditor {
@@ -56,9 +58,11 @@ public:
 private:
 	TNodeGraph* newGraph();
 	void drawNodeGraph(TNodeGraph* graph);
-	void menuActionOpen();
+	void menuActionOpen(const std::string& fileName="");
 	void menuActionSave(int id = -1);
 	void menuActionSnapAllToGrid();
+	void saveRecentFiles();
+	void pushRecentFile(const std::string& str);
 
 	TLinking m_linking;
 
@@ -83,6 +87,8 @@ private:
 	int m_recordPointer = 0, m_recordingFadeType = 0;
 
 	std::vector<std::unique_ptr<TNodeGraph>> m_nodeGraphs;
+
+	std::vector<std::string> m_recentFiles;
 
 	std::unique_ptr<RtMidiIn> m_MIDIin;
 	std::unique_ptr<RtMidiOut> m_MIDIout;

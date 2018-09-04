@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <fstream>
 #include <cmath>
 #include <algorithm>
 
@@ -37,6 +38,13 @@
 #include "icon_small.h"
 #include "icon_big.h"
 #include "about.h"
+
+#ifdef WINDOWS
+#define PATH_SEPARATOR '\\'
+#include <windows.h>
+#else
+#define PATH_SEPARATOR '/'
+#endif
 
 #define NODE_CTOR [](JSON& json) -> TNode*
 
@@ -108,6 +116,17 @@ TNodeEditor::TNodeEditor() {
 	m_oldFontWindowScale = 0;
 	m_envelope = 1000;
 
+	// Load recent files
+	std::ifstream fp(".recent");
+	if (!fp.bad()) {
+		std::string line;
+		while (std::getline(fp, line)) {
+			m_recentFiles.push_back(line);
+		}
+		fp.close();
+	}
+
+	// Initialize MIDI
 	m_MIDIin = std::unique_ptr<RtMidiIn>(new RtMidiIn(
 		RtMidi::UNSPECIFIED, "Twist MIDI In"
 	));
@@ -120,6 +139,7 @@ TNodeEditor::TNodeEditor() {
 	));
 	m_MIDIout->openPort(0, "Twist - Main Out");
 
+	// Register Nodes
 	TNodeFactory::registerNode<TValueNode>("General", NODE_CTOR {
 		return new TValueNode{ GET(float, "value", 0.0f) };
 	});
@@ -347,16 +367,21 @@ TNodeEditor::TNodeEditor() {
 	});
 }
 
-void TNodeEditor::menuActionOpen() {
-	auto filePath = osd::Dialog::file(
-		osd::DialogAction::OpenFile,
-		".",
-		osd::Filters("Twist Node-Graph:tng")
-	);
+void TNodeEditor::menuActionOpen(const std::string& fileName) {
+	if (fileName.empty()) {
+		auto filePath = osd::Dialog::file(
+			osd::DialogAction::OpenFile,
+			".",
+			osd::Filters("Twist Node-Graph:tng")
+		);
 
-	if (filePath.has_value()) {
+		if (filePath.has_value()) {
+			menuActionOpen(filePath.value());
+			pushRecentFile(filePath.value());
+		}
+	} else {
 		TNodeGraph* graph = newGraph();
-		graph->load(filePath.value());
+		graph->load(fileName);
 	}
 }
 
@@ -372,6 +397,7 @@ void TNodeEditor::menuActionSave(int id) {
 			
 			if (filePath.has_value()) {
 				m_nodeGraphs[id]->save(filePath.value());
+				pushRecentFile(filePath.value());
 			}
 		} else {
 			m_nodeGraphs[id]->save(m_nodeGraphs[id]->m_fileName);
@@ -400,6 +426,10 @@ void TNodeEditor::menuActionExit() {
 	} else {
 		m_exit = true;
 	}
+
+	if (m_exit) {
+		saveRecentFiles();
+	}
 }
 
 void TNodeEditor::menuActionSnapAllToGrid() {
@@ -423,6 +453,29 @@ void TNodeEditor::menuActionSnapAllToGrid() {
 		movIDs,
 		movDel
 	);
+}
+
+void TNodeEditor::saveRecentFiles() {
+	std::ofstream fp(".recent", std::ios::out | std::ios::binary);
+	if (!fp.bad()) {
+		for (std::string line : m_recentFiles) {
+			fp << line << std::endl;
+		}
+		fp.close();
+#ifdef WINDOWS
+	wchar_t* fileLPCWSTR = L".recent";
+	int attr = GetFileAttributes(fileLPCWSTR);
+	if ((attr & FILE_ATTRIBUTE_HIDDEN) == 0) {
+		SetFileAttributes(fileLPCWSTR, attr | FILE_ATTRIBUTE_HIDDEN);
+	}
+#endif
+	}
+}
+
+void TNodeEditor::pushRecentFile(const std::string& str) {
+	if (std::find(m_recentFiles.begin(), m_recentFiles.end(), str) != m_recentFiles.end())
+		return;
+	m_recentFiles.push_back(str);
 }
 
 void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
@@ -948,6 +1001,20 @@ void TNodeEditor::draw(int w, int h) {
 			ImGui::Separator();
 			if (ImGui::MenuItem("Open", "Ctrl+O")) {
 				menuActionOpen();
+			}
+			if (ImGui::BeginMenu("Open Recent...", "Ctrl+O")) {
+				for (std::string file : m_recentFiles) {
+					std::string fname = file;
+					if (file.size() > 28) {
+						fname = file.substr(file.size()-28);
+						fname = fname.substr(fname.find_first_of(PATH_SEPARATOR));
+						fname = std::string("...") + fname;
+					}
+					if (ImGui::MenuItem(fname.c_str())) {
+						menuActionOpen(file);
+					}
+				}
+				ImGui::EndMenu();
 			}
 			if (ImGui::MenuItem("Save", "Ctrl+S")) {
 				menuActionSave();
