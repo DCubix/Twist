@@ -3,6 +3,8 @@
 
 #include <vector>
 #include <memory>
+
+#define _USE_MATH_DEFINES
 #include <cmath>
 
 static const float NOTE[] = {

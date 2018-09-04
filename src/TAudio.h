@@ -10,6 +10,8 @@
 #include <functional>
 #include <iostream>
 #include <optional>
+
+#define _USE_MATH_DEFINES
 #include <cmath>
 
 #define TAUDIO_DEFAULT_SAMPLERATE 44100

@@ -4,6 +4,9 @@
 #include <string>
 #include <array>
 
+#define _USE_MATH_DEFINES
+#include <cmath>
+
 #include "../../TSIMD.hpp"
 
 #include "../json.hpp"
