@@ -143,7 +143,7 @@ void TNodeGraph::solveNodes(const TIntList& solved) {
 				TNode* tgt = node(lnk->outputID);
 				if (tgt == nullptr) continue;
 
-				for (int k = 0; k < TNODE_MAX_SIMULTANEOUS_VALUES_PER_SLOT; k++)
+				for (int k = 0; k < FLT_ARR_MAX; k++)
 					tgt->setMultiInput(lnk->outputSlot, k, nd->getMultiOutput(lnk->inputSlot, k));
 			}
 		}

@@ -90,7 +90,7 @@ public:
 		noteIndex = int(getInputOr(1, 0));
 		noteIndex = noteIndex % noteCount;
 
-		for (int i = 0; i < TNODE_MAX_SIMULTANEOUS_VALUES_PER_SLOT; i++) {
+		for (int i = 0; i < FLT_ARR_MAX; i++) {
 			setMultiOutput(1, i, 0.0f);
 		}
 
@@ -103,14 +103,14 @@ public:
 			}
 		}
 
-		for (int i = 0; i < TNODE_MAX_SIMULTANEOUS_VALUES_PER_SLOT; i++)
+		for (int i = 0; i < FLT_ARR_MAX; i++)
 			setMultiOutput(1, i, 0);
 
 		int s = 0;
 		for (int i = 0; i < MAX_PIANO_KEYS; i++) {
 			if (keys[i]) {
-				setMultiOutput(0, s % TNODE_MAX_SIMULTANEOUS_VALUES_PER_SLOT, tgen::note(i));
-				setMultiOutput(1, s % TNODE_MAX_SIMULTANEOUS_VALUES_PER_SLOT, (1 + getInputOr(2, 1)) * 0.5f);
+				setMultiOutput(0, s % FLT_ARR_MAX, tgen::note(i));
+				setMultiOutput(1, s % FLT_ARR_MAX, (1 + getInputOr(2, 1)) * 0.5f);
 				s++;
 			}
 		}

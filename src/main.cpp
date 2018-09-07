@@ -2,67 +2,72 @@
 #include <cstring>
 #include <memory>
 
-#include "TAudio.h"
-#include "TGen.h"
-#include "editor/TNodeEditor.h"
+#include "twen/intern/Log.h"
 
-static void audioCallback(void* app, Uint8* stream, int length);
+// #include "TAudio.h"
+// #include "TGen.h"
+// #include "editor/TNodeEditor.h"
 
-class App {
-public:
+// static void audioCallback(void* app, Uint8* stream, int length);
 
-	App() {
-		m_sys = new TAudio(audioCallback, this);
-		m_editor = new TNodeEditor();
-		m_editor->sampleRate = m_sys->spec().freq;
+// class App {
+// public:
 
-		m_sys->guiCallback([this](TAudio* au, int w, int h) {
-			m_editor->draw(w, h);
-			if (m_editor->exit()) {
-				m_sys->exit();
-			}
-		});
-	}
+// 	App() {
+// 		m_sys = new TAudio(audioCallback, this);
+// 		m_editor = new TNodeEditor();
+// 		m_editor->sampleRate = m_sys->spec().freq;
 
-	void start() {
-		while (!m_sys->shouldClose()) {
-			m_sys->sync([this](TAudio* au, SDL_Event& e) {
-				switch (e.type) {
-					case SDL_QUIT: {
-						m_editor->menuActionExit();
-					} break;
-				}
-			});
-		}
-		m_sys->destroy();
-		delete m_editor;
-	}
+// 		m_sys->guiCallback([this](TAudio* au, int w, int h) {
+// 			m_editor->draw(w, h);
+// 			if (m_editor->exit()) {
+// 				m_sys->exit();
+// 			}
+// 		});
+// 	}
 
-	TNodeEditor* editor() { return m_editor; }
+// 	void start() {
+// 		while (!m_sys->shouldClose()) {
+// 			m_sys->sync([this](TAudio* au, SDL_Event& e) {
+// 				switch (e.type) {
+// 					case SDL_QUIT: {
+// 						m_editor->menuActionExit();
+// 					} break;
+// 				}
+// 			});
+// 		}
+// 		m_sys->destroy();
+// 		delete m_editor;
+// 	}
 
-private:
-	TAudio* m_sys;
-	TNodeEditor* m_editor;
-};
+// 	TNodeEditor* editor() { return m_editor; }
 
-static void audioCallback(void* ud, Uint8* stream, int length) {
-	App* app = static_cast<App*>(ud);
-	int flen = length / sizeof(float);
-	float* fstream = FBUFFER(stream);
+// private:
+// 	TAudio* m_sys;
+// 	TNodeEditor* m_editor;
+// };
 
-	if (app->editor() != nullptr) {
-		for (int i = 0; i < flen; i++) {
-			if (!app->editor()->rendering()) fstream[i] = app->editor()->output();
-		}
-	}
-}
+// static void audioCallback(void* ud, Uint8* stream, int length) {
+// 	App* app = static_cast<App*>(ud);
+// 	int flen = length / sizeof(float);
+// 	float* fstream = FBUFFER(stream);
+
+// 	if (app->editor() != nullptr) {
+// 		for (int i = 0; i < flen; i++) {
+// 			if (!app->editor()->rendering()) fstream[i] = app->editor()->output();
+// 		}
+// 	}
+// }
 
 int main() {
 	srand(time(0));	
 	
-	App* app = new App();
-	app->start();
-	delete app;
+	Log("Hello");
+	LogAssert(false, "Test Assertion");
+
+	// App* app = new App();
+	// app->start();
+	// delete app;
 
 	return 0;
 }

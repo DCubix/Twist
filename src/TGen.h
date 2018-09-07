@@ -28,22 +28,6 @@ namespace tgen {
 	int octave(int note);
 }
 
-enum Notes {
-	C = 0,
-	Cs,
-	D,
-	Ds,
-	E,
-	F,
-	Fs,
-	G,
-	Gs,
-	A,
-	As,
-	B,
-	Count
-};
-
 class TSampler {
 public:
 	virtual float sample() = 0;

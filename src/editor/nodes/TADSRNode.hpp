@@ -71,7 +71,7 @@ public:
 	static std::string type() { return "ADSR"; }
 
 private:
-	TADSR m_adsr[TNODE_MAX_SIMULTANEOUS_VALUES_PER_SLOT];
+	TADSR m_adsr[FLT_ARR_MAX];
 };
 
 #endif // T_ADSR_NODE_H

@@ -189,6 +189,7 @@ public:
 	TNode* addNode(int x, int y, const std::string& type, JSON& params, int id = -1, bool canundo=true);
 	void deleteNode(int id, bool canundo=true);
 	int link(int inID, int inSlot, int outID, int outSlot, bool canundo=true);
+	
 	void selectAll();
 	void unselectAll();
 	int getActiveNode();

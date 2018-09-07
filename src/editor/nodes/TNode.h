@@ -7,8 +7,6 @@
 #define _USE_MATH_DEFINES
 #include <cmath>
 
-#include "../../TSIMD.hpp"
-
 #include "../json.hpp"
 using JSON = nlohmann::json;
 
@@ -32,8 +30,8 @@ namespace tmath {
 	}
 }
 
-#define TNODE_MAX_SIMULTANEOUS_VALUES_PER_SLOT FLT_ARR_MAX
-
+#define FLT_ARR_MAX 8
+using FloatArray = std::array<float,8>;
 struct TValue {
 	FloatArray values;
 

@@ -13,7 +13,7 @@ public:
 		addInput("Amp");
 		addOutput("Out");
 
-		for (int i = 0; i < TNODE_MAX_SIMULTANEOUS_VALUES_PER_SLOT; i++) {
+		for (int i = 0; i < FLT_ARR_MAX; i++) {
 			m_osc[i] = TOsc(sampleRate);
 		}
 
@@ -40,7 +40,7 @@ public:
 
 		int count = 0;
 		float value = 0.0f;
-		for (int i = 0; i < TNODE_MAX_SIMULTANEOUS_VALUES_PER_SLOT; i++) {
+		for (int i = 0; i < FLT_ARR_MAX; i++) {
 			if (std::abs(freqs[i]) > 0.0f) {
 				m_osc[i].waveForm((TOsc::TWave) wf);
 				m_osc[i].amplitude(amps[i]);
@@ -68,7 +68,7 @@ public:
 	static std::string type() { return "Oscillator"; }
 
 private:
-	TOsc m_osc[TNODE_MAX_SIMULTANEOUS_VALUES_PER_SLOT];
+	TOsc m_osc[FLT_ARR_MAX];
 };
 
 #endif // T_OSCILLATOR_NODE_H

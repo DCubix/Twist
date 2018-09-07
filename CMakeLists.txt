@@ -38,8 +38,8 @@ find_package(SndFile REQUIRED)
 # find_package(RtMIDI REQUIRED)
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/editor/imgui")
-add_subdirectory("${CMAKE_SOURCE_DIR}/deps/xsimd")
 add_subdirectory("${CMAKE_SOURCE_DIR}/deps/osdialog")
+add_subdirectory("${CMAKE_SOURCE_DIR}/src/twen")
 
 include_directories(
 	${SDL2_INCLUDE_DIRS}
@@ -48,6 +48,7 @@ include_directories(
 	"deps/xsimd/include"
 	"deps/rtmidi"
 	"deps/osdialog"
+	"src/twen"
 )
 
 file(GLOB_RECURSE INC
@@ -68,7 +69,6 @@ target_link_libraries(${PROJECT_NAME}
 	${LIBSNDFILE_LIBRARIES}
 	# ${RTMIDI_LIBRARY}
 	osdialog
-	xsimd
 	rtmidi_static
 	ImGUI
 )

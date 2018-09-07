@@ -2,7 +2,6 @@
 #define T_MATH_NODE_H
 
 #include "TNode.h"
-#include "xsimd/xsimd.hpp"
 
 class TMathNode : public TNode {
 public:
@@ -39,17 +38,17 @@ public:
 	}
 
 	void solve() {
-		FloatArray a = getMultiInputValues(0, aValue);
-		FloatArray b = getMultiInputValues(1, bValue);
-		FloatArray out;
-		switch (op) {
-			case Add: out = SIMD::add(a, b); break;
-			case Sub: out = SIMD::sub(a, b); break;
-			case Mul: out = SIMD::mul(a, b); break;
-			case Neg: out = SIMD::neg(a); break;
-			case Average: out = SIMD::avg(a, b); break;
-		}
-		setMultiOutputValues(0, out);
+		// FloatArray a = getMultiInputValues(0, aValue);
+		// FloatArray b = getMultiInputValues(1, bValue);
+		// FloatArray out;
+		// switch (op) {
+		// 	case Add: out = SIMD::add(a, b); break;
+		// 	case Sub: out = SIMD::sub(a, b); break;
+		// 	case Mul: out = SIMD::mul(a, b); break;
+		// 	case Neg: out = SIMD::neg(a); break;
+		// 	case Average: out = SIMD::avg(a, b); break;
+		// }
+		// setMultiOutputValues(0, out);
 	}
 
 	void save(JSON& json) {
