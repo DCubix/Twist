@@ -19,6 +19,11 @@
 #include "icon_big.h"
 #include "about.h"
 
+#include "twen/nodes/SampleNode.hpp"
+#include "twen/nodes/SequencerNode.hpp"
+#include "nodes/ButtonNode.hpp"
+#include "nodes/MIDINode.hpp"
+
 #ifdef WINDOWS
 #define PATH_SEPARATOR '\\'
 #include <windows.h>
@@ -92,7 +97,6 @@ TNodeEditor::TNodeEditor() {
 	m_bounds.z = 1;
 	m_bounds.w = 1;
 	m_oldFontWindowScale = 0;
-	m_envelope = 1000;
 	m_recording = false;
 
 	// Load recent files
@@ -117,6 +121,15 @@ TNodeEditor::TNodeEditor() {
 		RtMidi::UNSPECIFIED, "Twist MIDI Out"
 	));
 	m_MIDIout->openPort(0, "Twist - Main Out");
+
+	// Register editor nodes
+	NodeBuilder::registerType<ButtonNode>("General", TWEN_NODE_FAC {
+		return new ButtonNode();
+	});
+
+	NodeBuilder::registerType<MIDINode>("General", TWEN_NODE_FAC {
+		return new MIDINode();
+	});
 
 }
 
@@ -405,35 +418,150 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 				ImGui::Spacing();
 				ImGui::BeginGroup();
 				int pi = 0;
-				for (auto&& p : nodeR->params()) {
-					Str name = p.first + "##_" + std::to_string(pi);
-					NodeParam& param = p.second;
+				bool changed = false;
+				for (const Str& k : nodeR->params().keys()) {
+					Str name = k + "##_" + std::to_string(pi);
+					NodeParam& param = nodeR->params()[k];
 
+					float sip = 0.0f;
+					float sfrac = 0.0f;
+					sfrac = std::modf(param.step, &sip);
+					float vip = 0.0f;
+					float vfrac = 0.0f;
+					vfrac = std::modf(param.value, &vip);
+
+					bool isInt = std::abs(sfrac) <= 0.0001f || std::abs(vfrac) <= 0.0001f;
+
+					const char* fmt = isInt ? "%.0f" : "%.3f";
+					ImGui::PushItemWidth(param.itemWidth);
 					switch (param.type) {
 						case NodeParam::None:
-							ImGui::InputFloat(name.c_str(), &param.value, param.step, param.step*2, 3);
+							changed |= ImGui::InputFloat(name.c_str(), &param.value, param.step, param.step*2, fmt);
 							break;
 						case NodeParam::Range:
+							changed |= ImGui::InputFloat(name.c_str(), &param.value, param.step, param.step*2, fmt);
+							param.value = ImClamp(param.value, param.min, param.max);
+							break;
 						case NodeParam::DragRange:
-							ImGui::DragFloat(name.c_str(), &param.value, param.step, param.min, param.max);
+							changed |= ImGui::DragFloat(name.c_str(), &param.value, param.step, param.min, param.max, fmt);
 							// ImGui::SliderFloat(name.c_str(), );
 							break;
 						case NodeParam::KnobRange:
-							ImGui::Knob(p.first.c_str(), &param.value, param.min, param.max);
+							changed |= ImGui::Knob(k.c_str(), &param.value, param.min, param.max);
 							break;
 						case NodeParam::Option: {
-							ImGui::Combo(
+							changed |= ImGui::Combo(
 								name.c_str(),
 								(int*) &param.option,
-								nodeR->paramOptions(p.first).data(),
+								nodeR->paramOptions(k).data(),
 								param.options.size()
 							);
 						} break;
-						if (param.sameLine)
-							ImGui::SameLine();
 					}
+					ImGui::PopItemWidth();
+					if (param.sameLine)
+						ImGui::SameLine();
+					
 					pi++;
 				}
+
+				if (nodeR->name() == OutNode::type()) {
+					OutNode* _node = (OutNode*) nodeR;
+					ImGui::VUMeter("##vu", _node->level);
+				} else if (nodeR->name() == SampleNode::type()) {
+					SampleNode* _node = (SampleNode*) nodeR;
+					_node->params()["Sample"].options = graph->actualNodeGraph()->getSampleNames();
+
+					if (!_node->sample.valid() || changed) {
+						_node->setup();
+					}
+
+					ImGui::AudioView(
+						"##aview",
+						120,
+						_node->sample.sampleData().data(),
+						_node->sample.sampleData().size(),
+						int(_node->sample.time() * _node->sample.sampleRate()),
+						34.0f
+					);
+				} else if (nodeR->name() == SequencerNode::type()) {
+					SequencerNode* _node = (SequencerNode*) nodeR;
+					static const char* NOTES[] = {
+						"C\0",
+						"C#\0",
+						"D\0",
+						"D#\0",
+						"E\0",
+						"F\0",
+						"F#\0",
+						"G\0",
+						"G#\0",
+						"A\0",
+						"A#\0",
+						"B\0",
+						0
+					};
+					ImGuiStyle& style = ImGui::GetStyle();
+					ImGuiWindow* window = ImGui::GetCurrentWindow();
+					const float lineHeight = ImGui::GetItemsLineHeightWithSpacing() + style.ItemInnerSpacing.y;
+					const float spacing = 32 + style.ItemSpacing.x;
+
+					ImGui::SetNextWindowContentWidth(SEQUENCER_SIZE * spacing);
+					ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0, 0, 0, 0));
+					
+					const ImGuiID id = window->GetID("sequencer_gui");
+					ImGui::BeginChildFrame(id, ImVec2(SEQUENCER_SIZE_VISIBLE*spacing, 4*lineHeight), 0);
+						ImGui::BeginHorizontal(this);
+							for (int i = 0; i < SEQUENCER_SIZE; i++) {
+								bool pushed = false;
+								if (i == (_node->noteIndex % SEQUENCER_SIZE)) {
+									pushed = true;
+									ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(120, 250, 120, 255));
+								}
+								if (ImGui::Button(" ", ImVec2(32, 0))) {
+									_node->noteIndex = i;
+								}
+								if (pushed) {
+									ImGui::PopStyleColor();
+								}
+							}
+						ImGui::EndHorizontal();
+
+						ImGui::BeginHorizontal(this);
+							ImGui::PushItemWidth(32);
+							for (int i = 0; i < SEQUENCER_SIZE; i++) {
+								char id[4];
+								id[0] = '#'; id[1] = '#'; id[2] = (i+1); id[3] = 0;
+								ImGui::Combo(id, (int*) &_node->notes[i], NOTES, 12);
+							}
+							ImGui::PopItemWidth();
+						ImGui::EndHorizontal();
+
+						ImGui::BeginHorizontal(this);
+							ImGui::PushItemWidth(32);
+							for (int i = 0; i < SEQUENCER_SIZE; i++) {
+								char id[5];
+								id[0] = '#'; id[1] = '#'; id[2] = (i+1); id[3] = 'o'; id[4] = 0;
+								ImGui::DragInt(id, &_node->octs[i], 0.1f, -5, 5);
+							}
+							ImGui::PopItemWidth();
+						ImGui::EndHorizontal();
+
+						ImGui::BeginHorizontal(this);
+							ImGui::PushItemWidth(32);
+							for (int i = 0; i < SEQUENCER_SIZE; i++) {
+								char id[5];
+								id[0] = '#'; id[1] = '#'; id[2] = (i+1); id[3] = 's'; id[4] = 0;
+								ImGui::ToggleButton(id, &_node->enabled[i]);
+							}
+							ImGui::PopItemWidth();
+						ImGui::EndHorizontal();
+					ImGui::EndChildFrame();
+					ImGui::PopStyleColor();
+				} else if (nodeR->name() == ButtonNode::type()) {
+					((ButtonNode*) nodeR)->enabled = ImGui::RubberButton("##button_");
+				}
+
 				ImGui::EndGroup();
 			}
 		ImGui::EndGroup();
@@ -503,9 +631,9 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 
 		const ImVec2 hsz(slotRadius*1.5f, slotRadius*1.5f);
 
-		for (auto&& in : nodeR->inputs()) {
-			const char* label = in.first.c_str();
-			ImVec2 pos = offset + node->inputPos(in.first, slotRadius, nodeTitleBarBgHeight, m_snapToGrid);
+		for (const Str& k : nodeR->inputs().keys()) {
+			const char* label = k.c_str();
+			ImVec2 pos = offset + node->inputPos(k, slotRadius, nodeTitleBarBgHeight, m_snapToGrid);
 			ImVec2 tsz = ImGui::CalcTextSize(label);
 			ImVec2 off = ImVec2(-(tsz.x + slotRadius + 3), -tsz.y * 0.5f);
 			ImVec2 off1 = ImVec2(-(tsz.x + slotRadius + 3), -tsz.y * 0.5f + 1);
@@ -520,13 +648,13 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 				m_linking.active && m_linking.node != node)
 			{
 				m_linking.active = false;
-				graph->link(m_linking.inputID, m_linking.inputSlot, nodeR->id(), in.first);
+				graph->link(m_linking.inputID, m_linking.inputSlot, nodeR->id(), k);
 			}
 		}
 		
-		for (auto&& out : nodeR->outputs()) {
-			const char* label = out.first.c_str();
-			ImVec2 pos = offset + node->outputPos(out.first, slotRadius, nodeTitleBarBgHeight, m_snapToGrid);
+		for (const Str& k : nodeR->outputs().keys()) {
+			const char* label = k.c_str();
+			ImVec2 pos = offset + node->outputPos(k, slotRadius, nodeTitleBarBgHeight, m_snapToGrid);
 			ImVec2 tsz = ImGui::CalcTextSize(label);
 			ImVec2 off = ImVec2(slotRadius + 3, -tsz.y * 0.5f);
 			ImVec2 off1 = ImVec2(slotRadius + 3, -tsz.y * 0.5f + 1);
@@ -540,10 +668,10 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 				m_linking.active = true;
 				m_linking.node = node;
 				m_linking.inputID = rnode_id;
-				m_linking.inputSlot = out.first;
+				m_linking.inputSlot = k;
 			}
 
-			if (m_linking.active && m_linking.node == node && m_linking.inputSlot == out.first) {
+			if (m_linking.active && m_linking.node == node && m_linking.inputSlot == k) {
 				ImVec2 p1 = pos;
 				ImVec2 p2 = ImGui::GetIO().MousePos;
 				ImVec2 cp1 = p1 + ImVec2(50, 0);
@@ -967,16 +1095,17 @@ void TNodeEditor::draw(int w, int h) {
 					}
 				}
 				if (ImGui::CollapsingHeader("Nodes")) {
-					std::vector<const char*> nodeNames;
-					std::vector<int> nodeIDs;
-					std::vector<ImRect> nodeBounds;
-					nodeNames.reserve(m_nodeGraphs[m_activeGraph]->m_nodes.size());
-					nodeIDs.reserve(m_nodeGraphs[m_activeGraph]->m_nodes.size());
-					nodeBounds.reserve(m_nodeGraphs[m_activeGraph]->m_nodes.size());
-					for (auto& nodep : m_nodeGraphs[m_activeGraph]->m_nodes) {
-						nodeNames.push_back(nodep.second->node->name().c_str());
-						nodeIDs.push_back(nodep.second->node->id());
-						nodeBounds.push_back(nodep.second->bounds);
+					std::vector<char*> nodeNames;
+					std::vector<u64> nodeIDs;
+					std::vector<ImVec4> nodeBounds;
+
+					for (auto&& np : m_nodeGraphs[m_activeGraph]->m_nodes) {
+						char* title = new char[np.second->node->title().size()];
+						strcpy(title, np.second->node->title().c_str());
+
+						nodeNames.push_back(title);
+						nodeIDs.push_back(np.second->node->id());
+						nodeBounds.push_back(np.second->bounds);
 					}
 
 					static int selectedNode = 0;
@@ -985,15 +1114,16 @@ void TNodeEditor::draw(int w, int h) {
 						m_nodeGraphs[m_activeGraph]->unselectAll();
 						m_nodeGraphs[m_activeGraph]->m_nodes[nodeIDs[selectedNode]]->selected = true;
 
-						ImVec2 sz = nodeBounds[selectedNode].Max - nodeBounds[selectedNode].Min;
-						m_nodeGraphs[m_activeGraph]->m_scrolling.x = -nodeBounds[selectedNode].Min.x + m_mainWindowSize.x * 0.5f - sz.x * 0.5f;
-						m_nodeGraphs[m_activeGraph]->m_scrolling.y = -nodeBounds[selectedNode].Min.y + m_mainWindowSize.y * 0.5f - sz.y * 0.5f;
+						ImVec2 sz = ImVec2(nodeBounds[selectedNode].z, nodeBounds[selectedNode].w);
+						m_nodeGraphs[m_activeGraph]->m_scrolling.x = -nodeBounds[selectedNode].x + m_mainWindowSize.x * 0.5f - sz.x * 0.5f;
+						m_nodeGraphs[m_activeGraph]->m_scrolling.y = -nodeBounds[selectedNode].y + m_mainWindowSize.y * 0.5f - sz.y * 0.5f;
 					}
 					ImGui::PopItemWidth();
 				}
 				if (ImGui::CollapsingHeader("Samples")) {
 					static int selectedSample = -1;
 					auto items = m_nodeGraphs[m_activeGraph]->getSampleNames();
+
 					ImGui::ListBox("##sampleLib", &selectedSample, items.data(), items.size(), 8);
 					ImGui::SameLine();
 
@@ -1131,25 +1261,6 @@ float TNodeEditor::output() {
 		sample = m_nodeGraphs[m_activeGraph]->actualNodeGraph()->solve();
 	}
 
-	const float ATTACK_TIME  = 5.0f / 1000.0f;
-	const float RELEASE_TIME = 200.0f / 1000.0f;
-
-	float attack  = 1.0f - std::exp(-1.0f / (ATTACK_TIME * sampleRate));
-	float release = 1.0f - std::exp(-1.0f / (RELEASE_TIME * sampleRate));
-
-	m_signalDC = Utils::lerp(m_signalDC, sample, 0.5f / sampleRate);
-	sample -= m_signalDC;
-
-	float absSignal = std::abs(sample);
-	if (absSignal > m_envelope) {
-		m_envelope = Utils::lerp(m_envelope, absSignal, attack);
-	} else {
-		m_envelope = Utils::lerp(m_envelope, absSignal, release);
-	}
-	m_envelope = std::max(m_envelope, 1.0f);
-
-	float finalOut = std::min(std::max((sample * 0.6f / (m_envelope+0.0001f)), -1.0f), 1.0f);
-
 	if (m_recording) {
 		const int fadeTime = int(m_recordingFadeTime * sampleRate);
 		const float fadeDelta = 1.0f / fadeTime;
@@ -1174,7 +1285,7 @@ float TNodeEditor::output() {
 					m_recordingFade = 1.0f;
 			} break;
 		}
-		m_recordBuffer[m_recordPointer++] = finalOut * m_recordingFade;
+		m_recordBuffer[m_recordPointer++] = sample * m_recordingFade;
 		if (m_recordPointer >= m_recordBuffer.size()) {
 			m_recording = false;
 			m_recordPointer = 0;
@@ -1182,7 +1293,7 @@ float TNodeEditor::output() {
 		}
 	}
 
-	return finalOut;
+	return sample;
 }
 
 void TNodeEditor::saveRecording(const std::string& fileName) {

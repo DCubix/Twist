@@ -3,6 +3,7 @@
 
 #include "intern/Utils.h"
 #include "intern/Vector.h"
+#include "intern/Dict.h"
 
 #include <initializer_list>
 
@@ -49,30 +50,34 @@ struct NodeParam {
 	Vec<Str> options;
 
 	bool sameLine = false;
+	i32 itemWidth = 100;
 
 	NodeParam() {}
 	NodeParam(
 		ParamType type,
 		float min, float max,
 		float value, float step,
-		const Vec<Str>& options
-	) : type(type), min(min), max(max), value(value), step(step), options(options)
+		const Vec<Str>& options,
+		i32 itemWidth=100
+	) : type(type), min(min), max(max), value(value), step(step), options(options), itemWidth(itemWidth)
 	{ }
 
 	NodeParam(
 		ParamType type,
 		float min, float max,
 		u32 option,
-		const Vec<Str>& options
-	) : type(type), min(min), max(max), option(option), options(options)
+		const Vec<Str>& options,
+		i32 itemWidth=100
+	) : type(type), min(min), max(max), option(option), options(options), itemWidth(itemWidth)
 	{ }
 
 	NodeParam(
 		ParamType type,
 		float min, float max,
 		float value, float step, u32 option,
-		const Vec<Str>& options
-	) : type(type), min(min), max(max), value(value), option(option), options(options), step(step)
+		const Vec<Str>& options,
+		i32 itemWidth=100
+	) : type(type), min(min), max(max), value(value), option(option), options(options), step(step), itemWidth(itemWidth)
 	{ }
 };
 
@@ -91,44 +96,34 @@ public:
 	void save(JSON& json) {
 		json["id"] = m_id;
 		json["type"] = m_name;
-		for (auto&& e : m_params) {
-			NodeParam param = e.second;
-			json["params"][e.first]["type"] = i32(param.type);
-			json["params"][e.first]["min"] = param.min;
-			json["params"][e.first]["max"] = param.max;
-			json["params"][e.first]["value"] = param.value;
-			json["params"][e.first]["option"] = param.option;
-			json["params"][e.first]["options"] = param.options;
-			json["params"][e.first]["sameLine"] = param.sameLine;
+		for (const Str& k : m_params.keys()) {
+			NodeParam param = m_params[k];
+			json["params"][k]["value"] = param.value;
+			json["params"][k]["option"] = param.option;
 		}
 	}
 
 	void load(JSON json) {
-		m_id = json["id"];
-		m_name = json["type"];
-		if (json["params"].is_array()) {
+		m_id = json["id"].is_number_unsigned() ? json["id"].get<u64>() : m_id;
+		m_name = json["type"].is_string() ? json["type"].get<Str>() : m_name;
+		if (json["params"].is_object()) {
 			for (auto e : json["params"].items()) {
 				JSON param = e.value();
-				m_params[e.key()].type = (NodeParam::ParamType) param["type"].get<u32>();
-				m_params[e.key()].min = param["min"].get<float>();
-				m_params[e.key()].max = param["max"].get<float>();
-				m_params[e.key()].value = param["value"].get<float>();
-				m_params[e.key()].option = param["option"].get<u32>();
-				m_params[e.key()].options = param["options"].get<Vec<Str>>();
-				m_params[e.key()].sameLine = param["sameLine"].get<bool>();
+				m_params[e.key()].value = !param["value"].is_number_float() ? 0.0f : param["value"].get<float>();
+				m_params[e.key()].option = !param["option"].is_number_unsigned() ? 0 : param["option"].get<u32>();
 			}
 		}
 	}
 
 	NodeSlot& outputs(const Str& name) { return m_outputs[name]; }
 	NodeSlot& inputs(const Str& name) { return m_inputs[name]; }
-	Map<Str, NodeSlot>& outputs() { return m_outputs; }
-	Map<Str, NodeSlot>& inputs() { return m_inputs; }
-	Map<Str, NodeParam>& params() { return m_params; }
+	Dict<NodeSlot>& outputs() { return m_outputs; }
+	Dict<NodeSlot>& inputs() { return m_inputs; }
+	Dict<NodeParam>& params() { return m_params; }
 
 	float& in(const Str& name, const Str& param = "", i32 index = 0) {
 		if (!m_inputs[name].connected) {
-			if (!param.empty() && m_params.find(param) != m_params.end()) {
+			if (!param.empty() && m_params.has(param)) {
 				return m_params[param].value;
 			} else {
 				return m_default;
@@ -145,8 +140,9 @@ public:
 
 	FloatArray& ins(const Str& name, const Str& param = "") {
 		if (!m_inputs[name].connected) {
-			if (!param.empty() && m_params.find(param) != m_params.end()) {
-				m_defaultArr.set(m_params[param].value);
+			if (!param.empty() && m_params.has(param)) {
+				m_defaultArr.set(0.0f);
+				m_defaultArr[0] = m_params[param].value;
 				return m_defaultArr;
 			} else {
 				m_defaultArr.set(0.0f);
@@ -175,8 +171,11 @@ public:
 	Vec<const char*> paramOptions(const Str& name) {
 		Vec<const char*> ops;
 		ops.resize(m_params[name].options.size());
-		for (i32 i = 0; i < ops.size(); i++)
-			ops[i] = m_params[name].options[i].c_str();
+		for (i32 i = 0; i < ops.size(); i++) {
+			char* title = new char[m_params[name].options[i].size()];
+			strcpy(title, m_params[name].options[i].c_str());
+			ops[i] = title;
+		}
 		return ops;
 	}
 
@@ -189,8 +188,8 @@ protected:
 	u64 m_id;
 
 	bool m_solved;
-	Map<Str, NodeSlot> m_inputs, m_outputs;
-	Map<Str, NodeParam> m_params;
+	Dict<NodeSlot> m_inputs, m_outputs;
+	Dict<NodeParam> m_params;
 
 	NodeGraph* m_parent;
 
@@ -203,8 +202,8 @@ protected:
 	void removeInput(const Str& name);
 	void removeOutput(const Str& name);
 
-	void addParam(const Str& name, float value, float step = 1.0f, bool sameLine = false) {
-		m_params[name] = NodeParam(NodeParam::None, 0.0f, 0.0f, value, step, Vec<Str>());
+	void addParam(const Str& name, float value, float step = 1.0f, bool sameLine = false, i32 w=70) {
+		m_params.add(name, NodeParam(NodeParam::None, 0.0f, 0.0f, value, step, Vec<Str>(), w));
 		m_params[name].sameLine = sameLine;
 	}
 
@@ -213,18 +212,18 @@ protected:
 				  float value = 0.0f,
 				  float step = 1.0f,
 				  NodeParam::ParamType type = NodeParam::Range,
-				  bool sameLine = false)
+				  bool sameLine = false, i32 w=70)
 	{
-		m_params[name] = NodeParam(type, min, max, value, step, Vec<Str>());
+		m_params.add(name, NodeParam(type, min, max, value, step, Vec<Str>(), w));
 		m_params[name].sameLine = sameLine;
 	}
 
 	void addParam(const Str& name,
 				  const std::initializer_list<Str>& options,
 				  u32 option = 0,
-				  bool sameLine = false)
+				  bool sameLine = false, i32 w=70)
 	{
-		m_params[name] = NodeParam(NodeParam::Option, 0, 0, option, Vec<Str>(options));
+		m_params.add(name, NodeParam(NodeParam::Option, 0, 0, option, Vec<Str>(options), w));
 		m_params[name].sameLine = sameLine;
 	}
 };

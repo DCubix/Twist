@@ -14,7 +14,7 @@ public:
 		addInput("Gate");
 		
 		addParam("A", 0.0f, 10.0f, a, 0.05f, NodeParam::KnobRange, true);
-		addParam("D", 0.0f, 10.0f, d, 0.05f, NodeParam::KnobRange);
+		addParam("D", 0.0f, 10.0f, d, 0.05f, NodeParam::KnobRange, true);
 		addParam("S", 0.0f,  1.0f, s, 0.05f, NodeParam::KnobRange, true);
 		addParam("R", 0.0f, 10.0f, r, 0.05f, NodeParam::KnobRange);
 

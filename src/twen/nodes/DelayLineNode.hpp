@@ -13,8 +13,8 @@ public:
 		addInput("In");
 		addOutput("Out");
 
-		addParam("Feedback", 0.0f, 1.0f, fb, 0.05f);
-		addParam("Delay", 0.0f, 10.0f, dl, 0.05f);
+		addParam("Feedback", 0.0f, 1.0f, fb, 0.05f, NodeParam::Range, false, 90);
+		addParam("Delay", 0.0f, 10.0f, dl, 0.05f, NodeParam::Range, false, 90);
 	}
 
 	void solve() {

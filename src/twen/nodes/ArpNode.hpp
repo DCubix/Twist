@@ -32,10 +32,10 @@ public:
 		addOutput("Gate");
 		addOutput("Nt");
 
-		addParam("Note", { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" }, note);
-		addParam("Type", { "maj", "min", "sus2", "sus4", "maj7", "min7", "9th", "oct" }, chord);
-		addParam("Dir", { "Up", "Down", "Up+Down", "Random" }, dir);
-		addParam("Oct", 0.0f, 5.0f, oct, 1.0f, NodeParam::DragRange);
+		addParam("Note", { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" }, note, true, 50);
+		addParam("Type", { "maj", "min", "sus2", "sus4", "maj7", "min7", "9th", "oct" }, chord, false, 50);
+		addParam("Dir", { "Up", "Down", "Up+Down", "Random" }, dir, true, 50);
+		addParam("Oct", 0.0f, 5.0f, oct, 1.0f, NodeParam::DragRange, false, 50);
 	}
 
 	int index(float ntime, int n) {

@@ -12,10 +12,10 @@ public:
 		addInput("In");
 		addOutput("Out");
 
-		addParam("Old Min", omin, 0.05f, false);
-		addParam("Old Max", omax, 0.05f, false);
-		addParam("New Min", nmin, 0.05f, false);
-		addParam("New Max", nmax, 0.05f, false);
+		addParam("Old Min", omin, 0.05f, false, 90);
+		addParam("Old Max", omax, 0.05f, false, 90);
+		addParam("New Min", nmin, 0.05f, false, 90);
+		addParam("New Max", nmax, 0.05f, false, 90);
 	}
 
 	void solve() {

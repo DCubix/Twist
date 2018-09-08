@@ -9,27 +9,25 @@ Node::Node()
 }
 
 void Node::addInput(const Str& name) {
-	m_inputs[name] = NodeSlot();
+	m_inputs.add(name, NodeSlot());
 	m_inputs[name].values.set(0.0f);
 	m_inputs[name].id = m_inputs.size()-1;
 }
 
 void Node::addOutput(const Str& name) {
-	m_outputs[name] = NodeSlot();
+	m_outputs.add(name, NodeSlot());
 	m_outputs[name].values.set(0.0f);
 	m_outputs[name].id = m_outputs.size()-1;
 }
 
 void Node::removeInput(const Str& name) {
-	auto pos = m_inputs.find(name);
-	if (pos == m_inputs.end())
+	if (!m_inputs.has(name))
 		return;
-	m_inputs.erase(pos);
+	m_inputs.remove(name);
 }
 
 void Node::removeOutput(const Str& name) {
-	auto pos = m_outputs.find(name);
-	if (pos == m_outputs.end())
+	if (!m_outputs.has(name))
 		return;
-	m_outputs.erase(pos);
+	m_outputs.remove(name);
 }

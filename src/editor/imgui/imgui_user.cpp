@@ -264,12 +264,14 @@ void AudioView(const char* id, float width, float* values, int length, int pos, 
 		IM_COL32(80,80,80,255)
 	);
 
-	ImVec2 prev = ImVec2(0.0f, h) + wp;
-	for (int i = 0; i < width; i++) {
-		int j = int((float(i) / width) * length);
-		ImVec2 pos = ImVec2(i, values[j] * h + h) + wp;
-		draw_list->AddLine(prev, pos, col);
-		prev = pos;
+	if (values != nullptr) {
+		ImVec2 prev = ImVec2(0.0f, h) + wp;
+		for (int i = 0; i < width; i++) {
+			int j = int((float(i) / width) * length);
+			ImVec2 pos = ImVec2(i, values[j] * h + h) + wp;
+			draw_list->AddLine(prev, pos, col);
+			prev = pos;
+		}
 	}
 
 	draw_list->AddLine(

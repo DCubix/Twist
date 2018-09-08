@@ -21,9 +21,9 @@ public:
 		addInput("In");
 		addOutput("Out");
 
-		addParam("Rate", 0.0f, 6.0f, rate, 0.05f);
-		addParam("Depth", 0.0f, 1.0f, depth, 0.05f);
-		addParam("Delay", 0.0f, 1.0f, delay, 0.05f);
+		addParam("Rate", 0.0f, 6.0f, rate, 0.05f, NodeParam::Range, false, 90);
+		addParam("Depth", 0.0f, 1.0f, depth, 0.05f, NodeParam::Range, false, 90);
+		addParam("Delay", 0.0f, 1.0f, delay, 0.05f, NodeParam::Range, false, 90);
 	}
 
 	void solve() {

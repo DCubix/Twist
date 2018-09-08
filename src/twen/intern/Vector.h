@@ -190,8 +190,19 @@ public:
 	}
 
 	void set(const Vector<N>& v) {
+#ifdef USING_SIMD
+		size_t sz = VEC_SIZE(m_data.size());
+		size_t inc = FLOAT_SIZE;
+		for (size_t i = 0; i < sz; i += inc) {
+			__m128 a = _mm_load_ps(&v.m_data[i]);
+			_mm_store_ps(&m_data[i], a);
+		}
+		for (size_t i = sz; i < m_data.size(); i++)
+			m_data[i] = v[i];
+#else
 		for (int i = 0; i < N; i++)
 			m_data[i] = v.m_data[i];
+#endif
 	}
 
 	float operator[] (uint32_t i) const {

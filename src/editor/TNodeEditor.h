@@ -79,8 +79,7 @@ private:
 
 	ImVec2 m_mainWindowSize, m_selectionStart, m_selectionEnd;
 
-	float m_signalDC = 0.0f, m_envelope = 0.0f, m_outDuration = 0, m_recTime = 0.1f,
-			m_recordingFadeTime = 0.0f, m_recordingFade = 0.0f;
+	float m_outDuration = 0, m_recTime = 0.1f, m_recordingFadeTime = 0.0f, m_recordingFade = 0.0f;
 	bool m_rendering = false, m_loading = false, m_playing = false, m_recording = false, m_exit=false;
 
 	Vec<float> m_recordBuffer;

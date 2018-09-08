@@ -111,7 +111,6 @@ public:
 	void toJSON(JSON& json);
 
 	GraphType type() const { return m_type; }
-	Str name() const { return m_name; }
 
 private:
 	void addSample(const Str& fname, const Vec<float>& data, float sr, float dur);
@@ -135,7 +134,6 @@ private:
 	Vec<Str> m_sampleNames;
 	Map<u64, Ptr<RawSample>> m_sampleLibrary;
 
-	Str m_name;
 };
 
 #endif // TWEN_NODE_GRAPH_H

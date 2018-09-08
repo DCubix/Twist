@@ -119,6 +119,7 @@ void NodeGraph::solveNodes(const Vec<u64>& solved) {
 		for (auto&& e : m_links) {
 			NodeLink* lnk = e.second.get();
 			if (lnk == nullptr) continue;
+
 			if (lnk->inputID == id) {
 				Node* tgt = get<Node>(lnk->outputID);
 				if (tgt == nullptr) continue;
@@ -197,12 +198,12 @@ NodeLink* NodeGraph::link(u64 id) {
 float NodeGraph::solve() {
 	solveNodes(m_solvedNodes);
 
-	if (m_type == GraphType::Normal) {
-		Node* out = get<Node>(outputNode());
-		if (out != nullptr && out->name() == OutNode::type()) {
-			return out->in("In");
-		}
+	// if (m_type == GraphType::Normal) {
+	Node* out = get<Node>(outputNode());
+	if (out != nullptr && out->name() == OutNode::type()) {
+		return out->in("In");
 	}
+	// }
 
 	return 0.0f;
 }
@@ -271,6 +272,8 @@ void NodeGraph::removeSample(u64 id) {
 }
 
 RawSample* NodeGraph::getSample(u64 id) {
+	if (m_sampleLibrary.empty())
+		return nullptr;
 	if (m_sampleLibrary.find(id) == m_sampleLibrary.end())
 		return nullptr;
 	return m_sampleLibrary[id].get();
@@ -296,19 +299,18 @@ void NodeGraph::fromJSON(JSON json) {
 	m_sampleLibrary.clear();
 	m_globalStorage.fill(0.0f);
 
-	m_type = (GraphType) json["graphType"];
-	m_name = json["graphName"];
+	// m_type = (GraphType) json["graphType"];
 
 	if (json["nodes"].is_array()) {
 		for (int i = 0; i < json["nodes"].size(); i++) {
 			JSON& node = json["nodes"][i];
 			if (node.is_null()) continue;
 
-			std::string type = node["type"].get<std::string>();
+			Str type = node["type"].get<Str>();
 
-			int id = node["id"].is_number_integer() ? node["id"].get<int>() : -1;
-			Node* nd = create(type, node);
-			nd->m_id = id;
+			u64 id = node["id"].is_number_integer() ? node["id"].get<u64>() : -1;
+			Node* no = create(type, node, id);
+			no->load(node);
 		}
 	}
 

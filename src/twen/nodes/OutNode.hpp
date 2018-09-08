@@ -13,9 +13,18 @@ public:
 	}
 
 	void solve() {
+		nextLvl = std::max(nextLvl, in("In") * in("Vol."));
 		in("In") = in("In") * in("Vol.");
+
+		level = Utils::lerp(level, nextLvl, 0.0007f);
+		nextLvl -= 1.0f / 22050;
+		nextLvl = std::min(std::max(nextLvl, 0.0f), 1.0f);
 	}
 
+	float level;
+
+private:
+	float nextLvl;
 };
 
 #endif // TWEN_OUT_NODE_H

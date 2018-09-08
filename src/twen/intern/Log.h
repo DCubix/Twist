@@ -60,7 +60,7 @@ private:
 #endif
 
 #define LogPrint(lvl, ...) Log::log(lvl, __FILE__, FN, __LINE__, _intern::Stringfy(__VA_ARGS__))
-#define Log(...) LogPrint(Log::Info, __VA_ARGS__)
+#define LogI(...) LogPrint(Log::Info, __VA_ARGS__)
 #define LogW(...) LogPrint(Log::Warning, __VA_ARGS__)
 #define LogE(...) LogPrint(Log::Error, __VA_ARGS__)
 #define LogAssert(cond, ...) if (!(cond)) { \

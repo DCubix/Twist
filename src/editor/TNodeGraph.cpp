@@ -62,6 +62,7 @@ void TNodeGraph::deleteNode(u64 id, bool canundo) {
 	if (pos != m_nodes.end()) {
 		m_nodes.erase(pos);
 	}
+	m_actualNodeGraph->remove(id);
 	m_lock.unlock();
 
 	if (canundo) {
@@ -134,7 +135,10 @@ void TNodeGraph::load(const Str& fileName) {
 		TNodeUI* no = m_nodes[nd.first].get();
 		no->bounds.x = int(json["nodes"][i]["pos"][0]);
 		no->bounds.y = int(json["nodes"][i]["pos"][1]);
-		no->open = json["nodes"][i]["open"];
+		no->open = json["nodes"][i]["open"].is_boolean() ? json["nodes"][i]["open"].get<bool>() : true;
+		no->node = nd.second.get();
+		no->gridPos.x = no->bounds.x;
+		no->gridPos.y = no->bounds.y;
 		i++;
 	}
 
@@ -146,6 +150,7 @@ void TNodeGraph::save(const std::string& fileName) {
 	JSON json;
 
 	json["scrolling"] = { m_scrolling.x, m_scrolling.y };
+	json["graphName"] = m_name;
 	m_actualNodeGraph->toJSON(json);
 
 	int i = 0;
@@ -171,7 +176,9 @@ void TNodeGraph::save(const std::string& fileName) {
 Vec<const char*> TNodeGraph::getSampleNames() {
 	Vec<const char*> sln;
 	for (auto& sle : m_actualNodeGraph->sampleLibrary()) {
-		sln.push_back(sle.second->name.c_str());
+		char* title = new char[sle.second->name.size()];
+		strcpy(title, sle.second->name.c_str());
+		sln.push_back(title);
 	}
 	return sln;
 }

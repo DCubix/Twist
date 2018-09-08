@@ -14,7 +14,7 @@ public:
 	}
 
 	void solve() {
-		int note = (int) param("Note");
+		int note = (int) paramOption("Note");
 		int oct = (int) param("Oct");
 		out("Nt") = (int)note + (oct * 12);
 	}
@@ -33,7 +33,7 @@ public:
 		FloatArray _out;
 		for (int i = 0; i < FLOAT_ARRAY_MAX; i++)
 			_out[i] = Utils::noteFrequency(int(in[i]));
-		outs("Freq") = _out;
+		outs("Freq").set(_out);
 	}
 
 };

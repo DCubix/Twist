@@ -9,7 +9,7 @@ public:
 	ValueNode(float v) : Node() {
 		addOutput("Out");
 
-		addParam("Val.", v, 0.05f, false);
+		addParam("Val.", v, 0.05f, false, 90);
 	}
 
 	void solve() {

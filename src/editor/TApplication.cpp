@@ -2,6 +2,7 @@
 
 #include "../glad/glad.h"
 #include "TMidi.h"
+#include "twen/intern/Log.h"
 
 #include "icon.h"
 #include "../stb/stb_image.h"
@@ -10,7 +11,7 @@ void TApplication::init(SDL_AudioCallback callback, void* udata, int sampleRate,
 	SDL_SetHint(SDL_HINT_VIDEO_HIGHDPI_DISABLED, "0");
 
 	if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
-		std::cout << SDL_GetError() << std::endl;
+		LogE(SDL_GetError());
 		return;
 	}
 
@@ -23,12 +24,12 @@ void TApplication::init(SDL_AudioCallback callback, void* udata, int sampleRate,
 	spec.format = AUDIO_F32;
 
 	if ((m_device = SDL_OpenAudioDevice(NULL, 0, &spec, &m_spec, 0)) < 0) {
-		std::cout << SDL_GetError() << std::endl;
+		LogE(SDL_GetError());
 		return;
 	}
 
-	std::cout << "SAMPLE RATE: " << m_spec.freq << std::endl;
-	std::cout << "SAMPLES: " << m_spec.samples << std::endl;
+	LogI("SAMPLE RATE: ", m_spec.freq);
+	LogI("SAMPLES: ", m_spec.samples);
 
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
@@ -46,7 +47,7 @@ void TApplication::init(SDL_AudioCallback callback, void* udata, int sampleRate,
 
 	m_context = SDL_GL_CreateContext(m_window);
 	if (!gladLoadGLLoader(SDL_GL_GetProcAddress)) {
-		std::cout << SDL_GetError() << std::endl;
+		LogE(SDL_GetError());
 		SDL_Quit();
 		return;
 	}

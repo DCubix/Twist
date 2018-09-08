@@ -20,14 +20,14 @@ public:
 		addInput("A");
 		addInput("B");
 
-		addParam("Op", { "Add", "Sub", "Mul", "Div", "Neg", "Avg" }, op);
-		addParam("A", a, 0.05f, false);
-		addParam("B", b, 0.05f, false);
+		addParam("Op", { "Add", "Sub", "Mul", "Neg", "Avg" }, op);
+		addParam("A", a, 0.05f, false, 90);
+		addParam("B", b, 0.05f, false, 90);
 	}
 
 	void solve() {
-		FloatArray a = in("A", "A");
-		FloatArray b = in("B", "B");
+		FloatArray a = ins("A", "A");
+		FloatArray b = ins("B", "B");
 		FloatArray _out;
 
 		MathOp op = (MathOp) paramOption("Op");
