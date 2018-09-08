@@ -2,19 +2,22 @@
 
 Node::Node()
  :	m_id(UID::getNew()),
-	m_solved(false)
+	m_solved(false),
+	m_default(0.0f)
 {
-
+	m_defaultArr.set(0.0f);
 }
 
 void Node::addInput(const Str& name) {
-	m_inputs[name] = FloatArray();
-	m_inputs[name].set(0.0f);
+	m_inputs[name] = NodeSlot();
+	m_inputs[name].values.set(0.0f);
+	m_inputs[name].id = m_inputs.size()-1;
 }
 
 void Node::addOutput(const Str& name) {
-	m_outputs[name] = FloatArray();
-	m_outputs[name].set(0.0f);
+	m_outputs[name] = NodeSlot();
+	m_outputs[name].values.set(0.0f);
+	m_outputs[name].id = m_outputs.size()-1;
 }
 
 void Node::removeInput(const Str& name) {

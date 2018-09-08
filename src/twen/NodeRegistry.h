@@ -11,38 +11,43 @@ struct IsNode { static const bool value = false; };
 template <class Nt>
 struct IsNode<Nt, decltype(Nt::typeID())> { static const bool value = true; };
 
-using NodeFactory = Node*(JSON);
+using NodeCtor = Node*(JSON);
 #define TWEN_NODE_FAC [](JSON json) -> Node*
+
+struct NodeFactory {
+	NodeCtor* ctor;
+	Str category, title, type;
+};
 
 class NodeBuilder {
 public:
 	template <typename Nt>
-	static void registerType(NodeFactory* factory) {
+	static void registerType(const Str& category, NodeCtor* factory) {
 		static_assert(
 			std::is_base_of<Node, Nt>::value,
 			"The node must be derived from 'Node'."
 		);
-		if (_factories.find(Nt::type()) != _factories.end()) {
+		if (factories.find(Nt::type()) != factories.end()) {
 			LogE("This node is already defined.");
 			return;
 		}
-		_factories[Nt::type()] = factory;
+		factories[Nt::type()].ctor = factory;
+		factories[Nt::type()].category = category;
+		factories[Nt::type()].title = Nt::prettyName();
+		factories[Nt::type()].type = Nt::type();
 	}
 
-	template <typename Nt>
-	static Nt* createNode(const Str& typeName, JSON params) {
-		static_assert(
-			std::is_base_of<Node, Nt>::value,
-			"The node must be derived from 'Node'."
-		);
-		if (_factories.find(Nt::type()) != _factories.end()) {
+	static Node* createNode(const Str& typeName, JSON params) {
+		if (factories.find(typeName) == factories.end()) {
 			LogE("Invalid node type.");
 			return nullptr;
 		}
-		return _factories[Nt::type()](params);
+		Node* node = factories[typeName].ctor(params);
+		node->m_title = factories[typeName].title;
+		return node;
 	}
 
-	static Map<Str, NodeFactory*> factories;
+	static Map<Str, NodeFactory> factories;
 };
 
 #endif // TWEN_NODE_REGISTRY_H

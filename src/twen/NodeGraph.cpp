@@ -4,6 +4,7 @@
 #include <fstream>
 
 #include "sndfile.hh"
+#include "nodes/StorageNodes.hpp"
 
 Vec<u64> NodeGraph::getAllLinksRelatedToNode(u64 id) {
 	Vec<u64> links;
@@ -80,7 +81,7 @@ Vec<u64> NodeGraph::buildNodes(const Vec<u64>& ids) {
 void NodeGraph::solveNodes() {
 	Vec<u64> outNodes;
 	for (auto& nd : m_nodes) {
-		// if (nd.second->m_type != TWriterNode::type()) continue;
+		if (nd.second->name() != WriterNode::type()) continue;
 		m_lock.lock();
 		outNodes.push_back(nd.second->id());
 		m_lock.unlock();
@@ -91,9 +92,9 @@ void NodeGraph::solveNodes() {
 	// 	if (n != nullptr && n->m_type == TOutputsNode::type())
 	// 		outNodes.push_back(outputsNode());
 	// } else {
-	// 	TNode* n = node(outputNode());
-	// 	if (n != nullptr && n->m_type == TOutNode::type())
-	// 		outNodes.push_back(outputNode());
+	Node* n = get<Node>(outputNode());
+	if (n != nullptr && n->name() == OutNode::type())
+		outNodes.push_back(outputNode());
 	// }
 
 	m_solvedNodes = buildNodes(outNodes);
@@ -122,8 +123,7 @@ void NodeGraph::solveNodes(const Vec<u64>& solved) {
 				Node* tgt = get<Node>(lnk->outputID);
 				if (tgt == nullptr) continue;
 
-				for (int k = 0; k < FLOAT_ARRAY_MAX; k++)
-					tgt->setMultiInput(lnk->outputSlot, k, nd->getMultiOutput(lnk->inputSlot, k));
+				tgt->ins(lnk->outputSlot).set(nd->outs(lnk->inputSlot));
 			}
 		}
 	}
@@ -156,15 +156,15 @@ void NodeGraph::remove(u64 id) {
 	solveNodes();
 }
 
-u64 NodeGraph::link(int inID, const Str& inSlot, int outID, const Str& outSlot) {
+u64 NodeGraph::link(u64 inID, const Str& inSlot, u64 outID, const Str& outSlot) {
 	NodeLink* link = new NodeLink();
 	link->inputID = inID;
 	link->inputSlot = inSlot;
 	link->outputID = outID;
 	link->outputSlot = outSlot;
 
-	// get<Node>(outID)->inputs(outSlot).connected = true;
-	// get<Node>(inID)->outputs(inSlot).connected = true;
+	get<Node>(outID)->inputs(outSlot).connected = true;
+	get<Node>(inID)->outputs(inSlot).connected = true;
 
 	u64 id = UID::getNew();
 	m_lock.lock();
@@ -180,8 +180,8 @@ void NodeGraph::removeLink(u64 id) {
 	NodeLink* lnk = link(id);
 	if (lnk == nullptr) return;
 
-	// node(lnk->outputID)->inputs()[lnk->outputSlot].connected = false;
-	// node(lnk->inputID)->outputs()[lnk->inputSlot].connected = false;
+	get<Node>(lnk->outputID)->inputs()[lnk->outputSlot].connected = false;
+	get<Node>(lnk->inputID)->outputs()[lnk->inputSlot].connected = false;
 
 	m_lock.lock();
 	m_links.erase(id);
@@ -199,8 +199,8 @@ float NodeGraph::solve() {
 
 	if (m_type == GraphType::Normal) {
 		Node* out = get<Node>(outputNode());
-		if (out != nullptr /*&& out->m_type == TOutNode::type()*/) {
-			return out->getInput("In");
+		if (out != nullptr && out->name() == OutNode::type()) {
+			return out->in("In");
 		}
 	}
 
@@ -216,6 +216,7 @@ void NodeGraph::addSample(const Str& fname, const Vec<float>& data, float sr, fl
 	entry->duration = dur;
 	entry->name = fname;
 	m_sampleLibrary[id] = std::move(entry);
+	m_sampleNames.push_back(fname);
 }
 
 bool NodeGraph::addSample(const Str& fileName) {
@@ -260,6 +261,12 @@ void NodeGraph::removeSample(u64 id) {
 	auto pos = m_sampleLibrary.find(id);
 	if (pos == m_sampleLibrary.end())
 		return;
+
+	Str name = m_sampleLibrary[id]->name;
+	auto npos = std::find(m_sampleNames.begin(), m_sampleNames.end(), name);
+	if (npos != m_sampleNames.end()) {
+		m_sampleNames.erase(npos);
+	}
 	m_sampleLibrary.erase(id);
 }
 
@@ -276,6 +283,10 @@ u64 NodeGraph::getSampleID(const Str& name) {
 		}
 	}
 	return 0;
+}
+
+Vec<Str> NodeGraph::getSampleNames() {
+	return m_sampleNames;
 }
 
 void NodeGraph::fromJSON(JSON json) {
@@ -296,7 +307,7 @@ void NodeGraph::fromJSON(JSON json) {
 			std::string type = node["type"].get<std::string>();
 
 			int id = node["id"].is_number_integer() ? node["id"].get<int>() : -1;
-			Node* nd = create(type);
+			Node* nd = create(type, node);
 			nd->m_id = id;
 		}
 	}
@@ -321,4 +332,34 @@ void NodeGraph::fromJSON(JSON json) {
 	}
 
 	solveNodes();
+}
+
+void NodeGraph::toJSON(JSON& json) {
+	int i = 0;
+	for (auto& nd : m_nodes) {
+		nd.second->save(json["nodes"][i++]);
+	}
+
+	i = 0;
+	for (auto& e : m_links) {
+		NodeLink* link = e.second.get();
+		if (link == nullptr) continue;
+		JSON& links = json["links"][i++];
+		links["inID"] = link->inputID;
+		links["inSlot"] = link->inputSlot;
+		links["outID"] = link->outputID;
+		links["outSlot"] = link->outputSlot;
+	}
+
+	// Save sample library
+	i = 0;
+	for (auto& se : m_sampleLibrary) {
+		if (se.second.get() == nullptr) continue;
+		JSON& je = json["sampleLibrary"][i++];
+		je["name"] = se.second->name;
+		je["samples"] = se.second->data;
+		je["sampleRate"] = se.second->sampleRate;
+		je["duration"] = se.second->duration;
+	}
+
 }

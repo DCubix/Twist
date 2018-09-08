@@ -1,3 +1,3 @@
 #include "NodeRegistry.h"
 
-Map<Str, NodeFactory*> NodeBuilder::_factories;
+Map<Str, NodeFactory> NodeBuilder::factories;

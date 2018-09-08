@@ -5,6 +5,8 @@
 #include "Node.h"
 #include "NodeRegistry.h"
 
+#include "nodes/OutNode.hpp"
+
 #include <mutex>
 
 #define GLOBAL_STORAGE_SIZE 0xFF
@@ -22,7 +24,7 @@ public:
 		Module
 	};
 
-	NodeGraph() { m_globalStorage.fill(0.0f); }
+	NodeGraph() : m_type(GraphType::Normal) { m_globalStorage.fill(0.0f); }
 
 	template <typename Nt>
 	Nt* get(u64 id) {
@@ -39,7 +41,7 @@ public:
 	void remove(u64 id);
 
 	template <typename Nt, typename... Args>
-	Nt* create(Args&&... args) {
+	u64 create(Args&&... args) {
 		static_assert(
 			std::is_base_of<Node, Nt>::value,
 			"The node must be derived from 'Node'."
@@ -48,38 +50,48 @@ public:
 
 		Nt* nt = new Nt(args...);
 		nt->m_parent = this;
+		nt->m_name = Nt::type();
 
 		u64 id = nt->id();
 		m_nodes.insert({ nt->id(), Ptr<Node>(std::move(nt)) });
 
 		solveNodes();
 
-		return get<Nt>(id);
+		if (Nt::type() == OutNode::type()) {
+			m_outputNode = id;
+		}
+
+		return id;
+	}
+
+	Node* create(const Str& typeName, JSON params, u64 id = 0) {
+		Node* node = NodeBuilder::createNode(typeName, params);
+		node->m_parent = this;
+		node->m_name = typeName;
+		if (id > 0)
+			node->m_id = id;
 		
-		// if (type == TOutputsNode::type()) {
-		// 	m_outputsNode = nid;
-		// }
-		// if (type == TInputsNode::type()) {
-		// 	m_inputsNode = nid;
-		// }
-		// if (type == TOutNode::type()) {
-		// 	m_outputNode = nid;
-		// }
+		u64 nid = node->id();
+		m_nodes.insert({ nid, Ptr<Node>(std::move(node)) });
+
+		solveNodes();
+
+		if (node->name() == OutNode::type()) {
+			m_outputNode = nid;
+		}
+
+		return get<Node>(nid);
 	}
 
-	Node* create(const Str& typeName) {
-		return NodeBuilder::createNode<Node>(typeName, JSON());
-	}
-
-	u64 link(int inID, const Str& inSlot, int outID, const Str& outSlot);
+	u64 link(u64 inID, const Str& inSlot, u64 outID, const Str& outSlot);
 
 	Map<u64, Ptr<Node>>& nodes() { return m_nodes; }
 	Map<u64, Ptr<NodeLink>>& links() { return m_links; }
 	void removeLink(u64 id);
 	NodeLink* link(u64 id);
 
-	u64 inputsNode() const { return m_inputsNode; }
-	u64 outputsNode() const { return m_outputsNode; }
+	// u64 inputsNode() const { return m_inputsNode; }
+	// u64 outputsNode() const { return m_outputsNode; }
 	u64 outputNode() const { return m_outputNode; }
 
 	void store(u32 loc, float value) { m_globalStorage[loc] = value; }
@@ -89,11 +101,14 @@ public:
 	void removeSample(u64 id);
 	u64 getSampleID(const Str& name);
 	RawSample* getSample(u64 id);
+	Map<u64, Ptr<RawSample>>& sampleLibrary() { return m_sampleLibrary; }
+	Vec<Str> getSampleNames();
 
 	float solve();
 	void solveNodes();
 
 	void fromJSON(JSON json);
+	void toJSON(JSON& json);
 
 	GraphType type() const { return m_type; }
 	Str name() const { return m_name; }
@@ -107,7 +122,7 @@ private:
 	void solveNodes(const Vec<u64>& solved);
 
 	GraphType m_type;
-	u64 m_outputNode = 0, m_inputsNode = 0, m_outputsNode = 0;
+	u64 m_outputNode = 0;
 
 	Map<u64, Ptr<Node>> m_nodes;
 	Map<u64, Ptr<NodeLink>> m_links;
@@ -116,6 +131,8 @@ private:
 	Vec<u64> m_solvedNodes;
 
 	Arr<float, GLOBAL_STORAGE_SIZE> m_globalStorage;
+
+	Vec<Str> m_sampleNames;
 	Map<u64, Ptr<RawSample>> m_sampleLibrary;
 
 	Str m_name;

@@ -5,31 +5,29 @@
 #include "../NodeGraph.h"
 
 class ReaderNode : public Node {
-	TWEN_NODE(ReaderNode)
+	TWEN_NODE(ReaderNode, "Reader")
 public:
-	ReaderNode(int idx) : Node(), idx(idx) {
+	ReaderNode(int idx=0) : Node() {
 		addOutput("Out");
+		addParam("Slot", 0, GLOBAL_STORAGE_SIZE, idx, 1.0f, NodeParam::DragRange);
 	}
 
 	void solve() {
-		setOutput("Out", parent()->load(idx));
+		out("Out") = parent()->load((int) param("Slot"));
 	}
-
-	int idx = 0;
 };
 
 class WriterNode : public Node {
-	TWEN_NODE(WriterNode)
+	TWEN_NODE(WriterNode, "Writer")
 public:
-	WriterNode(int idx) : Node(), idx(idx) {
+	WriterNode(int idx=0) : Node() {
 		addInput("In");
+		addParam("Slot", 0, GLOBAL_STORAGE_SIZE, idx, 1.0f, NodeParam::DragRange);
 	}
 
 	void solve() {
-		parent()->store(idx, getInput("Out"));
+		parent()->store((int) param("Slot"), in("In"));
 	}
-
-	int idx = 0;
 };
 
 

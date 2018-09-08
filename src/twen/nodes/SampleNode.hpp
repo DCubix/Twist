@@ -6,32 +6,39 @@
 #include "../intern/Sample.h"
 
 class SampleNode : public Node {
-	TWEN_NODE(SampleNode)
+	TWEN_NODE(SampleNode, "Sample")
 public:
-	SampleNode(int sampleID, int sel, float amp)
-		: Node(), sampleID(sampleID), selectedID(sel), volume(amp)
-	{
+	SampleNode(int sampleID=0) : Node() {
 		addInput("Gate");
 		addInput("Amp");
 		addOutput("Out");
+		setup();
+
+		addParam("Sample", {}, sampleID);
+		addParam("Amp", 0.0f, 1.0f, 1.0f, 0.05f, NodeParam::KnobRange);
 	}
 
 	void setup() {
-		RawSample* sle = parent()->getSample(sampleID);
+		u32 id = paramOption("Sample");
+		RawSample* sle = parent()->getSample(id);
 		if (sle != nullptr) {
 			sample = Sample(sle->data, sle->sampleRate, sle->duration);
 		}
 	}
 
 	void solve() {
-		bool gate = getInput("Gate") > 0.5f ? true : false;
+		params()["Sample"].options = parent()->getSampleNames();
+
 		if (sample.valid()) {
+			bool gate = in("Gate") > 0.5f ? true : false;
 			sample.gate(gate);
-			setOutput("Out", sample.sample() * getInput("Amp"));
+			out("Out") = sample.sample() * in("Amp", "Amp");
+		} else {
+			setup();
 		}
 	}
 
-	int sampleID, selectedID;
+private:
 	Sample sample;
 };
 

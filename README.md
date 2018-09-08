@@ -14,7 +14,6 @@ It is a 100% visual tool to help you create a broad variety of sounds, packed wi
 * Many useful nodes
 * Recording
 * Sampling (WAV, OGG, AIFF and FLAC)
-* Custom Modules
 * Reverb effect
 
 ## Building

@@ -33,7 +33,7 @@ using i64 = int64_t;
 
 using TypeIndex = std::type_index;
 
-template <typename T, u8 N> using Arr = std::array<T, N>;
+template <typename T, u32 N> using Arr = std::array<T, N>;
 template <typename T> using Vec = std::vector<T>;
 template <typename K, typename V> using Map = std::map<K, V>;
 template <typename K, typename V> using UMap = std::unordered_map<K, V>;

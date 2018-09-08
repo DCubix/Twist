@@ -6,10 +6,10 @@
 #include "../intern/WaveGuide.h"
 
 class ChorusNode : public Node {
-	TWEN_NODE(ChorusNode)
+	TWEN_NODE(ChorusNode, "Chorus")
 public:
-	ChorusNode(float sampleRate, float dt=1, float cr=1.0f, float cd=1.0f)
-		: Node(), sampleRate(sampleRate), delayTime(dt), chorusRate(cr), chorusDepth(cd)
+	ChorusNode(float sampleRate=44100.0f, float rate=0, float depth=0, float delay=0)
+		: Node(), sampleRate(sampleRate)
 	{
 		m_lfo = Oscillator(sampleRate);
 		m_lfo.amplitude(1.0f);
@@ -20,23 +20,25 @@ public:
 
 		addInput("In");
 		addOutput("Out");
+
+		addParam("Rate", 0.0f, 6.0f, rate, 0.05f);
+		addParam("Depth", 0.0f, 1.0f, depth, 0.05f);
+		addParam("Delay", 0.0f, 1.0f, delay, 0.05f);
 	}
 
 	void solve() {
-		float sgn = m_lfo.sample(chorusRate) * chorusDepth;
-		float sgnDT = sgn * delayTime;
-		dt = sgnDT + delayTime;
-		float out = m_wv.sample(getInput("In"), 0.0f, dt);
-		setOutput("Out", (out + getInput("In")) * 0.5f);
+		float sgn = m_lfo.sample(param("Rate")) * param("Depth");
+		float sgnDT = sgn * param("Delay");
+		dt = sgnDT + param("Delay");
+		float _out = m_wv.sample(in("In"), 0.0f, dt);
+		out("Out") = ((_out + in("In")) * 0.5f);
 	}
 
+private:
 	float sampleRate;
 	float lpOut;
 	float dt;
 
-	float chorusRate, chorusDepth, delayTime;
-
-private:
 	Oscillator m_lfo;
 	WaveGuide m_wv;
 };

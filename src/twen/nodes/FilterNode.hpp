@@ -4,50 +4,53 @@
 #include "../Node.h"
 
 class FilterNode : public Node {
-	TWEN_NODE(FilterNode)
+	TWEN_NODE(FilterNode, "Filter")
 public:
-	enum TFilter {
+	enum Filter {
 		LowPass = 0,
 		HighPass
 	};
 
-	FilterNode(float sampleRate, float cut, TFilter filter)
-		: Node(), filter(filter), sampleRate(sampleRate), out(0.0f), cut(cut)
+	FilterNode(float sampleRate=44100.0f, float co=20, u32 filter=0)
+		: Node(), sampleRate(sampleRate)
 	{
 		addInput("In");
 		addInput("CutOff");
 		addOutput("Out");
+
+		addParam("CutOff", 20.0f, 20000.0f, co);
+		addParam("Filter", { "Low-Pass", "High-Pass" }, filter);
 	}
 
 	void solve() {
-		float cutOff = std::min(std::max(getInput("CutOff"), 20.0f), 20000.0f);
-		float in = getInput("In");
+		float cutOff = std::min(std::max(in("CutOff", "CutOff"), 20.0f), 20000.0f);
+		float _in = in("In");
+		Filter filter = (Filter) paramOption("Filter");
 		switch (filter) {
 			case LowPass: {
 				if (cutOff > 0.0f) {
 					float dt = 1.0f / sampleRate;
 					float a = dt / (dt + 1.0f / (2.0 * M_PI * cutOff));
-					out = Utils::lerp(out, in, a);
+					_out = Utils::lerp(_out, _in, a);
 				} else {
-					out = 0.0f;
+					_out = 0.0f;
 				}
 			} break;
 			case HighPass: {
 				float rc = 1.0f / (2.0f * M_PI * cutOff);
 				float a = rc / (rc + 1.0f / sampleRate);
 
-				float result = a * (prev + in);
-				prev = result - in;
+				float result = a * (prev + _in);
+				prev = result - _in;
 
-				out = result;
+				_out = result;
 			} break;
 		}
-		setOutput("Out", out);
+		out("Out") = _out;
 	}
 
-	TFilter filter;
-	float sampleRate, out, prev, cut;
-
+private:
+	float sampleRate, _out, prev;
 };
 
 #endif // TWEN_FILTER_NODE_H

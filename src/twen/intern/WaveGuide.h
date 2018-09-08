@@ -3,7 +3,7 @@
 
 #include "Utils.h"
 
-#define WAVE_GUIDE_SAMPLES 22050UL
+#define WAVE_GUIDE_SAMPLES 22050
 class WaveGuide {
 public:
 	WaveGuide() : m_sampleRate(44100), m_counter(0) { m_buffer.fill(0); }

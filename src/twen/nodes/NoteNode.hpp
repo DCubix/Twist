@@ -4,24 +4,24 @@
 #include "../Node.h"
 
 class NoteNode : public Node {
-	TWEN_NODE(NoteNode)
+	TWEN_NODE(NoteNode, "Note")
 public:
-	NoteNode(Note note = Note::C, int oct=0)
-		: Node(), note(note), oct(oct)
-	{
+	NoteNode(Note note, float oct=0) : Node() {
 		addOutput("Nt");
+
+		addParam("Note", { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" }, note);
+		addParam("Oct", 0.0f, 5.0f, oct, 1.0f, NodeParam::DragRange);
 	}
 
 	void solve() {
-		setOutput("Nt", (int)note + (oct * 12));
+		int note = (int) param("Note");
+		int oct = (int) param("Oct");
+		out("Nt") = (int)note + (oct * 12);
 	}
-
-	Note note;
-	int oct;
 };
 
 class FreqNode : public Node {
-	TWEN_NODE(FreqNode)
+	TWEN_NODE(FreqNode, "Frequency")
 public:
 	FreqNode() : Node() {
 		addInput("Nt");
@@ -29,11 +29,11 @@ public:
 	}
 
 	void solve() {
-		FloatArray in = inputs("Nt");
-		FloatArray out;
+		FloatArray in = ins("Nt");
+		FloatArray _out;
 		for (int i = 0; i < FLOAT_ARRAY_MAX; i++)
-			out[i] = Utils::noteFrequency(int(in[i]));
-		setMultiOutputValues("Freq", out);
+			_out[i] = Utils::noteFrequency(int(in[i]));
+		outs("Freq") = _out;
 	}
 
 };

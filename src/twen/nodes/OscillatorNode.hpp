@@ -5,27 +5,29 @@
 #include "../intern/Oscillator.h"
 
 class OscillatorNode : public Node {
-	TWEN_NODE(OscillatorNode)
+	TWEN_NODE(OscillatorNode, "Oscillator")
 public:
-	OscillatorNode(
-		float sampleRate,
-		Oscillator::WaveForm wf=Oscillator::Sine,
-		float freq=220.0f,
-		float amp=1.0f
-	) : Node(), wf(wf), frequency(freq), amplitude(amp), sampleRate(sampleRate)
+	OscillatorNode(float sampleRate=44100.0f, u32 wf=0, float freq=220, float amp=1)
+		: Node(), m_sampleRate(sampleRate)
 	{
 		addInput("Freq");
 		addInput("Amp");
 		addOutput("Out");
 
+		addParam("WaveForm", { "Sine", "Pulse", "Square", "Saw", "Triangle", "Noise" }, wf);
+		addParam("Freq", 20.0f, 20000.0f, freq, 1.0f, NodeParam::DragRange);
+		addParam("Amp", 0.0f, 1.0f, amp, 0.05f, NodeParam::DragRange);
+
 		for (int i = 0; i < FLOAT_ARRAY_MAX; i++) {
-			m_osc[i] = Oscillator(sampleRate);
+			m_osc[i] = Oscillator(m_sampleRate);
 		}
 	}
 
 	void solve() {
-		FloatArray freqs = inputs("Freq");
-		FloatArray amps = inputs("Amp");
+		FloatArray freqs = ins("Freq", "Freq");
+		FloatArray amps = ins("Amp", "Amp");
+
+		int wf = (int) paramOption("WaveForm");
 
 		int count = 0;
 		float value = 0.0f;
@@ -39,13 +41,11 @@ public:
 		}
 		value /= (count == 0 ? 1 : count);
 
-		setOutput("Out", value);
+		out("Out") = value;
 	}
 
-	float frequency, amplitude, sampleRate;
-	int wf;
-
 private:
+	float m_sampleRate;
 	Oscillator m_osc[FLOAT_ARRAY_MAX];
 };
 

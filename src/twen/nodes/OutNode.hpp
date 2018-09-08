@@ -4,15 +4,16 @@
 #include "../Node.h"
 
 class OutNode : public Node {
-	TWEN_NODE(OutNode)
+	TWEN_NODE(OutNode, "Output")
 public:
 	OutNode() : Node() {
 		addInput("In");
 		addInput("Vol.");
+		ins("Vol.").set(1.0f);
 	}
 
 	void solve() {
-		setInput("In", getInput("In") * getInput("Vol."));
+		in("In") = in("In") * in("Vol.");
 	}
 
 };

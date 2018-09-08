@@ -5,9 +5,9 @@
 #include "../Node.h"
 
 class ArpNode : public Node {
-	TWEN_NODE(ArpNode)
+	TWEN_NODE(ArpNode, "Arp")
 public:
-	enum TChord {
+	enum Chord {
 		Major = 0,
 		Minor,
 		Sus2,
@@ -19,7 +19,7 @@ public:
 		ChordTypeCount
 	};
 
-	enum TDirection {
+	enum Direction {
 		Up = 0,
 		Down,
 		UpDown,
@@ -27,12 +27,15 @@ public:
 		DirectionCount
 	};
 
-	ArpNode(int note, int oct, TChord ct, TDirection dir)
-		: Node(), note(note), chordType(ct), direction(dir), oct(oct)
-	{
+	ArpNode(u32 note, u32 chord, u32 dir, float oct) : Node() {
 		addInput("Time");
 		addOutput("Gate");
 		addOutput("Nt");
+
+		addParam("Note", { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" }, note);
+		addParam("Type", { "maj", "min", "sus2", "sus4", "maj7", "min7", "9th", "oct" }, chord);
+		addParam("Dir", { "Up", "Down", "Up+Down", "Random" }, dir);
+		addParam("Oct", 0.0f, 5.0f, oct, 1.0f, NodeParam::DragRange);
 	}
 
 	int index(float ntime, int n) {
@@ -44,6 +47,7 @@ public:
 			gate = true;
 		}
 
+		Direction direction = (Direction) paramOption("Dir");
 		switch (direction) {
 			case Up: return rn;
 			case Down: return n - 1 - rn;
@@ -64,7 +68,12 @@ public:
 	}
 
 	void solve() {
-		float ntime = getInput("Time");
+		float ntime = in("Time");
+
+		Note note = (Note) paramOption("Note");
+		Chord chordType = (Chord) paramOption("Type");
+		Direction direction = (Direction) paramOption("Dir");
+
 		int noteIn = note;
 
 #define INDEX(n) index(ntime, n)
@@ -105,20 +114,18 @@ public:
 			default: break;
 		}
 
-		setOutput("Gate", gate ? 1 : 0, true);
-		setOutput("Nt", nt + (12 * oct), true);
+		if (gate) {
+			outs("Gate").set(1.0f);
+		} else {
+			outs("Gate").set(0.0f);
+		}
+		outs("Nt").set(nt + (12 * param("Oct")));
 	}
 
-	int note;
-	TChord chordType;
-	TDirection direction;
-	int oct, prevNt;
-
+private:
 	bool gate = false;
-	int prevRN = -1;
-
+	int prevNt, prevRN = -1;
 	int prevN = 0, randN = 0;
-
 };
 
 #endif // TWEN_ARP_NODE_H

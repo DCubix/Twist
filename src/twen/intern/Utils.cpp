@@ -42,4 +42,4 @@ namespace Utils {
 	}
 }
 
-u64 UID::_id = 0;
+u64 UID::_id = 1;

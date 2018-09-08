@@ -6,26 +6,6 @@
 #include <cmath>
 #include <algorithm>
 
-#include "nodes/TADSRNode.hpp"
-#include "nodes/TButtonNode.hpp"
-#include "nodes/TChorusNode.hpp"
-#include "nodes/TFilterNode.hpp"
-#include "nodes/TMathNode.hpp"
-#include "nodes/TMixNode.hpp"
-#include "nodes/TNoteNode.hpp"
-#include "nodes/TOscillatorNode.hpp"
-#include "nodes/TOutNode.hpp"
-#include "nodes/TRemapNode.hpp"
-#include "nodes/TSequencerNode.hpp"
-#include "nodes/TValueNode.hpp"
-#include "nodes/TTimerNode.hpp"
-#include "nodes/TReverbNode.hpp"
-#include "nodes/TDelayLineNode.hpp"
-#include "nodes/TStorageNodes.hpp"
-#include "nodes/TSampleNode.hpp"
-#include "nodes/TArpNode.hpp"
-#include "nodes/TMIDINode.hpp"
-
 #include "TUndoRedo.h"
 
 #include "OsDialog.hpp"
@@ -45,8 +25,6 @@
 #else
 #define PATH_SEPARATOR '/'
 #endif
-
-#define NODE_CTOR [](JSON& json) -> TNode*
 
 #define NODE_SLOT_RADIUS(x) (5.0f * x)
 #define NODE_SLOT_RADIUS2(x) (6.0f * x)
@@ -106,7 +84,7 @@ inline static float GetSquaredDistanceToBezierCurve(const ImVec2& point,const Im
 TNodeEditor::TNodeEditor() {
 	m_linking.active = 0;
 	m_linking.inputID = 0;
-	m_linking.inputSlot = 0;
+	m_linking.inputSlot = "";
 	m_linking.node = nullptr;
 	m_openContextMenu = false;
 	m_bounds.x = 0;
@@ -115,6 +93,7 @@ TNodeEditor::TNodeEditor() {
 	m_bounds.w = 1;
 	m_oldFontWindowScale = 0;
 	m_envelope = 1000;
+	m_recording = false;
 
 	// Load recent files
 	std::ifstream fp(".recent");
@@ -139,232 +118,6 @@ TNodeEditor::TNodeEditor() {
 	));
 	m_MIDIout->openPort(0, "Twist - Main Out");
 
-	// Register Nodes
-	TNodeFactory::registerNode<TValueNode>("General", NODE_CTOR {
-		return new TValueNode{ GET(float, "value", 0.0f) };
-	});
-
-	TNodeFactory::registerNode<TMixNode>("Operators", NODE_CTOR {
-		return new TMixNode{ GET(float, "factor", 0.5f) };
-	});
-
-	TNodeFactory::registerNode<TOscillatorNode>("Generators", NODE_CTOR {
-		return new TOscillatorNode{
-			GET(float, "sampleRate", 44100),
-			(TOsc::TWave) GET(int, "waveForm", 0),
-			GET(float, "freq", 440),
-			GET(float, "amp", 1)
-		};
-	});
-
-	TNodeFactory::registerNode<TNoteNode>("Generators", NODE_CTOR {
-		return new TNoteNode{
-			(Notes) GET(int, "note", 0),
-			GET(int, "oct", 0)
-		};
-	});
-
-	TNodeFactory::registerNode<TChorusNode>("Filters", NODE_CTOR {
-		return new TChorusNode{
-			GET(float, "sampleRate", 44100),
-			GET(float, "delayTime", 1),
-			GET(float, "chorusRate", 1),
-			GET(float, "chorusDepth", 1)
-		};
-	});
-
-	TNodeFactory::registerNode<TRemapNode>("Operators", NODE_CTOR {
-		return new TRemapNode{
-			GET(float, "omin", 0),
-			GET(float, "omax", 1),
-			GET(float, "nmin", 0),
-			GET(float, "nmax", 1)
-		};
-	});
-
-	TNodeFactory::registerNode<TSequencerNode>("Generators", NODE_CTOR {
-		TSequencerNode* seq = new TSequencerNode{};
-		if (json["key"].is_number_integer()) {
-			seq->key = json["key"];
-		}
-		if (json["notes"].is_array()) {
-			for (int i = 0; i < json["notes"].size(); i++) {
-				seq->notes[i] = json["notes"][i];
-			}
-		}
-		if (json["octs"].is_array()) {
-			for (int i = 0; i < json["octs"].size(); i++) {
-				seq->octs[i] = json["octs"][i];
-			}
-		}
-		if (json["enabled"].is_array()) {
-			for (int i = 0; i < json["enabled"].size(); i++) {
-				seq->enabled[i] = json["enabled"][i].get<bool>();
-			}
-		}
-		return seq;
-	});
-
-	TNodeFactory::registerNode<TButtonNode>("General", NODE_CTOR {
-		return new TButtonNode();
-	});
-
-	TNodeFactory::registerNode<TFilterNode>("Filters", NODE_CTOR {
-		return new TFilterNode{
-			GET(float, "sampleRate", 44100),
-			GET(float, "cutOff", 20),
-			(TFilterNode::TFilter) GET(int, "filter", 0)
-		};
-	});
-
-	TNodeFactory::registerNode<TMathNode>("Operators", NODE_CTOR {
-		return new TMathNode{
-			(TMathNode::TMathNodeOp) GET(int, "op", 0),
-			GET(float, "a", 0),
-			GET(float, "b", 0)
-		};
-	});
-
-	TNodeFactory::registerNode<TADSRNode>("Generators", NODE_CTOR {
-		return new TADSRNode{
-			GET(float, "sampleRate", 44100),
-			GET(float, "a", 0),
-			GET(float, "d", 0),
-			GET(float, "s", 0),
-			GET(float, "r", 0)
-		};
-	});
-
-	TNodeFactory::registerNode<TTimerNode>("General", NODE_CTOR {
-		return new TTimerNode{
-			GET(float, "sampleRate", 44100),
-			GET(float, "bpm", 120),
-			GET(float, "swing", 0)
-		};
-	});
-
-	TNodeFactory::registerNode<TReverbNode>("Filters", NODE_CTOR {
-		TReverbNode* rv = new TReverbNode{
-			GET(float, "sampleRate", 44100)
-		};
-		if (json["preset"].is_array()) {
-			auto preset = json["preset"];
-			rv->pset.osf = preset[0];
-			rv->pset.p1 = preset[1];
-			rv->pset.p2 = preset[2];
-			rv->pset.p3 = preset[3];
-			rv->pset.p4 = preset[4];
-			rv->pset.p5 = preset[5];
-			rv->pset.p6 = preset[6];
-			rv->pset.p7 = preset[7];
-			rv->pset.p8 = preset[8];
-			rv->pset.p9 = preset[9];
-			rv->pset.p10 = preset[10];
-			rv->pset.p11 = preset[11];
-			rv->pset.p12 = preset[12];
-			rv->pset.p13 = preset[13];
-			rv->pset.p14 = preset[14];
-			rv->pset.p15 = preset[15];
-			rv->pset.p16 = preset[16];
-		}
-		return rv;
-	});
-
-	TNodeFactory::registerNode<TOutNode>("General", NODE_CTOR {
-		TOutNode* out = new TOutNode();
-		out->volume = GET(float, "volume", 1.0f);
-		return out;
-	});
-
-	TNodeFactory::registerNode<TInputsNode>("General", NODE_CTOR {
-		TInputsNode* tin = new TInputsNode();
-		if (json["inputs"].is_array()) {
-			for (int i = 0; i < json["inputs"].size(); i++) {
-				tin->addOutput(json["inputs"][i]);
-			}
-		}
-		return tin;
-	});
-
-	TNodeFactory::registerNode<TOutputsNode>("General", NODE_CTOR {
-		TOutputsNode* tout = new TOutputsNode();
-		if (json["outputs"].is_array()) {
-			for (int i = 0; i < json["outputs"].size(); i++) {
-				tout->addInput(json["outputs"][i]);
-			}
-		}
-		return tout;
-	});
-
-	TNodeFactory::registerNode<TModuleNode>("General", NODE_CTOR {
-		TModuleNode* mod = new TModuleNode();
-		mod->filePath = json["filePath"].is_string() ? json["filePath"] : "";
-		mod->load(mod->filePath);
-		return mod;
-	});
-
-	TNodeFactory::registerNode<TDelayLineNode>("Filters", NODE_CTOR {
-		return new TDelayLineNode{
-			GET(float, "sampleRate", 44100.0f),
-			GET(float, "feedback", 0.0f),
-			GET(int, "delay", 10)
-		};
-	});
-
-	TNodeFactory::registerNode<TReaderNode>("General", NODE_CTOR {
-		return new TReaderNode{
-			GET(int, "idx", 0)
-		};
-	});
-
-	TNodeFactory::registerNode<TWriterNode>("General", NODE_CTOR {
-		return new TWriterNode{
-			GET(int, "idx", 0)
-		};
-	});
-
-	TNodeFactory::registerNode<TSampleNode>("Generators", NODE_CTOR {
-		return new TSampleNode(
-			GET(int, "sample", 0),
-			GET(int, "selectedID", 0),
-			GET(float, "volume", 1.0f)
-		);
-	});
-
-	// NOTE: Due to this not turning out to be nice the way I thought It would,
-	//       I'm commenting this. It's very inefficient, so beware!
-	//
-	// TNodeFactory::registerNode<TPianoRollNode>(NODE_CTOR {
-	// 	TPianoRollNode *prn = new TPianoRollNode();
-	// 	prn->measures = GET(int, "measures", 1);
-	// 	prn->timeSignature = (TPianoRollNode::TTimeSignature)GET(int, "timeSignature", 0);
-	// 	if (json["notes"].is_array()) {
-	// 		for (int i = 0; i < json["notes"].size(); i++) {
-	// 			JSON& note = json["notes"][i];
-	// 			prn->notes.push_back({ note["position"], note["length"], note["note"], { 0, 0, 0, 0 } });
-	// 		}
-	// 	}
-	// 	return prn;
-	// });
-
-	TNodeFactory::registerNode<TArpNode>("Generators", NODE_CTOR {
-		return new TArpNode{
-			(Notes) GET(int, "note", 0),
-			GET(int, "oct", 0),
-			(TArpNode::TChord) GET(int, "chordType", 0),
-			(TArpNode::TDirection) GET(int, "direction", 0)
-		};
-	});
-
-	TNodeFactory::registerNode<TMIDINode>("General", NODE_CTOR {
-		TMIDINode* midi = new TMIDINode();
-		TMessageBus::subscribe(midi);
-		return midi;
-	});
-	
-	TNodeFactory::registerNode<TFreqNode>("General", NODE_CTOR {
-		return new TFreqNode();
-	});
 }
 
 void TNodeEditor::menuActionOpen(const std::string& fileName) {
@@ -407,7 +160,7 @@ void TNodeEditor::menuActionSave(int id) {
 
 void TNodeEditor::menuActionExit() {
 	if (!m_nodeGraphs.empty()) {
-		TIntList unsaved;
+		Vec<u32> unsaved;
 		for (int i = 0; i < m_nodeGraphs.size(); i++) {
 			if (!m_nodeGraphs[i]->m_saved) unsaved.push_back(i);
 		}
@@ -433,17 +186,17 @@ void TNodeEditor::menuActionExit() {
 }
 
 void TNodeEditor::menuActionSnapAllToGrid() {
-	TIntList movIDs;
-	std::map<int, TMoveCommand::Point> movDel;
+	Vec<u64> movIDs;
+	std::map<u64, TMoveCommand::Point> movDel;
 
-	for (auto&& e : m_nodeGraphs[m_activeGraph]->nodes()) {
-		TNode* nd = e.second.get();
-		nd->m_gridPosition.x = (int(nd->m_bounds.x) / 8) * 8;
-		nd->m_gridPosition.y = (int(nd->m_bounds.y) / 8) * 8;
-		movIDs.push_back(nd->id());
-		movDel[nd->id()] = TMoveCommand::Point(
-			nd->m_gridPosition.x - nd->m_bounds.x,
-			nd->m_gridPosition.y - nd->m_bounds.y
+	for (auto&& e : m_nodeGraphs[m_activeGraph]->m_nodes) {
+		TNodeUI* nd = e.second.get();
+		nd->gridPos.x = (int(nd->bounds.x) / 8) * 8;
+		nd->gridPos.y = (int(nd->bounds.y) / 8) * 8;
+		movIDs.push_back(nd->node->id());
+		movDel[nd->node->id()] = TMoveCommand::Point(
+			nd->gridPos.x - nd->bounds.x,
+			nd->gridPos.y - nd->bounds.y
 		);
 	}
 	m_snapToGridDisabled = true;
@@ -519,21 +272,24 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 	const bool isMouseDraggingForScrolling = ImGui::IsMouseDragging(2, 0.0f);
 	const bool mustCheckForNearestLink = isMouseHoveringWindow && !m_linking.active && io.KeyShift;
 
+	const float nodeTitleBarBgHeight = ImGui::GetTextLineHeightWithSpacing() + NODE_PADDING(scl);
+	const float slotRadius = NODE_SLOT_RADIUS(scl);
+
 	// Display links
 	draw_list->ChannelsSplit(5);
 
 	draw_list->ChannelsSetCurrent(0); // Background
 	const float hoveredLinkDistSqrThres = 100.0f;
 	int nearestLinkId=-1;
-	for (auto&& e : graph->m_links) {
-		TLink* link = e.second.get();
+	for (auto&& e : graph->m_actualNodeGraph->links()) {
+		NodeLink* link = e.second.get();
 		
-		TNode* ni = graph->node(link->inputID);
-		TNode* no = graph->node(link->outputID);
+		TNodeUI* ni = graph->node(link->inputID);
+		TNodeUI* no = graph->node(link->outputID);
 		if (ni == nullptr || no == nullptr) continue;
 
-		ImVec2 p1 = offset + ni->outputSlotPos(link->inputSlot, scl, m_snapToGrid);
-		ImVec2 p2 = offset + no->inputSlotPos(link->outputSlot, scl, m_snapToGrid);
+		ImVec2 p1 = offset + ni->outputPos(link->inputSlot, slotRadius, nodeTitleBarBgHeight, m_snapToGrid);
+		ImVec2 p2 = offset + no->inputPos(link->outputSlot, slotRadius, nodeTitleBarBgHeight, m_snapToGrid);
 		ImVec2 cp1 = p1 + ImVec2(50, 0);
 		ImVec2 cp2 = p2 - ImVec2(50, 0);
 
@@ -562,34 +318,35 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 	}
 
 	// Display nodes
-	std::vector<int> toDelete;
+	std::vector<u64> toDelete;
 
 	m_hoveredNode = -1;
 
-	std::vector<int> nodeList;
-	nodeList.reserve(graph->nodes().size());
-	for (auto& e : graph->nodes()) {
+	std::vector<u64> nodeList;
+	nodeList.reserve(graph->m_nodes.size());
+	for (auto& e : graph->m_nodes) {
 		if (e.second.get() == nullptr) continue;
-		nodeList.push_back(e.second->id());
+		nodeList.push_back(e.second->node->id());
 	}
 
 	for (int node_id = 0; node_id < nodeList.size(); node_id++) {
-		const int rnode_id = nodeList[node_id];
-		TNode* node = graph->node(rnode_id);
+		const u64 rnode_id = nodeList[node_id];
+		TNodeUI* node = graph->node(rnode_id);
+		Node* nodeR = node->node;
 		if (node == nullptr) continue;
 
 		if (m_snapToGridDisabled) {
-			node->m_bounds.x = node->m_gridPosition.x;
-			node->m_bounds.y = node->m_gridPosition.y;
+			node->bounds.x = node->gridPos.x;
+			node->bounds.y = node->gridPos.y;
 		}
 
 		if (!m_snapToGrid) {
-			node->m_gridPosition.x = node->m_bounds.x;
-			node->m_gridPosition.y = node->m_bounds.y;
+			node->gridPos.x = node->bounds.x;
+			node->gridPos.y = node->bounds.y;
 		}
 
 		ImGui::PushID(rnode_id);
-		ImVec2 node_rect_min = offset + ImVec2(node->m_gridPosition.x, node->m_gridPosition.y) * scl;
+		ImVec2 node_rect_min = offset + ImVec2(node->gridPos.x, node->gridPos.y) * scl;
 
 		// Display node contents first
 		draw_list->ChannelsSetCurrent(m_activeNodeIndex == rnode_id ? 4 : 2); // Foreground
@@ -607,7 +364,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 			ImGui::PopStyleColor(3);
 			ImGui::SameLine(0, 2);
 
-			ImGui::Text("%s", node->m_title.c_str());
+			ImGui::Text("%s", nodeR->title().c_str());
 			
 			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1, 1, 1, 0));
 			ImGui::SameLine();
@@ -620,10 +377,12 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 			ImGui::PushID("NodeButtons");
 
 			if (ImGui::Button("C", ImVec2(15, 15))) {
-				int cx = int(node->m_bounds.x + 50);
-				int cy = int(node->m_bounds.y + 50);
-				JSON params; node->save(params);
-				m_activeNodeIndex = graph->addNode(cx, cy, node->m_type, params)->id();
+				int cx = int(node->bounds.x + 50);
+				int cy = int(node->bounds.y + 50);
+				JSON params; nodeR->save(params);
+				params["pos"] = { cx, cy };
+				params["open"] = true;
+				m_activeNodeIndex = graph->addNode(cx, cy, nodeR->name(), params, 0)->node->id();
 			}
 			if (ImGui::IsItemHovered()) {
 				ImGui::SetTooltip("Clone");
@@ -645,7 +404,36 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 				ImGui::Spacing();
 				ImGui::Spacing();
 				ImGui::BeginGroup();
-					node->gui();
+				int pi = 0;
+				for (auto&& p : nodeR->params()) {
+					Str name = p.first + "##_" + std::to_string(pi);
+					NodeParam& param = p.second;
+
+					switch (param.type) {
+						case NodeParam::None:
+							ImGui::InputFloat(name.c_str(), &param.value, param.step, param.step*2, 3);
+							break;
+						case NodeParam::Range:
+						case NodeParam::DragRange:
+							ImGui::DragFloat(name.c_str(), &param.value, param.step, param.min, param.max);
+							// ImGui::SliderFloat(name.c_str(), );
+							break;
+						case NodeParam::KnobRange:
+							ImGui::Knob(p.first.c_str(), &param.value, param.min, param.max);
+							break;
+						case NodeParam::Option: {
+							ImGui::Combo(
+								name.c_str(),
+								(int*) &param.option,
+								nodeR->paramOptions(p.first).data(),
+								param.options.size()
+							);
+						} break;
+						if (param.sameLine)
+							ImGui::SameLine();
+					}
+					pi++;
+				}
 				ImGui::EndGroup();
 			}
 		ImGui::EndGroup();
@@ -654,11 +442,11 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 
 		float pad = NODE_PADDING(scl);
 		ImVec2 nodeSize = ImGui::GetItemRectSize() + ImVec2(pad, pad)*2;
-		node->m_bounds.z = nodeSize.x;
-		node->m_bounds.w = nodeSize.y;
+		node->bounds.z = nodeSize.x;
+		node->bounds.w = nodeSize.y;
 		ImVec2 node_rect_max = node_rect_min + node->size();
 		
-		node->m_selectionBounds = ImRect(node_rect_min, node_rect_max);
+		node->selectionBounds = ImRect(node_rect_min, node_rect_max-node_rect_min);
 
 		// Display node box
 		draw_list->ChannelsSetCurrent(m_activeNodeIndex == rnode_id ? 3 : 1); // Background
@@ -672,29 +460,27 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 		}
 
 		if (isLMBClicked && (m_nodeAnyActive || m_nodeActive)) {
-			if (!node->m_selected) {
+			if (!node->selected) {
 				if (!io.KeyCtrl) graph->unselectAll();
-				node->m_selected = true;
+				node->selected = true;
 				m_activeNodeIndex = rnode_id;
 			} else if (io.KeyCtrl) {
-				node->m_selected = false;
+				node->selected = false;
 				if (rnode_id == m_activeNodeIndex) {
 					m_activeNodeIndex = graph->getActiveNode();
 				}
 			} else if (io.KeyShift || io.MouseDoubleClicked[0]) {
 				graph->unselectAll();
-				node->m_selected = true;
+				node->selected = true;
 				m_activeNodeIndex = rnode_id;
 			} else {
 				m_activeNodeIndex = rnode_id;
 			}
 		}
 
-		ImU32 node_bg_color = m_hoveredNode == rnode_id || node->m_selected ? IM_COL32(75, 75, 75, 255) : IM_COL32(60, 60, 60, 255);
+		ImU32 node_bg_color = m_hoveredNode == rnode_id || node->selected ? IM_COL32(75, 75, 75, 255) : IM_COL32(60, 60, 60, 255);
 		draw_list->AddRectFilled(node_rect_min, node_rect_max, node_bg_color, NODE_ROUNDING(scl));
 
-		const float nodeTitleBarBgHeight = ImGui::GetTextLineHeightWithSpacing() + NODE_PADDING(scl);
-		
 		draw_list->AddRectFilled(
 			node_rect_min,
 			ImVec2(node_rect_max.x, node_rect_min.y + nodeTitleBarBgHeight),
@@ -715,12 +501,11 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 		
 		draw_list->AddRect(node_rect_min, node_rect_max, IM_COL32(100, 100, 100, 255), NODE_ROUNDING(scl));
 
-		const float slotRadius = NODE_SLOT_RADIUS(scl);
 		const ImVec2 hsz(slotRadius*1.5f, slotRadius*1.5f);
 
-		for (int i = 0; i < node->inputs().size(); i++) {
-			const char* label = node->inputs()[i].label.c_str();
-			ImVec2 pos = offset + node->inputSlotPos(i, scl, m_snapToGrid);
+		for (auto&& in : nodeR->inputs()) {
+			const char* label = in.first.c_str();
+			ImVec2 pos = offset + node->inputPos(in.first, slotRadius, nodeTitleBarBgHeight, m_snapToGrid);
 			ImVec2 tsz = ImGui::CalcTextSize(label);
 			ImVec2 off = ImVec2(-(tsz.x + slotRadius + 3), -tsz.y * 0.5f);
 			ImVec2 off1 = ImVec2(-(tsz.x + slotRadius + 3), -tsz.y * 0.5f + 1);
@@ -735,13 +520,13 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 				m_linking.active && m_linking.node != node)
 			{
 				m_linking.active = false;
-				graph->link(m_linking.inputID, m_linking.inputSlot, node->id(), i);
+				graph->link(m_linking.inputID, m_linking.inputSlot, nodeR->id(), in.first);
 			}
 		}
 		
-		for (int i = 0; i < node->outputs().size(); i++) {
-			const char* label = node->outputs()[i].label.c_str();
-			ImVec2 pos = offset + node->outputSlotPos(i, scl, m_snapToGrid);
+		for (auto&& out : nodeR->outputs()) {
+			const char* label = out.first.c_str();
+			ImVec2 pos = offset + node->outputPos(out.first, slotRadius, nodeTitleBarBgHeight, m_snapToGrid);
 			ImVec2 tsz = ImGui::CalcTextSize(label);
 			ImVec2 off = ImVec2(slotRadius + 3, -tsz.y * 0.5f);
 			ImVec2 off1 = ImVec2(slotRadius + 3, -tsz.y * 0.5f + 1);
@@ -755,10 +540,10 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 				m_linking.active = true;
 				m_linking.node = node;
 				m_linking.inputID = rnode_id;
-				m_linking.inputSlot = i;
+				m_linking.inputSlot = out.first;
 			}
 
-			if (m_linking.active && m_linking.node == node && m_linking.inputSlot == i) {
+			if (m_linking.active && m_linking.node == node && m_linking.inputSlot == out.first) {
 				ImVec2 p1 = pos;
 				ImVec2 p2 = ImGui::GetIO().MousePos;
 				ImVec2 cp1 = p1 + ImVec2(50, 0);
@@ -778,13 +563,13 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 		}
 		ImGui::PopID();
 
-		if (m_nodeActive && node->m_selected && isMouseDraggingForMovingNodes && !m_linking.active) {
+		if (m_nodeActive && node->selected && isMouseDraggingForMovingNodes && !m_linking.active) {
 			if (!m_nodesMoving) {
 				m_movingIDs.clear();
 				m_moveDeltas.clear();
 				for (int j = 0; j < nodeList.size(); j++) {
-					TNode* nd = graph->node(nodeList[j]);
-					if (nd->m_selected) {
+					TNodeUI* nd = graph->node(nodeList[j]);
+					if (nd->selected) {
 						m_movingIDs.push_back(nodeList[j]);
 						m_moveDeltas[nodeList[j]] = TMoveCommand::Point{0, 0};
 					}
@@ -793,16 +578,16 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 			}
 
 			for (int j = 0; j < nodeList.size(); j++) {
-				TNode* nd = graph->node(nodeList[j]);
-				if (nd->m_selected) {
-					nd->m_bounds.x += io.MouseDelta.x;
-					nd->m_bounds.y += io.MouseDelta.y;
+				TNodeUI* nd = graph->node(nodeList[j]);
+				if (nd->selected) {
+					nd->bounds.x += io.MouseDelta.x;
+					nd->bounds.y += io.MouseDelta.y;
 					m_moveDeltas[nodeList[j]].x += io.MouseDelta.x;
 					m_moveDeltas[nodeList[j]].y += io.MouseDelta.y;
 
 					if (m_snapToGrid) {
-						nd->m_gridPosition.x = (int(nd->m_bounds.x) / 8) * 8;
-						nd->m_gridPosition.y = (int(nd->m_bounds.y) / 8) * 8;
+						nd->gridPos.x = (int(nd->bounds.x) / 8) * 8;
+						nd->gridPos.y = (int(nd->bounds.y) / 8) * 8;
 					}
 				}
 			}
@@ -849,13 +634,13 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 			IM_COL32(150, 150, 150, 150)
 		);
 
-		for (auto& e : graph->nodes()) {
-			TNode* node = e.second.get();
-			ImRect nbounds = node->m_selectionBounds;
+		for (auto&& e : graph->m_nodes) {
+			TNodeUI* node = e.second.get();
+			ImRect nbounds = node->selectionBounds;
 
 			if (selRect.Overlaps(nbounds)) {
-				node->m_selected = true;
-				if (m_activeNodeIndex == -1) m_activeNodeIndex = node->id();
+				node->selected = true;
+				if (m_activeNodeIndex == -1) m_activeNodeIndex = node->node->id();
 			}
 		}
 	}
@@ -880,24 +665,19 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 	if (ImGui::BeginPopup("context_menu")) {
 		ImGui::Text("Add Node");
 
-		std::map<std::string, std::vector<std::string>> facts;
-		for (auto fn : TNodeFactory::factories) {
-			if ((fn.first == TInputsNode::type() ||
-					fn.first == TOutputsNode::type()) &&
-				graph->type() != TNodeGraph::Module)
-			{
-				continue;
-			}
-			facts[fn.second.category].push_back(fn.first);
+		Map<Str, std::vector<NodeFactory>> facts;
+		for (auto&& fn : NodeBuilder::factories) {
+			facts[fn.second.category].push_back(fn.second);
 		}
 
 		ImVec2 scene_pos = ImGui::GetMousePosOnOpeningCurrentPopup() - offset;
 
+		JSON params;
 		for (auto&& e : facts) {
 			if (ImGui::BeginMenu(e.first.c_str())) {
 				for (auto&& type : e.second) {
-					if (ImGui::MenuItem(type.c_str())) {
-						graph->addNode(scene_pos.x, scene_pos.y, type);
+					if (ImGui::MenuItem(type.title.c_str())) {
+						graph->addNode(scene_pos.x, scene_pos.y, type.type, params, 0);
 					}
 				}
 				ImGui::EndMenu();
@@ -1135,12 +915,12 @@ void TNodeEditor::draw(int w, int h) {
 						m_nodeGraphs[m_activeGraph]->m_name = std::string(graphName);
 						m_nodeGraphs[m_activeGraph]->m_saved = false;
 					}
-					ImGui::Combo(
-						"Type##graphType",
-						(int*)&m_nodeGraphs[m_activeGraph]->m_type,
-						GRAPH_TYPES,
-						2
-					);
+					// ImGui::Combo(
+					// 	"Type##graphType",
+					// 	(int*)&m_nodeGraphs[m_activeGraph]->m_type,
+					// 	GRAPH_TYPES,
+					// 	2
+					// );
 				}
 				if (ImGui::CollapsingHeader("Recording")) {
 					if (ImGui::Button(m_recording ? "Stop" : "Record", ImVec2(ImGui::GetWindowWidth(), 20))) {
@@ -1189,23 +969,25 @@ void TNodeEditor::draw(int w, int h) {
 				if (ImGui::CollapsingHeader("Nodes")) {
 					std::vector<const char*> nodeNames;
 					std::vector<int> nodeIDs;
-					std::vector<ImVec4> nodeBounds;
-					nodeNames.reserve(m_nodeGraphs[m_activeGraph]->nodes().size());
-					nodeIDs.reserve(m_nodeGraphs[m_activeGraph]->nodes().size());
-					nodeBounds.reserve(m_nodeGraphs[m_activeGraph]->nodes().size());
-					for (auto& nodep : m_nodeGraphs[m_activeGraph]->nodes()) {
-						nodeNames.push_back(nodep.second->m_type.c_str());
-						nodeIDs.push_back(nodep.second->m_id);
-						nodeBounds.push_back(nodep.second->m_bounds);
+					std::vector<ImRect> nodeBounds;
+					nodeNames.reserve(m_nodeGraphs[m_activeGraph]->m_nodes.size());
+					nodeIDs.reserve(m_nodeGraphs[m_activeGraph]->m_nodes.size());
+					nodeBounds.reserve(m_nodeGraphs[m_activeGraph]->m_nodes.size());
+					for (auto& nodep : m_nodeGraphs[m_activeGraph]->m_nodes) {
+						nodeNames.push_back(nodep.second->node->name().c_str());
+						nodeIDs.push_back(nodep.second->node->id());
+						nodeBounds.push_back(nodep.second->bounds);
 					}
 
 					static int selectedNode = 0;
 					ImGui::PushItemWidth(-1);
 					if (ImGui::ListBox("##node_list", &selectedNode, nodeNames.data(), nodeNames.size())) {
 						m_nodeGraphs[m_activeGraph]->unselectAll();
-						m_nodeGraphs[m_activeGraph]->nodes()[nodeIDs[selectedNode]]->m_selected = true;
-						m_nodeGraphs[m_activeGraph]->m_scrolling.x = -nodeBounds[selectedNode].x + m_mainWindowSize.x * 0.5f - nodeBounds[selectedNode].z * 0.5f;
-						m_nodeGraphs[m_activeGraph]->m_scrolling.y = -nodeBounds[selectedNode].y + m_mainWindowSize.y * 0.5f - nodeBounds[selectedNode].w * 0.5f;
+						m_nodeGraphs[m_activeGraph]->m_nodes[nodeIDs[selectedNode]]->selected = true;
+
+						ImVec2 sz = nodeBounds[selectedNode].Max - nodeBounds[selectedNode].Min;
+						m_nodeGraphs[m_activeGraph]->m_scrolling.x = -nodeBounds[selectedNode].Min.x + m_mainWindowSize.x * 0.5f - sz.x * 0.5f;
+						m_nodeGraphs[m_activeGraph]->m_scrolling.y = -nodeBounds[selectedNode].Min.y + m_mainWindowSize.y * 0.5f - sz.y * 0.5f;
 					}
 					ImGui::PopItemWidth();
 				}
@@ -1231,7 +1013,7 @@ void TNodeEditor::draw(int w, int h) {
 						);
 						
 						if (filePath.has_value()) {
-							if (!m_nodeGraphs[m_activeGraph]->addSample(filePath.value())) {
+							if (!m_nodeGraphs[m_activeGraph]->actualNodeGraph()->addSample(filePath.value())) {
 								osd::Dialog::message(
 									osd::MessageLevel::Error,
 									osd::MessageButtons::Ok,
@@ -1241,8 +1023,8 @@ void TNodeEditor::draw(int w, int h) {
 						}
 					}
 					if (ImGui::Button("Delete", ImVec2(w, 18))) {
-						int sid = m_nodeGraphs[m_activeGraph]->getSampleID(std::string(items[selectedSample]));
-						m_nodeGraphs[m_activeGraph]->removeSample(sid);
+						int sid = m_nodeGraphs[m_activeGraph]->actualNodeGraph()->getSampleID(std::string(items[selectedSample]));
+						m_nodeGraphs[m_activeGraph]->actualNodeGraph()->removeSample(sid);
 						selectedSample = -1;
 					}
 					ImGui::EndGroup();
@@ -1321,7 +1103,6 @@ void TNodeEditor::draw(int w, int h) {
 void TNodeEditor::closeGraph(int id) {
 	m_playing = false;
 	m_recording = false;
-	m_nodeGraphs[id]->m_solvedNodes.clear();
 	m_nodeGraphs.erase(m_nodeGraphs.begin() + id);
 	if (m_activeGraph > m_nodeGraphs.size()-1) {
 		m_activeGraph = m_nodeGraphs.size()-1;
@@ -1329,7 +1110,7 @@ void TNodeEditor::closeGraph(int id) {
 }
 
 TNodeGraph* TNodeEditor::newGraph() {
-	std::unique_ptr<TNodeGraph> graph = std::unique_ptr<TNodeGraph>(new TNodeGraph());
+	Ptr<TNodeGraph> graph = Ptr<TNodeGraph>(new TNodeGraph(new NodeGraph()));
 
 	std::stringstream stm;
 	stm << "Untitled";
@@ -1347,7 +1128,7 @@ float TNodeEditor::output() {
 	float sample = 0.0f;
 	if (m_playing || m_recording) {
 		TMessageBus::process();
-		sample = m_nodeGraphs[m_activeGraph]->solve();
+		sample = m_nodeGraphs[m_activeGraph]->actualNodeGraph()->solve();
 	}
 
 	const float ATTACK_TIME  = 5.0f / 1000.0f;
@@ -1356,14 +1137,14 @@ float TNodeEditor::output() {
 	float attack  = 1.0f - std::exp(-1.0f / (ATTACK_TIME * sampleRate));
 	float release = 1.0f - std::exp(-1.0f / (RELEASE_TIME * sampleRate));
 
-	m_signalDC = tmath::lerp(m_signalDC, sample, 0.5f / sampleRate);
+	m_signalDC = Utils::lerp(m_signalDC, sample, 0.5f / sampleRate);
 	sample -= m_signalDC;
 
 	float absSignal = std::abs(sample);
 	if (absSignal > m_envelope) {
-		m_envelope = tmath::lerp(m_envelope, absSignal, attack);
+		m_envelope = Utils::lerp(m_envelope, absSignal, attack);
 	} else {
-		m_envelope = tmath::lerp(m_envelope, absSignal, release);
+		m_envelope = Utils::lerp(m_envelope, absSignal, release);
 	}
 	m_envelope = std::max(m_envelope, 1.0f);
 

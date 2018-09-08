@@ -13,16 +13,16 @@
 #include <memory>
 #include <mutex>
 
-#include "nodes/TNode.h"
-#include "nodes/TOutNode.hpp"
-#include "nodes/TPianoRollNode.hpp"
-#include "nodes/TModuleNode.hpp"
+#include "TMidi.h"
 #include "TCommands.h"
+#include "TNodeGraph.h"
 
 #include "imgui.h"
 
-#include "TNodeGraph.h"
-#include "TMidi.h"
+#include "twen/intern/Utils.h"
+#include "twen/NodeGraph.h"
+#include "twen/Node.h"
+#include "twen/nodes/OutNode.hpp"
 
 #include "SDL2/SDL.h"
 
@@ -74,8 +74,8 @@ private:
 		m_nodesMoving, m_snapToGrid = false, m_snapToGridDisabled = false;
 	float m_oldFontWindowScale, m_currentFontWindowScale;
 
-	TIntList m_movingIDs;
-	std::map<int, TMoveCommand::Point> m_moveDeltas;
+	Vec<u64> m_movingIDs;
+	Map<u64, TMoveCommand::Point> m_moveDeltas;
 
 	ImVec2 m_mainWindowSize, m_selectionStart, m_selectionEnd;
 
@@ -83,15 +83,15 @@ private:
 			m_recordingFadeTime = 0.0f, m_recordingFade = 0.0f;
 	bool m_rendering = false, m_loading = false, m_playing = false, m_recording = false, m_exit=false;
 
-	std::vector<float> m_recordBuffer;
+	Vec<float> m_recordBuffer;
 	int m_recordPointer = 0, m_recordingFadeType = 0;
 
-	std::vector<std::unique_ptr<TNodeGraph>> m_nodeGraphs;
+	Vec<Ptr<TNodeGraph>> m_nodeGraphs;
 
-	std::vector<std::string> m_recentFiles;
+	Vec<Str> m_recentFiles;
 
-	std::unique_ptr<RtMidiIn> m_MIDIin;
-	std::unique_ptr<RtMidiOut> m_MIDIout;
+	Ptr<RtMidiIn> m_MIDIin;
+	Ptr<RtMidiOut> m_MIDIout;
 
 	std::mutex m_lock;
 };

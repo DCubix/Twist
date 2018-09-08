@@ -1,12 +1,12 @@
-#include "TAudio.h"
+#include "TApplication.h"
 
-#include "glad/glad.h"
-#include "editor/TMidi.h"
+#include "../glad/glad.h"
+#include "TMidi.h"
 
 #include "icon.h"
-#include "stb/stb_image.h"
+#include "../stb/stb_image.h"
 
-TAudio::TAudio(SDL_AudioCallback callback, void* udata, int sampleRate, int samples, int channels) {
+void TApplication::init(SDL_AudioCallback callback, void* udata, int sampleRate, int samples, int channels) {
 	SDL_SetHint(SDL_HINT_VIDEO_HIGHDPI_DISABLED, "0");
 
 	if (SDL_Init(SDL_INIT_EVERYTHING) < 0) {
@@ -58,7 +58,7 @@ TAudio::TAudio(SDL_AudioCallback callback, void* udata, int sampleRate, int samp
 	ImGuiSystem::Init(m_window);
 }
 
-void TAudio::setupIcon() {
+void TApplication::setupIcon() {
 	int w, h, comp;
 	unsigned char* data = stbi_load_from_memory(twist_png, twist_png_len, &w, &h, &comp, STBI_rgb_alpha);
 	if (data == nullptr) {
@@ -89,7 +89,7 @@ void TAudio::setupIcon() {
 	if (surf != nullptr) SDL_FreeSurface(surf);
 }
 
-void TAudio::destroy() {
+void TApplication::destroy() {
 	ImGuiSystem::Shutdown();
 	SDL_GL_DeleteContext(m_context);
 	SDL_DestroyWindow(m_window);
@@ -97,11 +97,11 @@ void TAudio::destroy() {
 	SDL_Quit();
 }
 
-void TAudio::sync(const InputCallback& cb) {
+void TApplication::sync() {
 	SDL_Event e;
 
 	while (SDL_PollEvent(&e)) {
-		if (cb) cb(this, e);
+		input(e);
 
 		/// Keyboard Input
 		static const int KEYS[] = {
@@ -137,9 +137,7 @@ void TAudio::sync(const InputCallback& cb) {
 
 	ImGuiSystem::NewFrame();
 	// GUI
-	if (m_guiCallback) {
-		m_guiCallback(this, ww, wh);
-	}
+	gui(ww, wh);
 
 	// Draw
 	glViewport(0, 0, ww, wh);

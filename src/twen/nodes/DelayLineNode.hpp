@@ -5,22 +5,21 @@
 #include "../intern/WaveGuide.h"
 
 class DelayLineNode : public Node {
-	TWEN_NODE(DelayLineNode)
+	TWEN_NODE(DelayLineNode, "Delay Line")
 public:
-	DelayLineNode(float sampleRate, float fd, int dl)
-		: Node(), feedback(fd), delay(dl), m_wv(WaveGuide(sampleRate))
+	DelayLineNode(float sampleRate=44100.0f, float fb=0, float dl=0)
+		: Node(), m_wv(WaveGuide(sampleRate))
 	{
 		addInput("In");
 		addOutput("Out");
+
+		addParam("Feedback", 0.0f, 1.0f, fb, 0.05f);
+		addParam("Delay", 0.0f, 10.0f, dl, 0.05f);
 	}
 
 	void solve() {
-		float in = getInput("In");
-		setOutput(0, m_wv.sample(in, feedback, delay));
+		out("Out") = m_wv.sample(in("In"), param("Feedback"), param("Delay"));
 	}
-
-	float feedback;
-	int delay;
 
 private:
 	WaveGuide m_wv;

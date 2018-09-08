@@ -4,17 +4,17 @@
 #include "../Node.h"
 
 class ValueNode : public Node {
-	TWEN_NODE(ValueNode)
+	TWEN_NODE(ValueNode, "Value")
 public:
-	ValueNode(float v) : Node(), value(v) {
+	ValueNode(float v) : Node() {
 		addOutput("Out");
+
+		addParam("Val.", v, 0.05f, false);
 	}
 
 	void solve() {
-		outputs("Out").set(value);
+		outs("Out").set(param("Val."));
 	}
-
-	float value;
 
 };
 

@@ -4,42 +4,44 @@
 #include "../Node.h"
 
 class TimerNode : public Node {
-	TWEN_NODE(TimerNode)
+	TWEN_NODE(TimerNode, "Timer")
 public:
-	TimerNode(float sampleRate, float bpm, float swing)
-		: Node(),
-		bpm(bpm), sampleRate(sampleRate),
-		swing(swing), index(0), currTime(0)
+	TimerNode(float sampleRate=44100.0f, float bpm=120.0f, float swing=0.0f)
+		: Node(), m_sampleRate(sampleRate), index(0), currTime(0)
 	{
 		addOutput("Index");
 		addOutput("Gate");
 		addOutput("Freq");
 		addOutput("Time");
+
+		addParam("Swing", 0.0f, 0.9f, swing, 0.05f, NodeParam::DragRange);
+		addParam("BPM", 0.0f, 255.0f, bpm, 1.0f, NodeParam::DragRange);
+		
 	}
 
 	void solve() {
-		const float step = (1.0f / sampleRate) * 4;
-		const float delay = (60000.0f / bpm) / 1000.0f;
+		const float step = (1.0f / m_sampleRate) * 4;
+		const float delay = (60000.0f / param("BPM")) / 1000.0f;
 
 		currTime += step;
 
-		float sw = swing * delay;
+		float sw = param("Swing") * delay;
 		float delaySw = index % 2 == 0 ? delay + sw * 0.5f : delay - sw * 0.5f;
 		updateIndex(index, currTime, gate, sw, delay);
 
-		setOutput("Index", index);
-		setOutput("Gate", gate ? 1 : 0);
-		setOutput("Freq", bpm / 60.0f);
-		setOutput("Time", Utils::remap(currTime, 0.0f, delaySw, 0.0f, 1.0f));
+		out("Index") = index;
+		out("Gate") = gate ? 1 : 0;
+		out("Freq") = param("BPM") / 60.0f;
+		out("Time") = Utils::remap(currTime, 0.0f, delaySw, 0.0f, 1.0f);
 	}
 
-	float bpm, sampleRate, swing;
+private:
+	float m_sampleRate;
 
 	bool gate = false;
 	float currTime;
 	int index;
 
-private:
 	void updateIndex(int& index, float& stime, bool& gate, float sw, float delay) {
 		float delaySw = index % 2 == 0 ? delay + sw * 0.5f : delay - sw * 0.5f;
 		if (stime >= delaySw) {

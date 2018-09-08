@@ -4,24 +4,25 @@
 #include "../Node.h"
 
 class RemapNode : public Node {
-	TWEN_NODE(RemapNode)
+	TWEN_NODE(RemapNode, "Remap")
 public:
-	RemapNode(float om, float oma, float nm, float nma)
-		: Node(),
-		oldMin(om), oldMax(oma),
-		newMin(nm), newMax(nma)
+	RemapNode(float omin=0, float omax=1, float nmin=0, float nmax=1)
+		: Node()
 	{
 		addInput("In");
 		addOutput("Out");
+
+		addParam("Old Min", omin, 0.05f, false);
+		addParam("Old Max", omax, 0.05f, false);
+		addParam("New Min", nmin, 0.05f, false);
+		addParam("New Max", nmax, 0.05f, false);
 	}
 
 	void solve() {
-		float v = getInput("In");
-		float norm = (v - oldMin) / (oldMax - oldMin);
-		setOutput("Out", norm * (newMax - newMin) + newMin);
+		float v = in("In");
+		float norm = (v - param("Old Min")) / (param("Old Max") - param("Old Min"));
+		out("Out") = norm * (param("New Max") - param("New Min")) + param("New Min");
 	}
-
-	float oldMin, oldMax, newMin, newMax;
 
 };
 

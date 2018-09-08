@@ -189,6 +189,11 @@ public:
 		m_data.fill(v);
 	}
 
+	void set(const Vector<N>& v) {
+		for (int i = 0; i < N; i++)
+			m_data[i] = v.m_data[i];
+	}
+
 	float operator[] (uint32_t i) const {
 		assert(i < N);
 		return m_data[i];

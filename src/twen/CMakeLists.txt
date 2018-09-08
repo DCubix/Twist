@@ -67,20 +67,22 @@ if (TWEN_USE_SSE)
 	endif()
 endif()
 
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/intern/sndfilter")
-
-include_directories(
-	"src/"
-)
-
-file(GLOB_RECURSE SRC
+file(GLOB SRC
 	"*.h"
-	"*.hpp"
 	"*.cpp"
+	"nodes/*.hpp"
+	"intern/*.h"
+	"intern/*.cpp"
+	"intern/*.hpp"
+	"intern/termcolor/*.hpp"
 )
+
+add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/intern/sndfilter")
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SRC})
 
 add_library(${PROJECT_NAME} STATIC ${SRC})
-target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/)
-target_link_libraries(${PROJECT_NAME} PRIVATE sndfilter)
+target_link_libraries(${PROJECT_NAME} PUBLIC sndfilter)
+target_include_directories(${PROJECT_NAME} PUBLIC
+	${CMAKE_CURRENT_SOURCE_DIR}/
+)

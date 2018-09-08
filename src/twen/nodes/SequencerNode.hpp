@@ -7,12 +7,9 @@
 #define SEQUENCER_SIZE_VISIBLE SEQUENCER_SIZE
 
 class SequencerNode : public Node {
-	TWEN_NODE(SequencerNode)
+	TWEN_NODE(SequencerNode, "Sequencer")
 public:
-	SequencerNode()
-		: Node(),
-		noteIndex(0), out(0.0f)
-	{
+	SequencerNode(u32 key=0) : Node(), noteIndex(0) {
 		addInput("Index");
 		addInput("Key");
 
@@ -24,15 +21,17 @@ public:
 		for (int i = 0; i < SEQUENCER_SIZE; i++) {
 			notes[i] = Note::C;
 		}
+
+		addParam("Key", { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" }, key);
 	}
 
 	void solve() {
-		int ni = noteIndex = (int) getInput("Index");
+		int ni = noteIndex = (int) in("Index");
 		int nid = ni % SEQUENCER_SIZE;
 		Note note = notes[nid];
 
 		// Transpose note
-		int nkey = (int) getInput("Key");
+		int nkey = (int) in("Key", "Key");
 
 		int fnote = (int) notes[0];
 		int noteDiff = (nkey - fnote);
@@ -41,10 +40,10 @@ public:
 
 		if (!enabled[nid]) {
 			globGate = true;
-			setOutput("Gate", 0.0f);
+			out("Gate") = 0.0f;
 		}
 
-		setOutput("Nt", nnote + (oct * 12));
+		out("Nt") = nnote + (oct * 12);
 
 		if (prevNoteIndex != noteIndex) {
 			globGate = true;
@@ -52,16 +51,15 @@ public:
 		}
 
 		if (globGate) {
-			setOutput("Gate", 0.0f);
+			out("Gate") = 0.0f;
 			globGate = false;
 		} else {
-			setOutput("Gate", 1.0f);
+			out("Gate") = 1.0f;
 		}
 	}
 
 	bool globGate = false;
 	int noteIndex = 0, prevNoteIndex = 12;
-	float out;
 
 	Note notes[SEQUENCER_SIZE];
 	int octs[SEQUENCER_SIZE];
