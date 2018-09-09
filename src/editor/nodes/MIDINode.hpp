@@ -29,17 +29,17 @@ public:
 		}
 	}
 
-	int midiChannel() { return (int) param("Channel"); }
+	int midiChannel() { return (int) param(0); }
 
 	void solve() {
-		outs("Nt").set(0.0f);
-		outs("Gate").set(0.0f);
-		
+//		outs(0).set(0.0f);
+		outs(1).set(0.0f);
+
 		for (int i = 0, s = 0; i < 128; i++) {
 			if (gates[i]) {
 				s = s % FLOAT_ARRAY_MAX;
-				out("Nt", s) = i;
-				out("Gate", s) = 1.0f;
+				out(0, s) = i;
+				out(1, s) = 1.0f;
 				s++;
 			}
 		}

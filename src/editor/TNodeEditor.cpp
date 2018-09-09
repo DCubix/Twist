@@ -89,7 +89,7 @@ inline static float GetSquaredDistanceToBezierCurve(const ImVec2& point,const Im
 TNodeEditor::TNodeEditor() {
 	m_linking.active = 0;
 	m_linking.inputID = 0;
-	m_linking.inputSlot = "";
+	m_linking.inputSlot = 0;
 	m_linking.node = nullptr;
 	m_openContextMenu = false;
 	m_bounds.x = 0;
@@ -104,7 +104,10 @@ TNodeEditor::TNodeEditor() {
 	if (!fp.bad()) {
 		std::string line;
 		while (std::getline(fp, line)) {
-			m_recentFiles.push_back(line);
+			std::ifstream stm(line);
+			if (stm.good()) {
+				m_recentFiles.push_back(line);
+			}
 		}
 		fp.close();
 	}
@@ -128,7 +131,9 @@ TNodeEditor::TNodeEditor() {
 	});
 
 	NodeBuilder::registerType<MIDINode>("General", TWEN_NODE_FAC {
-		return new MIDINode();
+		MIDINode* midi = new MIDINode();
+		TMessageBus::subscribe(midi);
+		return midi;
 	});
 
 }
@@ -160,7 +165,7 @@ void TNodeEditor::menuActionSave(int id) {
 				".",
 				osd::Filters("Twist Node-Graph:tng")
 			);
-			
+
 			if (filePath.has_value()) {
 				m_nodeGraphs[id]->save(filePath.value());
 				pushRecentFile(filePath.value());
@@ -294,9 +299,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 	draw_list->ChannelsSetCurrent(0); // Background
 	const float hoveredLinkDistSqrThres = 100.0f;
 	int nearestLinkId=-1;
-	for (auto&& e : graph->m_actualNodeGraph->links()) {
-		NodeLink* link = e.second.get();
-		
+	for (auto&& link : graph->m_actualNodeGraph->links()) {
 		TNodeUI* ni = graph->node(link->inputID);
 		TNodeUI* no = graph->node(link->outputID);
 		if (ni == nullptr || no == nullptr) continue;
@@ -320,7 +323,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 		if (mustCheckForNearestLink && nearestLinkId == -1 && cullLink.Contains(io.MousePos)) {
 			const float d = GetSquaredDistanceToBezierCurve(io.MousePos, p1, cp1, cp2, p2);
 			if (d < hoveredLinkDistSqrThres) {
-				nearestLinkId = e.first;
+				nearestLinkId = link->id;
 				draw_list->AddBezierCurve(p1, cp1, cp2, p2, IM_COL32(200, 200, 100, 128), thick*2);
 			}
 		}
@@ -378,7 +381,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 			ImGui::SameLine(0, 2);
 
 			ImGui::Text("%s", nodeR->title().c_str());
-			
+
 			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1, 1, 1, 0));
 			ImGui::SameLine();
 
@@ -409,6 +412,14 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 			if (ImGui::IsItemHovered()) {
 				ImGui::SetTooltip("Delete");
 			}
+			ImGui::SameLine();
+			bool enabled = nodeR->enabled();
+			if (ImGui::Checkbox("##_en", &enabled)) {
+				nodeR->enabled(enabled);
+			}
+			if (ImGui::IsItemHovered()) {
+				ImGui::SetTooltip("Enabled");
+			}
 			ImGui::PopID();
 			ImGui::PopStyleVar(2);
 			ImGui::PopStyleColor();
@@ -419,9 +430,9 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 				ImGui::BeginGroup();
 				int pi = 0;
 				bool changed = false;
-				for (const Str& k : nodeR->params().keys()) {
-					Str name = k + "##_" + std::to_string(pi);
-					NodeParam& param = nodeR->params()[k];
+				for (u32 p = 0; p < nodeR->params().size(); p++) {
+					Str k = nodeR->paramName(p);
+					NodeParam& param = nodeR->params()[p];
 
 					float sip = 0.0f;
 					float sfrac = 0.0f;
@@ -436,14 +447,14 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 					ImGui::PushItemWidth(param.itemWidth);
 					switch (param.type) {
 						case NodeParam::None:
-							changed |= ImGui::InputFloat(name.c_str(), &param.value, param.step, param.step*2, fmt);
+							changed |= ImGui::InputFloat(k.c_str(), &param.value, param.step, param.step*2, fmt);
 							break;
 						case NodeParam::Range:
-							changed |= ImGui::InputFloat(name.c_str(), &param.value, param.step, param.step*2, fmt);
+							changed |= ImGui::InputFloat(k.c_str(), &param.value, param.step, param.step*2, fmt);
 							param.value = ImClamp(param.value, param.min, param.max);
 							break;
 						case NodeParam::DragRange:
-							changed |= ImGui::DragFloat(name.c_str(), &param.value, param.step, param.min, param.max, fmt);
+							changed |= ImGui::DragFloat(k.c_str(), &param.value, param.step, param.min, param.max, fmt);
 							// ImGui::SliderFloat(name.c_str(), );
 							break;
 						case NodeParam::KnobRange:
@@ -451,9 +462,9 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 							break;
 						case NodeParam::Option: {
 							changed |= ImGui::Combo(
-								name.c_str(),
+								k.c_str(),
 								(int*) &param.option,
-								nodeR->paramOptions(k).data(),
+								nodeR->paramOptions(p).data(),
 								param.options.size()
 							);
 						} break;
@@ -461,7 +472,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 					ImGui::PopItemWidth();
 					if (param.sameLine)
 						ImGui::SameLine();
-					
+
 					pi++;
 				}
 
@@ -470,7 +481,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 					ImGui::VUMeter("##vu", _node->level);
 				} else if (nodeR->name() == SampleNode::type()) {
 					SampleNode* _node = (SampleNode*) nodeR;
-					_node->params()["Sample"].options = graph->actualNodeGraph()->getSampleNames();
+					_node->params()[0].options = graph->actualNodeGraph()->getSampleNames();
 
 					if (!_node->sample.valid() || changed) {
 						_node->setup();
@@ -508,7 +519,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 
 					ImGui::SetNextWindowContentWidth(SEQUENCER_SIZE * spacing);
 					ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0, 0, 0, 0));
-					
+
 					const ImGuiID id = window->GetID("sequencer_gui");
 					ImGui::BeginChildFrame(id, ImVec2(SEQUENCER_SIZE_VISIBLE*spacing, 4*lineHeight), 0);
 						ImGui::BeginHorizontal(this);
@@ -573,7 +584,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 		node->bounds.z = nodeSize.x;
 		node->bounds.w = nodeSize.y;
 		ImVec2 node_rect_max = node_rect_min + node->size();
-		
+
 		node->selectionBounds = ImRect(node_rect_min, node_rect_max-node_rect_min);
 
 		// Display node box
@@ -626,14 +637,15 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 				ImDrawCornerFlags_Top
 			);
 		}
-		
+
 		draw_list->AddRect(node_rect_min, node_rect_max, IM_COL32(100, 100, 100, 255), NODE_ROUNDING(scl));
 
 		const ImVec2 hsz(slotRadius*1.5f, slotRadius*1.5f);
 
-		for (const Str& k : nodeR->inputs().keys()) {
+		for (u32 in = 0; in < nodeR->inputs().size(); in++) {
+			Str k = nodeR->inName(in);
 			const char* label = k.c_str();
-			ImVec2 pos = offset + node->inputPos(k, slotRadius, nodeTitleBarBgHeight, m_snapToGrid);
+			ImVec2 pos = offset + node->inputPos(in, slotRadius, nodeTitleBarBgHeight, m_snapToGrid);
 			ImVec2 tsz = ImGui::CalcTextSize(label);
 			ImVec2 off = ImVec2(-(tsz.x + slotRadius + 3), -tsz.y * 0.5f);
 			ImVec2 off1 = ImVec2(-(tsz.x + slotRadius + 3), -tsz.y * 0.5f + 1);
@@ -648,13 +660,14 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 				m_linking.active && m_linking.node != node)
 			{
 				m_linking.active = false;
-				graph->link(m_linking.inputID, m_linking.inputSlot, nodeR->id(), k);
+				graph->link(m_linking.inputID, m_linking.inputSlot, nodeR->id(), in);
 			}
 		}
-		
-		for (const Str& k : nodeR->outputs().keys()) {
+
+		for (u32 out = 0; out < nodeR->outputs().size(); out++) {
+			Str k = nodeR->outName(out);
 			const char* label = k.c_str();
-			ImVec2 pos = offset + node->outputPos(k, slotRadius, nodeTitleBarBgHeight, m_snapToGrid);
+			ImVec2 pos = offset + node->outputPos(out, slotRadius, nodeTitleBarBgHeight, m_snapToGrid);
 			ImVec2 tsz = ImGui::CalcTextSize(label);
 			ImVec2 off = ImVec2(slotRadius + 3, -tsz.y * 0.5f);
 			ImVec2 off1 = ImVec2(slotRadius + 3, -tsz.y * 0.5f + 1);
@@ -668,10 +681,10 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 				m_linking.active = true;
 				m_linking.node = node;
 				m_linking.inputID = rnode_id;
-				m_linking.inputSlot = k;
+				m_linking.inputSlot = out;
 			}
 
-			if (m_linking.active && m_linking.node == node && m_linking.inputSlot == k) {
+			if (m_linking.active && m_linking.node == node && m_linking.inputSlot == out) {
 				ImVec2 p1 = pos;
 				ImVec2 p2 = ImGui::GetIO().MousePos;
 				ImVec2 cp1 = p1 + ImVec2(50, 0);
@@ -746,7 +759,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 	/// Selecting nodes
 	if (m_selectingNodes) {
 		m_selectionEnd = io.MousePos;
-		
+
 		ImRect selRect = ImRect(m_selectionStart, m_selectionEnd);
 		if (selRect.Min.x>selRect.Max.x) {float tmp = selRect.Min.x;selRect.Min.x=selRect.Max.x;selRect.Max.x=tmp;}
 		if (selRect.Min.y>selRect.Max.y) {float tmp = selRect.Min.y;selRect.Min.y=selRect.Max.y;selRect.Max.y=tmp;}
@@ -1141,7 +1154,7 @@ void TNodeEditor::draw(int w, int h) {
 							".",
 							osd::Filters("Audio Files:wav,ogg,aif,flac")
 						);
-						
+
 						if (filePath.has_value()) {
 							if (!m_nodeGraphs[m_activeGraph]->actualNodeGraph()->addSample(filePath.value())) {
 								osd::Dialog::message(
@@ -1172,7 +1185,7 @@ void TNodeEditor::draw(int w, int h) {
 				stm << i;
 
 				int flags = !m_nodeGraphs[i]->m_saved ? ImGuiTabItemFlags_UnsavedDocument : 0;
-				
+
 				const bool wasOpen = m_nodeGraphs[i]->m_open;
 				if (ImGui::TabItem(stm.str().c_str(), &m_nodeGraphs[i]->m_open, flags)) {
 					m_activeGraph = i;
@@ -1197,7 +1210,7 @@ void TNodeEditor::draw(int w, int h) {
 				}
 			}
 			ImGui::EndTabBar();
-			
+
 			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(1, 1));
 			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 			ImGui::PushStyleColor(ImGuiCol_ChildWindowBg, IM_COL32(40, 40, 50, 200));
@@ -1309,7 +1322,7 @@ void TNodeEditor::saveRecording(const std::string& fileName) {
 void TNodeEditor::renderToFile(const std::string& fileName, float time) {
 	m_rendering = true;
 	const int sampleCount = int(time * sampleRate);
-	
+
 	float data[sampleCount];
 	for (int i = 0; i < sampleCount; i++) {
 		data[i] = output();

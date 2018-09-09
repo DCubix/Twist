@@ -16,10 +16,10 @@ public:
 	}
 
 	void solve() {
-		float a = in("A");
-		float b = in("B");
-		float fac = in("Fac", "Fac.");
-		out("Out") = Utils::lerp(a, b, fac);
+		float a = in(0);
+		float b = in(1);
+		float fac = in(2, 0);
+		out(0) = Utils::lerp(a, b, fac);
 	}
 
 };

@@ -14,9 +14,9 @@ public:
 	}
 
 	void solve() {
-		int note = (int) paramOption("Note");
-		int oct = (int) param("Oct");
-		out("Nt") = (int)note + (oct * 12);
+		int note = (int) paramOption(0);
+		int oct = (int) param(1);
+		out(0) = (int)note + (oct * 12);
 	}
 };
 
@@ -29,11 +29,8 @@ public:
 	}
 
 	void solve() {
-		FloatArray in = ins("Nt");
-		FloatArray _out;
-		for (int i = 0; i < FLOAT_ARRAY_MAX; i++)
-			_out[i] = Utils::noteFrequency(int(in[i]));
-		outs("Freq").set(_out);
+		for (u32 i = 0; i < FLOAT_ARRAY_MAX; i++)
+			out(0, i) = Utils::noteFrequency(int(in(0, 0, i)));
 	}
 
 };

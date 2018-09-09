@@ -4,7 +4,7 @@ project(Twist VERSION 1.0 LANGUAGES C CXX)
 set(TWIST_VERSION ${PROJECT_VERSION})
 set(TWIST_NAME "${PROJECT_NAME}")
 
-set(CMAKE_BUILD_TYPE "Release")
+set(CMAKE_BUILD_TYPE "RelWithDebInfo")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -58,6 +58,7 @@ file(GLOB SRC
 	"src/editor/imgui/*.h"
 	"src/editor/imgui/*.cpp"
 	"src/editor/imgui/*.hpp"
+	"src/editor/nodes/*.hpp"
 	"src/glad/*.h"
 	"src/glad/*.cpp"
 	"src/stb/*.h"

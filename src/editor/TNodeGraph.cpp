@@ -12,31 +12,29 @@ TNodeGraph::TNodeGraph(NodeGraph* ang) {
 }
 
 TNodeUI* TNodeGraph::node(u64 id) {
-	if (m_nodes.find(id) == m_nodes.end())
+	auto pos = m_nodes.find(id);
+	if (pos == m_nodes.end())
 		return nullptr;
-	return m_nodes[id].get();
+	return pos->second.get();
 }
 
 NodeLink* TNodeGraph::link(u64 id) {
-	if (m_actualNodeGraph->links().find(id) == m_actualNodeGraph->links().end())
-		return nullptr;
-	return m_actualNodeGraph->links()[id].get();
+	return m_actualNodeGraph->link(id);
 }
 
-TNodeUI* TNodeGraph::addNode(
-	int x, int y,
-	const Str& type, JSON params,
-	u64 id, bool canundo
+TNodeUI* TNodeGraph::addNode(int x, int y,
+	const Str& type, JSON params, bool canundo
 ) {
 	TNodeUI* n = new TNodeUI();
-	n->node = m_actualNodeGraph->create(type, params, id);
+	n->node = m_actualNodeGraph->create(type, params);
 	n->bounds.x = x;
 	n->bounds.y = y;
 	n->gridPos.x = x;
 	n->gridPos.y = y;
 	n->open = true;
 
-	m_nodes[n->node->id()] = Ptr<TNodeUI>(std::move(n));
+	u64 id = n->node->id();
+	m_nodes[id] = Ptr<TNodeUI>(std::move(n));
 
 	m_saved = false;
 
@@ -72,7 +70,7 @@ void TNodeGraph::deleteNode(u64 id, bool canundo) {
 	m_saved = false;
 }
 
-u64 TNodeGraph::link(u64 inID, const Str& inSlot, u64 outID, const Str& outSlot, bool canundo) {
+u64 TNodeGraph::link(u64 inID, u32 inSlot, u64 outID, u32 outSlot, bool canundo) {
 	u64 id = m_actualNodeGraph->link(inID, inSlot, outID, outSlot);
 
 	if (canundo) {
@@ -129,17 +127,16 @@ void TNodeGraph::load(const Str& fileName) {
 	m_name = json["graphName"];
 	m_actualNodeGraph->fromJSON(json);
 
-	int i = 0;
 	for (auto&& nd : m_actualNodeGraph->nodes()) {
-		m_nodes[nd.first] = Ptr<TNodeUI>(new TNodeUI());
-		TNodeUI* no = m_nodes[nd.first].get();
-		no->bounds.x = int(json["nodes"][i]["pos"][0]);
-		no->bounds.y = int(json["nodes"][i]["pos"][1]);
-		no->open = json["nodes"][i]["open"].is_boolean() ? json["nodes"][i]["open"].get<bool>() : true;
-		no->node = nd.second.get();
+		Str key = std::to_string(nd->id());
+		m_nodes[nd->id()] = Ptr<TNodeUI>(new TNodeUI());
+		TNodeUI* no = m_nodes[nd->id()].get();
+		no->bounds.x = int(json["nodes"][key]["pos"][0]);
+		no->bounds.y = int(json["nodes"][key]["pos"][1]);
+		no->open = json["nodes"][key]["open"].is_boolean() ? json["nodes"][key]["open"].get<bool>() : true;
+		no->node = nd.get();
 		no->gridPos.x = no->bounds.x;
 		no->gridPos.y = no->bounds.y;
-		i++;
 	}
 
 	m_saved = true;
@@ -153,16 +150,15 @@ void TNodeGraph::save(const std::string& fileName) {
 	json["graphName"] = m_name;
 	m_actualNodeGraph->toJSON(json);
 
-	int i = 0;
 	for (auto&& nd : m_nodes) {
 		if (m_editor->snapToGrid()) {
 			nd.second->bounds.x = nd.second->gridPos.x;
 			nd.second->bounds.y = nd.second->gridPos.y;
 		}
-		json["nodes"][i]["pos"][0] = nd.second->bounds.x;
-		json["nodes"][i]["pos"][1] = nd.second->bounds.y;
-		json["nodes"][i]["open"] = nd.second->open;
-		i++;
+		Str key = std::to_string(nd.first);
+		json["nodes"][key]["pos"][0] = nd.second->bounds.x;
+		json["nodes"][key]["pos"][1] = nd.second->bounds.y;
+		json["nodes"][key]["open"] = nd.second->open;
 	}
 
 	std::ofstream fp(fileName);

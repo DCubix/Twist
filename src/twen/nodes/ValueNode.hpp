@@ -13,7 +13,7 @@ public:
 	}
 
 	void solve() {
-		outs("Out").set(param("Val."));
+		outs(0).set(param(0));
 	}
 
 };

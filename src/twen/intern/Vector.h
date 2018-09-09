@@ -190,7 +190,7 @@ public:
 	}
 
 	void set(const Vector<N>& v) {
-#ifdef USING_SIMD
+#if 0
 		size_t sz = VEC_SIZE(m_data.size());
 		size_t inc = FLOAT_SIZE;
 		for (size_t i = 0; i < sz; i += inc) {

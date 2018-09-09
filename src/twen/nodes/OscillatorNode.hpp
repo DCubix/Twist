@@ -24,10 +24,10 @@ public:
 	}
 
 	void solve() {
-		FloatArray freqs = ins("Freq", "Freq");
-		FloatArray amps = ins("Amp", "Amp");
+		FloatArray freqs = ins(0, 1);
+		FloatArray amps = ins(1, 2, true);
 
-		int wf = (int) paramOption("WaveForm");
+		int wf = (int) paramOption(0);
 
 		int count = 0;
 		float value = 0.0f;
@@ -41,7 +41,7 @@ public:
 		}
 		value /= (count == 0 ? 1 : count);
 
-		out("Out") = value;
+		out(0) = value;
 	}
 
 private:

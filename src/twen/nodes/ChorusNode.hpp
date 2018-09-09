@@ -27,11 +27,11 @@ public:
 	}
 
 	void solve() {
-		float sgn = m_lfo.sample(param("Rate")) * param("Depth");
-		float sgnDT = sgn * param("Delay");
-		dt = sgnDT + param("Delay");
-		float _out = m_wv.sample(in("In"), 0.0f, dt);
-		out("Out") = ((_out + in("In")) * 0.5f);
+		float sgn = m_lfo.sample(param(0)) * param(1);
+		float sgnDT = sgn * param(2);
+		dt = sgnDT + param(2);
+		float _out = m_wv.sample(in(0), 0.0f, dt);
+		out(0) = ((_out + in(0)) * 0.5f);
 	}
 
 private:

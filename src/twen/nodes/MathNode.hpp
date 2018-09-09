@@ -26,11 +26,11 @@ public:
 	}
 
 	void solve() {
-		FloatArray a = ins("A", "A");
-		FloatArray b = ins("B", "B");
+		FloatArray a = ins(0, 1);
+		FloatArray b = ins(1, 2);
 		FloatArray _out;
 
-		MathOp op = (MathOp) paramOption("Op");
+		MathOp op = (MathOp) paramOption(0);
 		switch (op) {
 			case Add: _out = a + b; break;
 			case Sub: _out = a - b; break;
@@ -38,7 +38,7 @@ public:
 			case Neg: _out = -a; break;
 			case Average: _out = (a + b) * 0.5f; break;
 		}
-		outs("Out") = _out;
+		outs(0) = _out;
 	}
 
 };

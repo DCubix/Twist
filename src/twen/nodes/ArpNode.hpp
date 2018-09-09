@@ -47,7 +47,7 @@ public:
 			gate = true;
 		}
 
-		Direction direction = (Direction) paramOption("Dir");
+		Direction direction = (Direction) paramOption(2);
 		switch (direction) {
 			case Up: return rn;
 			case Down: return n - 1 - rn;
@@ -68,11 +68,11 @@ public:
 	}
 
 	void solve() {
-		float ntime = in("Time");
+		float ntime = in(0);
 
-		Note note = (Note) paramOption("Note");
-		Chord chordType = (Chord) paramOption("Type");
-		Direction direction = (Direction) paramOption("Dir");
+		Note note = (Note) paramOption(0);
+		Chord chordType = (Chord) paramOption(1);
+		Direction direction = (Direction) paramOption(2);
 
 		int noteIn = note;
 
@@ -115,11 +115,11 @@ public:
 		}
 
 		if (gate) {
-			outs("Gate").set(1.0f);
+			outs(0).set(1.0f);
 		} else {
-			outs("Gate").set(0.0f);
+			outs(0).set(0.0f);
 		}
-		outs("Nt").set(nt + (12 * param("Oct")));
+		outs(1).set(nt + (12 * param(3)));
 	}
 
 private:

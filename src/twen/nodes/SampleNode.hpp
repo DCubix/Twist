@@ -18,7 +18,7 @@ public:
 	}
 
 	void setup() {
-		u32 id = paramOption("Sample");
+		u32 id = paramOption(0);
 		RawSample* sle = parent()->getSample(parent()->getSampleID(parent()->getSampleNames()[id]));
 		if (sle != nullptr) {
 			sample = Sample(sle->data, sle->sampleRate, sle->duration);
@@ -27,9 +27,9 @@ public:
 
 	void solve() {
 		if (sample.valid()) {
-			bool gate = in("Gate") > 0.5f ? true : false;
+			bool gate = in(0) > 0.5f ? true : false;
 			sample.gate(gate);
-			out("Out") = sample.sample() * in("Amp", "Amp");
+			out(0) = sample.sample() * in(1, 1);
 		}
 	}
 

@@ -19,9 +19,9 @@ public:
 	}
 
 	void solve() {
-		float v = in("In");
-		float norm = (v - param("Old Min")) / (param("Old Max") - param("Old Min"));
-		out("Out") = norm * (param("New Max") - param("New Min")) + param("New Min");
+		float v = in(0);
+		float norm = (v - param(0)) / (param(1) - param(0));
+		out(0) = norm * (param(3) - param(2)) + param(2);
 	}
 
 };

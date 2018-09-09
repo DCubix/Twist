@@ -17,14 +17,12 @@ struct TNodeUI {
 	bool open, selected;
 	Node* node;
 
-	ImVec2 inputPos(const Str& name, float radius, float title, bool snap=false) const {
-		int s = node->inputs()[name].id;
+	ImVec2 inputPos(u32 s, float radius, float title, bool snap=false) const {
 		ImVec2 p = snap ? gridPos : ImVec2(bounds.x, bounds.y);
-		float y = size().y - (title/2 + (s * (radius*2 + 3)));
+		float y = /*size().y - */(title/2 + (s * (radius*2 + 3)));
 		return ImVec2(p.x, p.y + y);
 	}
-	ImVec2 outputPos(const Str& name, float radius, float title, bool snap=false) const {
-		int s = node->outputs()[name].id;
+	ImVec2 outputPos(u32 s, float radius, float title, bool snap=false) const {
 		ImVec2 p = snap ? gridPos : ImVec2(bounds.x, bounds.y);
 		float y = title/2 + (s * (radius*2 + 3));
 		return ImVec2(p.x + size().x, p.y + y);
@@ -34,7 +32,7 @@ struct TNodeUI {
 
 struct TLinking {
 	u64 inputID;
-	Str inputSlot;
+	u32 inputSlot;
 	bool active;
 	TNodeUI* node;
 };
@@ -45,10 +43,10 @@ class TNodeGraph {
 public:
 	TNodeGraph(NodeGraph* ang);
 
-	TNodeUI* addNode(int x, int y, const Str& type, JSON params, u64 id, bool canundo=true);
+	TNodeUI* addNode(int x, int y, const Str& type, JSON params, bool canundo=true);
 	void deleteNode(u64 id, bool canundo=true);
-	u64 link(u64 inID, const Str& inSlot, u64 outID, const Str& outSlot, bool canundo=true);
-	
+	u64 link(u64 inID, u32 inSlot, u64 outID, u32 outSlot, bool canundo=true);
+
 	void selectAll();
 	void unselectAll();
 	u64 getActiveNode();
@@ -80,7 +78,7 @@ protected:
 	std::mutex m_lock;
 
 	Vec<u64> m_solvedNodes;
-	Map<u64, Ptr<TNodeUI>> m_nodes;
+	UMap<u64, Ptr<TNodeUI>> m_nodes;
 
 	ImVec2 m_scrolling;
 

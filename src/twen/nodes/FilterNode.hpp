@@ -23,9 +23,9 @@ public:
 	}
 
 	void solve() {
-		float cutOff = std::min(std::max(in("CutOff", "CutOff"), 20.0f), 20000.0f);
-		float _in = in("In");
-		Filter filter = (Filter) paramOption("Filter");
+		float cutOff = std::min(std::max(in(1, 0), 20.0f), 20000.0f);
+		float _in = in(0);
+		Filter filter = (Filter) paramOption(1);
 		switch (filter) {
 			case LowPass: {
 				if (cutOff > 0.0f) {
@@ -46,7 +46,7 @@ public:
 				_out = result;
 			} break;
 		}
-		out("Out") = _out;
+		out(0) = _out;
 	}
 
 private:

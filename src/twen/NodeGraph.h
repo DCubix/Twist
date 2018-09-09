@@ -19,6 +19,30 @@ struct RawSample {
 
 class NodeGraph {
 public:
+	static struct _NodeComparator {
+		bool operator() (const Ptr<Node>& left, u64 right) {
+			return left->id() < right;
+		}
+	} NodeComparator;
+
+	struct _NodeSortComparator {
+		inline bool operator()(const Ptr<Node>& a, const Ptr<Node>& b) {
+			return a->id() < b->id();
+		}
+	} NodeSortComparator;
+
+	static struct _LinkComparator {
+		bool operator() (const Ptr<NodeLink>& left, u64 right) {
+			return left->id < right;
+		}
+	} LinkComparator;
+
+	struct _LinkSortComparator {
+		inline bool operator()(const Ptr<NodeLink>& a, const Ptr<NodeLink>& b) {
+			return a->id < b->id;
+		}
+	} LinkSortComparator;
+
 	enum GraphType {
 		Normal = 0,
 		Module
@@ -33,9 +57,9 @@ public:
 			"The node must be derived from 'Node'."
 		);
 		// static_assert(IsNode<Nt>::value, "Not a valid node type.");
-
-		if (m_nodes.find(id) == m_nodes.end()) return nullptr;
-		return (Nt*) m_nodes[id].get();
+		auto it = std::lower_bound(m_nodes.begin(), m_nodes.end(), id, NodeComparator);
+		if (it == m_nodes.end()) return nullptr;
+		return (Nt*) it->get();
 	}
 
 	void remove(u64 id);
@@ -49,11 +73,12 @@ public:
 		// static_assert(IsNode<Nt>::value, "Not a valid node type.");
 
 		Nt* nt = new Nt(args...);
+		nt->m_id = m_nodes.size();
 		nt->m_parent = this;
 		nt->m_name = Nt::type();
 
 		u64 id = nt->id();
-		m_nodes.insert({ nt->id(), Ptr<Node>(std::move(nt)) });
+		m_nodes.push_back(Ptr<Node>(std::move(nt)));
 
 		solveNodes();
 
@@ -64,15 +89,14 @@ public:
 		return id;
 	}
 
-	Node* create(const Str& typeName, JSON params, u64 id = 0) {
+	Node* create(const Str& typeName, JSON params) {
 		Node* node = NodeBuilder::createNode(typeName, params);
+		node->m_id = m_nodes.size();
 		node->m_parent = this;
 		node->m_name = typeName;
-		if (id > 0)
-			node->m_id = id;
-		
+
 		u64 nid = node->id();
-		m_nodes.insert({ nid, Ptr<Node>(std::move(node)) });
+		m_nodes.push_back(Ptr<Node>(std::move(node)));
 
 		solveNodes();
 
@@ -83,10 +107,10 @@ public:
 		return get<Node>(nid);
 	}
 
-	u64 link(u64 inID, const Str& inSlot, u64 outID, const Str& outSlot);
+	u64 link(u64 inID, u32 inSlot, u64 outID, u32 outSlot);
 
-	Map<u64, Ptr<Node>>& nodes() { return m_nodes; }
-	Map<u64, Ptr<NodeLink>>& links() { return m_links; }
+	Vec<Ptr<Node>>& nodes() { return m_nodes; }
+	Vec<Ptr<NodeLink>>& links() { return m_links; }
 	void removeLink(u64 id);
 	NodeLink* link(u64 id);
 
@@ -114,20 +138,20 @@ public:
 
 private:
 	void addSample(const Str& fname, const Vec<float>& data, float sr, float dur);
-	Vec<u64> getAllLinksRelatedToNode(u64 id);
-	Vec<u64> getNodeInputs(u64 id);
-	Vec<u64> buildNodes(u64 id);
-	Vec<u64> buildNodes(const Vec<u64>& ids);
-	void solveNodes(const Vec<u64>& solved);
+	Vec<u64> getAllLinksRelatedToNode(u64 node);
+	Vec<Node*> getNodeInputs(Node* node);
+	Vec<Node*> buildNodes(Node* node);
+	Vec<Node*> buildNodes(const Vec<Node*>& nodes);
+	void solveNodes(const Vec<Node*>& solved);
 
 	GraphType m_type;
 	u64 m_outputNode = 0;
 
-	Map<u64, Ptr<Node>> m_nodes;
-	Map<u64, Ptr<NodeLink>> m_links;
+	Vec<Ptr<Node>> m_nodes;
+	Vec<Ptr<NodeLink>> m_links;
 	std::mutex m_lock;
 
-	Vec<u64> m_solvedNodes;
+	Vec<Node*> m_solvedNodes;
 
 	Arr<float, GLOBAL_STORAGE_SIZE> m_globalStorage;
 

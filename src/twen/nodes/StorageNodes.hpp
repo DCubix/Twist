@@ -13,7 +13,7 @@ public:
 	}
 
 	void solve() {
-		out("Out") = parent()->load((int) param("Slot"));
+		out(0) = parent()->load((int) param(0));
 	}
 };
 
@@ -26,7 +26,7 @@ public:
 	}
 
 	void solve() {
-		parent()->store((int) param("Slot"), in("In"));
+		parent()->store((int) param(0), in(0));
 	}
 };
 

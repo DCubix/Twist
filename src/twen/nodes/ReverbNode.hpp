@@ -40,19 +40,19 @@ public:
 	}
 
 	void solve() {
-		float _in = in("In");
+		float _in = in(0);
 		sf_sample_st ins, outs;
 		ins.L = outs.L = _in;
 		ins.R = outs.R = _in;
 
-		u32 pset = paramOption("Preset");
+		u32 pset = paramOption(0);
 		if (pset != m_preset) {
 			sf_presetreverb(&m_rev, (int)m_sampleRate, (sf_reverb_preset)pset);
 			m_preset = pset;
 		}
 
 		sf_reverb_process(&m_rev, 1, &ins, &outs);
-		out("Out") = (outs.L + outs.R) * 0.5f;
+		out(0) = (outs.L + outs.R) * 0.5f;
 	}
 
 private:

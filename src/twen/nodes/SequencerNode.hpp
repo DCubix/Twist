@@ -25,13 +25,47 @@ public:
 		addParam("Key", { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" }, key);
 	}
 
+	void save(JSON& json) {
+		Node::save(json);
+		std::array<int, SEQUENCER_SIZE> notes_;
+		std::array<int, SEQUENCER_SIZE> octs_;
+		std::array<bool, SEQUENCER_SIZE> silen_;
+		for (int i = 0; i < SEQUENCER_SIZE; i++) {
+			notes_[i] = (int) notes[i];
+			octs_[i] = octs[i];
+			silen_[i] = enabled[i];
+		}
+		json["notes"] = notes_;
+		json["octs"] = octs_;
+		json["enabled"] = silen_;
+	}
+
+	void load(JSON json) {
+		Node::load(json);
+		if (json["notes"].is_array()) {
+			for (int i = 0; i < json["notes"].size(); i++) {
+				notes[i] = json["notes"][i];
+			}
+		}
+		if (json["octs"].is_array()) {
+			for (int i = 0; i < json["octs"].size(); i++) {
+				octs[i] = json["octs"][i];
+			}
+		}
+		if (json["enabled"].is_array()) {
+			for (int i = 0; i < json["enabled"].size(); i++) {
+				enabled[i] = json["enabled"][i].get<bool>();
+			}
+		}
+	}
+
 	void solve() {
-		int ni = noteIndex = (int) in("Index");
+		int ni = noteIndex = (int) in(0);
 		int nid = ni % SEQUENCER_SIZE;
 		Note note = notes[nid];
 
 		// Transpose note
-		int nkey = (int) in("Key", "Key");
+		int nkey = (int) in(1, 0);
 
 		int fnote = (int) notes[0];
 		int noteDiff = (nkey - fnote);
@@ -40,10 +74,10 @@ public:
 
 		if (!enabled[nid]) {
 			globGate = true;
-			out("Gate") = 0.0f;
+			out(1) = 0.0f;
 		}
 
-		out("Nt") = nnote + (oct * 12);
+		out(0) = nnote + (oct * 12);
 
 		if (prevNoteIndex != noteIndex) {
 			globGate = true;
@@ -51,10 +85,10 @@ public:
 		}
 
 		if (globGate) {
-			out("Gate") = 0.0f;
+			out(1) = 0.0f;
 			globGate = false;
 		} else {
-			out("Gate") = 1.0f;
+			out(1) = 1.0f;
 		}
 	}
 

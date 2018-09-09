@@ -166,7 +166,7 @@ float VUMeter(const char* id, float value) {
 	const float tw = 1.0f / 10;
 	const float th = 1.0f / 10;
 
-	int index = int(value * 99.0f);
+	int index = (int) std::floor(value * 99.0f);
 
 	const ImVec2 wp = ImGui::GetCursorScreenPos();
 
@@ -452,12 +452,12 @@ struct ImGuiBigStorage
 	ImVector<T>     Data;
 
 	~ImGuiBigStorage() { Clear(); }
-	void Clear() 
-	{ 
-		for (int n = 0; n < Data.Size; n++) 
-			Data[n].~T(); 
-		Map.Clear(); 
-		Data.clear(); 
+	void Clear()
+	{
+		for (int n = 0; n < Data.Size; n++)
+			Data[n].~T();
+		Map.Clear();
+		Data.clear();
 	}
 	T*  GetOrCreateByKey(ImGuiID key)
 	{
@@ -496,14 +496,14 @@ struct ImGuiTabItem
 	bool            SkipAppearAnim;
 	char            DebugName[16];
 
-	ImGuiTabItem() 
-	{ 
-		Id = 0; 
+	ImGuiTabItem()
+	{
+		Id = 0;
 		GlobalIndex = -1;
 		CurrentOrder = -1;
 		CurrentOrderVisible = -1;
 		LastFrameVisible = LastFrameSelected -1;
-		OffsetAnim = OffsetTarget = 0.0f; 
+		OffsetAnim = OffsetTarget = 0.0f;
 		WidthContents = WidthAnim = WidthTarget = 0.0f;
 		AppearAnim = 1.0f;
 		SkipOffsetAnim = SkipAppearAnim = false;
@@ -576,7 +576,7 @@ static bool ArrowButton(ImGuiID id, ImGuiDir dir, ImVec2 padding, ImGuiButtonFla
 	return pressed;
 }
 
-// FIXME: Helper for external extensions to handle multiple-context. 
+// FIXME: Helper for external extensions to handle multiple-context.
 // Possibly: require user to call setcontext functions on various subsystems, or have hooks in main SetCurrentContext()
 // Possibly: have a way for each extension to register themselves globally, so a void* can be stored in ImGuiContext that can be accessed in constant-time from a handle(=index).
 struct ImGuiTabsContext
@@ -661,7 +661,7 @@ void    ImGui::BeginTabBar(const char* str_id, ImGuiTabBarFlags flags)
 	PushID(str_id);
 	const ImGuiID id = window->GetID("");
 	ImGuiTabBar* tab_bar = ctx.TabBars.GetOrCreateByKey(id);
-	IM_ASSERT(tab_bar->CurrFrameVisible != g.FrameCount);   // Cannot call multiple times in the same frame 
+	IM_ASSERT(tab_bar->CurrFrameVisible != g.FrameCount);   // Cannot call multiple times in the same frame
 
 	ctx.CurrentTabBar.push_back(tab_bar);
 	tab_bar->Id = id;
@@ -808,10 +808,10 @@ static void TabBarLayout(ImGuiTabBar* tab_bar)
 		}
 		else if (tab_bar->Flags & ImGuiTabBarFlags_SizingPolicyFit)
 		{
-			const float TAB_MAX_WIDTH = FLT_MAX;// 100.0f; 
+			const float TAB_MAX_WIDTH = FLT_MAX;// 100.0f;
 			tab->WidthTarget = ImMin(tab->WidthContents, TAB_MAX_WIDTH);
 		}
-		
+
 		if (tab->SkipOffsetAnim)
 		{
 			tab->OffsetAnim = tab->OffsetTarget;

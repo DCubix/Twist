@@ -12,7 +12,7 @@ public:
 	{
 		addOutput("Out");
 		addInput("Gate");
-		
+
 		addParam("A", 0.0f, 10.0f, a, 0.05f, NodeParam::KnobRange, true);
 		addParam("D", 0.0f, 10.0f, d, 0.05f, NodeParam::KnobRange, true);
 		addParam("S", 0.0f,  1.0f, s, 0.05f, NodeParam::KnobRange, true);
@@ -27,12 +27,12 @@ public:
 
 	void solve() {
 		for (int i = 0; i < FLOAT_ARRAY_MAX; i++) {
-			m_adsr[i].attack(param("A") * m_sampleRate);
-			m_adsr[i].decay(param("D") * m_sampleRate);
-			m_adsr[i].sustain(param("S") * m_sampleRate);
-			m_adsr[i].release(param("R") * m_sampleRate);
+			m_adsr[i].attack(param(0) * m_sampleRate);
+			m_adsr[i].decay(param(1) * m_sampleRate);
+			m_adsr[i].sustain(param(2) * m_sampleRate);
+			m_adsr[i].release(param(3) * m_sampleRate);
 
-			if (ins("Gate")[i] >= 0.9f) {
+			if (ins(0)[i] >= 0.5f) {
 				if (!m_trigger[i]) {
 					m_adsr[i].gate(true);
 					m_trigger[i] = true;
@@ -44,7 +44,7 @@ public:
 				}
 			}
 
-			outs("Out")[i] = m_adsr[i].sample();
+			outs(0)[i] = m_adsr[i].sample();
 		}
 	}
 

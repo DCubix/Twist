@@ -6,15 +6,14 @@
 #include "sndfile.hh"
 #include "nodes/StorageNodes.hpp"
 
-Vec<u64> NodeGraph::getAllLinksRelatedToNode(u64 id) {
+Vec<u64> NodeGraph::getAllLinksRelatedToNode(u64 node) {
 	Vec<u64> links;
-	for (auto&& e : m_links) {
-		NodeLink* lnk = e.second.get();
-		if (lnk->inputID == id) {
+	for (auto&& lnk : m_links) {
+		if (lnk->inputID == node) {
 			m_lock.lock();
-			auto pos = std::find(links.begin(), links.end(), e.first);
+			auto pos = std::find(links.begin(), links.end(), lnk->id);
 			if (pos == links.end()) {
-				links.push_back(e.first);
+				links.push_back(lnk->id);
 			}
 			m_lock.unlock();
 		}
@@ -22,49 +21,47 @@ Vec<u64> NodeGraph::getAllLinksRelatedToNode(u64 id) {
 	return links;
 }
 
-Vec<u64> NodeGraph::getNodeInputs(u64 id) {
-	Vec<u64> ins;
-	for (auto& e : m_links) {
-		NodeLink* lnk = e.second.get();
-		if (lnk->outputID == id && get<Node>(lnk->inputID) != nullptr) {
+Vec<Node*> NodeGraph::getNodeInputs(Node* node) {
+	Vec<Node*> ins;
+	for (auto&& lnk : m_links) {
+		if (lnk->outputID == node->id()) {
 			m_lock.lock();
-			ins.push_back(lnk->inputID);
+			ins.push_back(get<Node>(lnk->inputID));
 			m_lock.unlock();
 		}
 	}
 	return ins;
 }
 
-Vec<u64> NodeGraph::buildNodes(u64 id) {
-	Vec<u64> lst;
-	lst.push_back(id);
+Vec<Node*> NodeGraph::buildNodes(Node* node) {
+	Vec<Node*> lst;
+	lst.push_back(node);
 	return buildNodes(lst);
 }
 
-Vec<u64> NodeGraph::buildNodes(const Vec<u64>& ids) {
-	if (ids.empty())
-		return Vec<u64>();
+Vec<Node*> NodeGraph::buildNodes(const Vec<Node*>& nodes) {
+	if (nodes.empty())
+		return Vec<Node*>();
 
-	Vec<u64> nodes;
+	Vec<Node*> nodesG;
 	m_lock.lock();
-	nodes.insert(nodes.end(), ids.begin(), ids.end());
+	nodesG.insert(nodesG.end(), nodes.begin(), nodes.end());
 	m_lock.unlock();
 
-	for (int id : ids) {
-		for (int in : getNodeInputs(id)) {
-			if (get<Node>(in) == nullptr) continue;
+	for (Node* node : nodes) {
+		for (Node* in : getNodeInputs(node)) {
+			if (in == nullptr) continue;
 
 			m_lock.lock();
-			nodes.push_back(in);
+			nodesG.push_back(in);
 			m_lock.unlock();
 
-			Vec<u64> rec = buildNodes(in);
-			for (int rnd : rec) {
-				if (get<Node>(rnd) == nullptr) continue;
+			for (Node* rnd : buildNodes(in)) {
+				if (rnd == nullptr) continue;
 
 				m_lock.lock();
-				if (std::find(nodes.begin(), nodes.end(), rnd) == nodes.end()) {
-					nodes.push_back(rnd);
+				if (std::find(nodesG.begin(), nodesG.end(), rnd) == nodesG.end()) {
+					nodesG.push_back(rnd);
 				}
 				m_lock.unlock();
 			}
@@ -72,18 +69,18 @@ Vec<u64> NodeGraph::buildNodes(const Vec<u64>& ids) {
 	}
 
 	m_lock.lock();
-	std::reverse(nodes.begin(), nodes.end());
+	std::reverse(nodesG.begin(), nodesG.end());
 	m_lock.unlock();
 
-	return nodes;
+	return nodesG;
 }
 
 void NodeGraph::solveNodes() {
-	Vec<u64> outNodes;
-	for (auto& nd : m_nodes) {
-		if (nd.second->name() != WriterNode::type()) continue;
+	Vec<Node*> outNodes;
+	for (auto&& nd : m_nodes) {
+		if (nd->name() != WriterNode::type()) continue;
 		m_lock.lock();
-		outNodes.push_back(nd.second->id());
+		outNodes.push_back(nd.get());
 		m_lock.unlock();
 	}
 
@@ -94,37 +91,35 @@ void NodeGraph::solveNodes() {
 	// } else {
 	Node* n = get<Node>(outputNode());
 	if (n != nullptr && n->name() == OutNode::type())
-		outNodes.push_back(outputNode());
+		outNodes.push_back(n);
 	// }
 
 	m_solvedNodes = buildNodes(outNodes);
 }
 
-void NodeGraph::solveNodes(const Vec<u64>& solved) {
-	for (int id : solved) {
-		Node* nd = get<Node>(id);
-		if (nd == nullptr) continue;
+void NodeGraph::solveNodes(const Vec<Node*>& solved) {
+	for (Node* nd : solved) {
 		nd->m_solved = false;
 	}
 
-	for (int id : solved) {
-		Node* nd = get<Node>(id);
-		if (nd == nullptr) continue;
-
-		if (!nd->m_solved) {
+	for (Node* nd : solved) {
+		if (!nd->m_solved && nd->enabled()) {
 			nd->solve();
 			nd->m_solved = true;
 		}
-			
-		for (auto&& e : m_links) {
-			NodeLink* lnk = e.second.get();
-			if (lnk == nullptr) continue;
 
-			if (lnk->inputID == id) {
+		for (Ptr<NodeLink>& lnk : m_links) {
+			if (lnk.get() == nullptr) continue;
+
+			if (lnk->inputID == nd->id()) {
 				Node* tgt = get<Node>(lnk->outputID);
 				if (tgt == nullptr) continue;
 
-				tgt->ins(lnk->outputSlot).set(nd->outs(lnk->inputSlot));
+				if (nd->enabled() && tgt->inputs()[lnk->outputSlot].connected) {
+					tgt->ins(lnk->outputSlot).set(nd->outs(lnk->inputSlot));
+				} else {
+					tgt->ins(lnk->outputSlot).set(0.0f);
+				}
 			}
 		}
 	}
@@ -133,43 +128,44 @@ void NodeGraph::solveNodes(const Vec<u64>& solved) {
 void NodeGraph::remove(u64 id) {
 	Vec<u64> brokenLinks = getAllLinksRelatedToNode(id);
 
-	m_lock.lock();
-	auto pos = m_nodes.find(id);
+	std::sort(m_nodes.begin(), m_nodes.end(), NodeSortComparator);
+	auto pos = std::lower_bound(m_nodes.begin(), m_nodes.end(), id, NodeComparator);
 	if (pos != m_nodes.end()) {
+		m_lock.lock();
 		m_nodes.erase(pos);
+		m_lock.unlock();
 	}
-	m_lock.unlock();
 
 	// Find some more broken links...
-	for (auto&& e : m_links) {
-		NodeLink* lnk = e.second.get();
+	for (auto&& lnk : m_links) {
 		if (get<Node>(lnk->inputID) == nullptr || get<Node>(lnk->outputID) == nullptr) {
-			if (std::find(brokenLinks.begin(), brokenLinks.end(), e.first) == brokenLinks.end())
-				brokenLinks.push_back(e.first);
+			if (std::find(brokenLinks.begin(), brokenLinks.end(), lnk->id) == brokenLinks.end())
+				brokenLinks.push_back(lnk->id);
 		}
 	}
 
 	std::sort(brokenLinks.begin(), brokenLinks.end());
 	for (int i = brokenLinks.size() - 1; i >= 0; i--) {
-		m_links.erase(brokenLinks[i]);
+		m_links.erase(m_links.begin() + brokenLinks[i]);
 	}
 
 	solveNodes();
 }
 
-u64 NodeGraph::link(u64 inID, const Str& inSlot, u64 outID, const Str& outSlot) {
+u64 NodeGraph::link(u64 inID, u32 inSlot, u64 outID, u32 outSlot) {
 	NodeLink* link = new NodeLink();
 	link->inputID = inID;
 	link->inputSlot = inSlot;
 	link->outputID = outID;
 	link->outputSlot = outSlot;
+	link->id = m_links.size();
 
-	get<Node>(outID)->inputs(outSlot).connected = true;
-	get<Node>(inID)->outputs(inSlot).connected = true;
+	get<Node>(outID)->inputs()[outSlot].connected = true;
+	get<Node>(inID)->outputs()[inSlot].connected = true;
 
-	u64 id = UID::getNew();
+	u64 id = link->id;
 	m_lock.lock();
-	m_links[id] = Ptr<NodeLink>(std::move(link));
+	m_links.push_back(Ptr<NodeLink>(std::move(link)));
 	m_lock.unlock();
 
 	solveNodes();
@@ -184,15 +180,21 @@ void NodeGraph::removeLink(u64 id) {
 	get<Node>(lnk->outputID)->inputs()[lnk->outputSlot].connected = false;
 	get<Node>(lnk->inputID)->outputs()[lnk->inputSlot].connected = false;
 
-	m_lock.lock();
-	m_links.erase(id);
-	m_lock.unlock();
+	std::sort(m_links.begin(), m_links.end(), LinkSortComparator);
+	auto pos = std::lower_bound(m_links.begin(), m_links.end(), id, LinkComparator);
+
+	if (pos != m_links.end()) {
+		m_lock.lock();
+		m_links.erase(pos);
+		m_lock.unlock();
+	}
 }
 
 NodeLink* NodeGraph::link(u64 id) {
-	if (m_links.find(id) == m_links.end())
+	auto pos = std::lower_bound(m_links.begin(), m_links.end(), id, LinkComparator);
+	if (pos == m_links.end())
 		return nullptr;
-	return m_links[id].get();
+	return pos->get();
 }
 
 float NodeGraph::solve() {
@@ -201,7 +203,7 @@ float NodeGraph::solve() {
 	// if (m_type == GraphType::Normal) {
 	Node* out = get<Node>(outputNode());
 	if (out != nullptr && out->name() == OutNode::type()) {
-		return out->in("In");
+		return out->in(0);
 	}
 	// }
 
@@ -242,7 +244,7 @@ bool NodeGraph::addSample(const Str& fileName) {
 		samplesRaw.resize(snd.frames() * snd.channels());
 
 		snd.readf(samplesRaw.data(), samplesRaw.size());
-		
+
 		sampleData.resize(snd.frames());
 		for (int i = 0; i < snd.frames(); i++) {
 			sampleData[i] = samplesRaw[i];
@@ -301,16 +303,13 @@ void NodeGraph::fromJSON(JSON json) {
 
 	// m_type = (GraphType) json["graphType"];
 
-	if (json["nodes"].is_array()) {
-		for (int i = 0; i < json["nodes"].size(); i++) {
-			JSON& node = json["nodes"][i];
+	if (json["nodes"].is_object()) {
+		for (auto&& o : json["nodes"].items()) {
+			JSON node = o.value();
 			if (node.is_null()) continue;
 
 			Str type = node["type"].get<Str>();
-
-			u64 id = node["id"].is_number_integer() ? node["id"].get<u64>() : -1;
-			Node* no = create(type, node, id);
-			no->load(node);
+			create(type, node)->load(node);
 		}
 	}
 
@@ -337,15 +336,13 @@ void NodeGraph::fromJSON(JSON json) {
 }
 
 void NodeGraph::toJSON(JSON& json) {
-	int i = 0;
-	for (auto& nd : m_nodes) {
-		nd.second->save(json["nodes"][i++]);
+	for (auto&& nd : m_nodes) {
+		nd->save(json["nodes"][std::to_string(nd->id())]);
 	}
 
-	i = 0;
-	for (auto& e : m_links) {
-		NodeLink* link = e.second.get();
-		if (link == nullptr) continue;
+	int i = 0;
+	for (auto&& link : m_links) {
+		if (link.get() == nullptr) continue;
 		JSON& links = json["links"][i++];
 		links["inID"] = link->inputID;
 		links["inSlot"] = link->inputSlot;

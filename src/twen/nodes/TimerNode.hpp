@@ -16,23 +16,23 @@ public:
 
 		addParam("Swing", 0.0f, 0.9f, swing, 0.05f, NodeParam::DragRange);
 		addParam("BPM", 0.0f, 255.0f, bpm, 1.0f, NodeParam::DragRange);
-		
+
 	}
 
 	void solve() {
 		const float step = (1.0f / m_sampleRate) * 4;
-		const float delay = (60000.0f / param("BPM")) / 1000.0f;
+		const float delay = (60000.0f / param(1)) / 1000.0f;
 
 		currTime += step;
 
-		float sw = param("Swing") * delay;
+		float sw = param(0) * delay;
 		float delaySw = index % 2 == 0 ? delay + sw * 0.5f : delay - sw * 0.5f;
 		updateIndex(index, currTime, gate, sw, delay);
 
-		out("Index") = index;
-		out("Gate") = gate ? 1 : 0;
-		out("Freq") = param("BPM") / 60.0f;
-		out("Time") = Utils::remap(currTime, 0.0f, delaySw, 0.0f, 1.0f);
+		out(0) = index;
+		out(1) = gate ? 1 : 0;
+		out(2) = param(1) / 60.0f;
+		out(3) = Utils::remap(currTime, 0.0f, delaySw, 0.0f, 1.0f);
 	}
 
 private:

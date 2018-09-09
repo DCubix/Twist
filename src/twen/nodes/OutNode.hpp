@@ -9,12 +9,12 @@ public:
 	OutNode() : Node() {
 		addInput("In");
 		addInput("Vol.");
-		ins("Vol.").set(1.0f);
+		ins(1).set(1.0f);
 	}
 
 	void solve() {
-		nextLvl = std::max(nextLvl, in("In") * in("Vol."));
-		in("In") = in("In") * in("Vol.");
+		nextLvl = std::max(nextLvl, in(0) * in(1));
+		in(0) = in(0) * in(1);
 
 		level = Utils::lerp(level, nextLvl, 0.0007f);
 		nextLvl -= 1.0f / 22050;

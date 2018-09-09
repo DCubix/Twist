@@ -11,9 +11,9 @@ public:
 	}
 
 	void solve() {
-		outs("Out").set(0.0f);
+		outs(0).set(0.0f);
 		if (enabled)
-			outs("Out").set(1.0f);
+			outs(0).set(1.0f);
 	}
 
 	bool enabled;

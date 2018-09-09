@@ -18,7 +18,7 @@ public:
 	}
 
 	void solve() {
-		out("Out") = m_wv.sample(in("In"), param("Feedback"), param("Delay"));
+		out(0) = m_wv.sample(in(0), param(0), param(1));
 	}
 
 private:

@@ -58,7 +58,7 @@ public:
 	size_t size() const { return m_keys.size(); }
 
 private:
-	Map<Str, size_t> m_indices;
+	UMap<Str, size_t> m_indices;
 	Vec<Str> m_keys;
 	Vec<V> m_values;
 };

@@ -8,12 +8,12 @@
 
 class TAddNodeCommand : public TCommand {
 public:
-	TAddNodeCommand(int id, int x, int y, const Str& type, JSON params)
+	TAddNodeCommand(u64 id, int x, int y, const Str& type, JSON params)
 		: m_params(params), m_type(type), m_x(x), m_y(y), m_id(id)
 	{}
 
 	void execute() {
-		m_id = m_nodeGraph->addNode(m_x, m_y, m_type, m_params, -1, false)->node->id();
+		m_id = m_nodeGraph->addNode(m_x, m_y, m_type, m_params, false)->node->id();
 	}
 
 	void revert() {
@@ -24,12 +24,12 @@ private:
 	JSON m_params;
 	Str m_type;
 	int m_x, m_y;
-	int m_id;
+	u64 m_id;
 };
 
 class TDeleteNodeCommand : public TCommand {
 public:
-	TDeleteNodeCommand(int id, int x, int y, const std::string& type, JSON params)
+	TDeleteNodeCommand(u64 id, int x, int y, const std::string& type, JSON params)
 		: m_params(params), m_type(type), m_x(x), m_y(y), m_id(id)
 	{}
 
@@ -38,21 +38,21 @@ public:
 	}
 
 	void revert() {
-		m_id = m_nodeGraph->addNode(m_x, m_y, m_type, m_params, -1, false)->node->id();
+		m_id = m_nodeGraph->addNode(m_x, m_y, m_type, m_params, false)->node->id();
 	}
 
 private:
 	JSON m_params;
 	std::string m_type;
 	int m_x, m_y;
-	int m_id;
+	u64 m_id;
 };
 
 class TLinkCommand : public TCommand {
 public:
-	TLinkCommand(int id, int inID, const Str& inSlot, int outID, const Str& outSlot)
+	TLinkCommand(u64 id, u64 inID, u32 inSlot, u64 outID, u32 outSlot)
 	 : m_linkID(id), inputID(inID), inputSlot(inSlot),
-	 	outputID(outID), outputSlot(outSlot)
+		outputID(outID), outputSlot(outSlot)
 	{}
 
 	void execute() {
@@ -68,18 +68,18 @@ public:
 	}
 
 private:
-	int m_linkID;
-	int inputID;
-	Str inputSlot;
-	int outputID;
-	Str outputSlot;
+	u64 m_linkID;
+	u64 inputID;
+	u64 outputID;
+	u32 inputSlot;
+	u32 outputSlot;
 };
 
 class TUnLinkCommand : public TCommand {
 public:
-	TUnLinkCommand(int id, int inID, const Str& inSlot, int outID, const Str& outSlot)
+	TUnLinkCommand(u64 id, u64 inID, u32 inSlot, u64 outID, u32 outSlot)
 	 : m_linkID(id), inputID(inID), inputSlot(inSlot),
-	 	outputID(outID), outputSlot(outSlot)
+		outputID(outID), outputSlot(outSlot)
 	{}
 
 	void execute() {
@@ -95,11 +95,11 @@ public:
 	}
 
 private:
-	int m_linkID;
-	int inputID;
-	Str inputSlot;
-	int outputID;
-	Str outputSlot;
+	u64 m_linkID;
+	u64 inputID;
+	u64 outputID;
+	u32 inputSlot;
+	u32 outputSlot;
 };
 
 class TMoveCommand : public TCommand {
