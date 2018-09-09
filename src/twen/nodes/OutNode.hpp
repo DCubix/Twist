@@ -13,10 +13,12 @@ public:
 	}
 
 	void solve() {
-		nextLvl = std::max(nextLvl, in(0) * in(1));
-		in(0) = in(0) * in(1);
+		float val = (in(0) * in(1));
+		nextLvl = std::max(nextLvl, val);
+		in(0) = val;
 
 		level = Utils::lerp(level, nextLvl, 0.0007f);
+
 		nextLvl -= 1.0f / 22050;
 		nextLvl = std::min(std::max(nextLvl, 0.0f), 1.0f);
 	}

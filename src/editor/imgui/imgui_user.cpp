@@ -50,9 +50,6 @@ bool Knob(const char* label, float* p_value, float v_min, float v_max) {
 	float line_height = ImGui::GetTextLineHeight();
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
-	float ANGLE_MIN = 3.141592f * 0.75f;
-	float ANGLE_MAX = 3.141592f * 2.25f;
-
 	ImGui::BeginGroup();
 	ImGui::PushItemWidth(width);
 
@@ -167,13 +164,14 @@ float VUMeter(const char* id, float value) {
 	const float th = 1.0f / 10;
 
 	int index = (int) std::floor(value * 99.0f);
+	index = ImClamp(index, 0, 100);
 
 	const ImVec2 wp = ImGui::GetCursorScreenPos();
 
 	draw_list->PushClipRect(wp, ImVec2(width, height) + wp, true);
 
-	float x = tw * (index % 10);
-	float y = th * int(index / 10);
+	float x = tw * float(index % 10);
+	float y = th * float(int(index / 10));
 	draw_list->AddImage(
 		(ImTextureID)(VUTex->id()),
 		wp,
