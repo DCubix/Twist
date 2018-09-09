@@ -392,6 +392,14 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, vec2zero);
 			ImGui::PushID("NodeButtons");
 
+			bool enabled = nodeR->enabled();
+			if (ImGui::Checkbox("##_en", &enabled)) {
+				nodeR->enabled(enabled);
+			}
+			if (ImGui::IsItemHovered()) {
+				ImGui::SetTooltip("Enabled");
+			}
+			ImGui::SameLine();
 			if (ImGui::Button("C", ImVec2(15, 15))) {
 				int cx = int(node->bounds.x + 50);
 				int cy = int(node->bounds.y + 50);
@@ -412,14 +420,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 			if (ImGui::IsItemHovered()) {
 				ImGui::SetTooltip("Delete");
 			}
-			ImGui::SameLine();
-			bool enabled = nodeR->enabled();
-			if (ImGui::Checkbox("##_en", &enabled)) {
-				nodeR->enabled(enabled);
-			}
-			if (ImGui::IsItemHovered()) {
-				ImGui::SetTooltip("Enabled");
-			}
+
 			ImGui::PopID();
 			ImGui::PopStyleVar(2);
 			ImGui::PopStyleColor();
@@ -476,6 +477,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 					pi++;
 				}
 
+				/// Draw nodes that need special GUI
 				if (nodeR->name() == OutNode::type()) {
 					OutNode* _node = (OutNode*) nodeR;
 					ImGui::VUMeter("##vu", _node->level);

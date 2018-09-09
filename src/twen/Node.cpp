@@ -1,5 +1,7 @@
 #include "Node.h"
 
+#include "intern/Log.h"
+
 Node::Node()
  :	m_id(0),
 	m_solved(false),

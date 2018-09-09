@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.7)
-project(Twist VERSION 1.0 LANGUAGES C CXX)
+project(Twist VERSION 2.0 LANGUAGES C CXX)
 
 set(TWIST_VERSION ${PROJECT_VERSION})
 set(TWIST_NAME "${PROJECT_NAME}")
