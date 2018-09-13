@@ -118,4 +118,37 @@ private:
 	Map<u64, Point> deltas;
 };
 
+class TParamChangeCommand : public TCommand {
+public:
+	TParamChangeCommand(
+			u64 nodeID, u32 index,
+			float floatValue, u32 optionValue,
+			float oldValue, u32 oldOption
+	)
+		: m_nodeID(nodeID), m_index(index),
+		  m_value(floatValue), m_option(optionValue),
+		  m_oldValue(oldValue), m_oldOption(oldOption)
+	{}
+
+	void execute() {
+		Node* node = m_nodeGraph->actualNodeGraph()->get<Node>(m_nodeID);
+		NodeParam& param = node->params()[m_index];
+		param.value = m_value;
+		param.option = m_option;
+	}
+
+	void revert() {
+		Node* node = m_nodeGraph->actualNodeGraph()->get<Node>(m_nodeID);
+		NodeParam& param = node->params()[m_index];
+		param.value = m_oldValue;
+		param.option = m_oldOption;
+	}
+
+private:
+	u64 m_nodeID;
+	u32 m_index;
+	float m_value, m_oldValue;
+	u32 m_option, m_oldOption;
+};
+
 #endif // T_COMMANDS_H

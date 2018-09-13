@@ -9,7 +9,7 @@ class ReaderNode : public Node {
 public:
 	ReaderNode(int idx=0) : Node() {
 		addOutput("Out");
-		addParam("Slot", 0, GLOBAL_STORAGE_SIZE, idx, 1.0f, NodeParam::DragRange);
+		addParam("Slot", 0, GLOBAL_STORAGE_SIZE, idx, 1.0f, NodeParam::IntRange);
 	}
 
 	void solve() {
@@ -22,7 +22,7 @@ class WriterNode : public Node {
 public:
 	WriterNode(int idx=0) : Node() {
 		addInput("In");
-		addParam("Slot", 0, GLOBAL_STORAGE_SIZE, idx, 1.0f, NodeParam::DragRange);
+		addParam("Slot", 0, GLOBAL_STORAGE_SIZE, idx, 1.0f, NodeParam::IntRange);
 	}
 
 	void solve() {

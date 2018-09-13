@@ -13,7 +13,7 @@ public:
 		addOutput("Gate");
 		gates.fill(false);
 
-		addParam("Channel", 0x0, 0xF, 0.0f, 1.0f, NodeParam::Range);
+		addParam("Channel", 0x0, 0xF, 0.0f, 1.0f, NodeParam::IntRange);
 	}
 
 	void messageReceived(TMidiMessage msg) {

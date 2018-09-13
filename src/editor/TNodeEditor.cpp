@@ -401,8 +401,8 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 			}
 			ImGui::SameLine();
 			if (ImGui::Button("C", ImVec2(15, 15))) {
-				int cx = int(node->bounds.x + 50);
-				int cy = int(node->bounds.y + 50);
+				int cx = int(node->bounds.x);
+				int cy = int(node->bounds.y + node->bounds.w);
 				JSON params; nodeR->save(params);
 				params["pos"] = { cx, cy };
 				params["open"] = true;
@@ -435,44 +435,97 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 					Str k = nodeR->paramName(p);
 					NodeParam& param = nodeR->params()[p];
 
-					float sip = 0.0f;
-					float sfrac = 0.0f;
-					sfrac = std::modf(param.step, &sip);
-					float vip = 0.0f;
-					float vfrac = 0.0f;
-					vfrac = std::modf(param.value, &vip);
+					float oldValue = 0.0f;
+					u32 oldOption = 0;
 
-					bool isInt = std::abs(sfrac) <= 0.0001f || std::abs(vfrac) <= 0.0001f;
-
-					const char* fmt = isInt ? "%.0f" : "%.3f";
+					const char* fmt = "%.3f";
 					ImGui::PushItemWidth(param.itemWidth);
 					switch (param.type) {
-						case NodeParam::None:
-							changed |= ImGui::InputFloat(k.c_str(), &param.value, param.step, param.step*2, fmt);
-							break;
-						case NodeParam::Range:
-							changed |= ImGui::InputFloat(k.c_str(), &param.value, param.step, param.step*2, fmt);
-							param.value = ImClamp(param.value, param.min, param.max);
-							break;
-						case NodeParam::DragRange:
-							changed |= ImGui::DragFloat(k.c_str(), &param.value, param.step, param.min, param.max, fmt);
-							// ImGui::SliderFloat(name.c_str(), );
-							break;
-						case NodeParam::KnobRange:
-							changed |= ImGui::Knob(k.c_str(), &param.value, param.min, param.max);
-							break;
-						case NodeParam::Option: {
-							changed |= ImGui::Combo(
+						case NodeParam::None: {
+							float val = param.value;
+							if (ImGui::InputFloat(k.c_str(), &val, param.step, param.step*2, fmt)) {
+								param.value = val;
+							}
+							if (ImGui::IsItemActive() && !ImGui::IsItemActiveLastFrame()) {
+								oldValue = param.value;
+							}
+							changed |= ImGui::IsItemDeactivatedAfterEdit();
+						} break;
+						case NodeParam::Range: {
+							float val = param.value;
+							if (ImGui::InputFloat(k.c_str(), &val, param.step, param.step*2, fmt)) {
+								param.value = val;
+								param.value = ImClamp(param.value, param.min, param.max);
+							}
+							if (ImGui::IsItemActive() && !ImGui::IsItemActiveLastFrame()) {
+								oldValue = param.value;
+							}
+							changed |= ImGui::IsItemDeactivatedAfterEdit();
+						} break;
+						case NodeParam::IntRange: {
+							int ival = (int) param.value;
+							if (ImGui::InputInt(
 								k.c_str(),
-								(int*) &param.option,
+								&ival))
+							{
+								param.value = ival;
+								param.value = ImClamp(param.value, param.min, param.max);
+							}
+							if (ImGui::IsItemActive() && !ImGui::IsItemActiveLastFrame()) {
+								oldValue = param.value;
+							}
+							changed |= ImGui::IsItemDeactivatedAfterEdit();
+						} break;
+						case NodeParam::DragRange: {
+							float val = param.value;
+							if (ImGui::DragFloat(k.c_str(), &val, param.step, param.min, param.max, fmt)) {
+								param.value = val;
+							}
+							if (ImGui::IsItemActive() && !ImGui::IsItemActiveLastFrame()) {
+								oldValue = param.value;
+							}
+							changed |= ImGui::IsItemDeactivatedAfterEdit();
+						} break;
+						case NodeParam::KnobRange: {
+							float val = param.value;
+							if (ImGui::Knob(k.c_str(), &val, param.min, param.max)) {
+								param.value = val;
+							}
+							if (ImGui::IsItemActive() && !ImGui::IsItemActiveLastFrame()) {
+								oldValue = param.value;
+							}
+							changed |= ImGui::IsItemDeactivatedAfterEdit();
+						} break;
+						case NodeParam::Option: {
+							u32 val = param.option;
+							if (ImGui::Combo(
+								k.c_str(),
+								(int*) &val,
 								nodeR->paramOptions(p).data(),
 								param.options.size()
-							);
+							)) {
+								param.option = val;
+							}
+							if (ImGui::IsItemActive() && !ImGui::IsItemActiveLastFrame()) {
+								oldOption = param.option;
+							}
+							changed |= ImGui::IsItemDeactivatedAfterEdit();
 						} break;
 					}
 					ImGui::PopItemWidth();
 					if (param.sameLine)
 						ImGui::SameLine();
+
+					/// Notify value change
+					if (changed) {
+						graph->m_saved = false;
+						graph->undoRedo()->performedAction<TParamChangeCommand>(
+									graph, nodeR->id(), p,
+									param.value, param.option,
+									oldValue, oldOption
+						);
+						changed = false;
+					}
 
 					pi++;
 				}
@@ -524,51 +577,55 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 
 					const ImGuiID id = window->GetID("sequencer_gui");
 					ImGui::BeginChildFrame(id, ImVec2(SEQUENCER_SIZE_VISIBLE*spacing, 4*lineHeight), 0);
-						ImGui::BeginHorizontal(this);
-							for (int i = 0; i < SEQUENCER_SIZE; i++) {
-								bool pushed = false;
-								if (i == (_node->noteIndex % SEQUENCER_SIZE)) {
-									pushed = true;
-									ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(120, 250, 120, 255));
-								}
-								if (ImGui::Button(" ", ImVec2(32, 0))) {
-									_node->noteIndex = i;
-								}
-								if (pushed) {
-									ImGui::PopStyleColor();
-								}
+						for (int i = 0; i < SEQUENCER_SIZE; i++) {
+							bool pushed = false;
+							if (i == (_node->noteIndex % SEQUENCER_SIZE)) {
+								pushed = true;
+								ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(120, 250, 120, 255));
 							}
-						ImGui::EndHorizontal();
+							if (ImGui::Button(" ", ImVec2(32, 0))) {
+								_node->noteIndex = i;
+							}
+							if (pushed) {
+								ImGui::PopStyleColor();
+							}
+							if (i < SEQUENCER_SIZE-1) {
+								ImGui::SameLine();
+							}
+						}
 
-						ImGui::BeginHorizontal(this);
-							ImGui::PushItemWidth(32);
-							for (int i = 0; i < SEQUENCER_SIZE; i++) {
-								char id[4];
-								id[0] = '#'; id[1] = '#'; id[2] = (i+1); id[3] = 0;
-								ImGui::Combo(id, (int*) &_node->notes[i], NOTES, 12);
+						ImGui::PushItemWidth(32);
+						for (int i = 0; i < SEQUENCER_SIZE; i++) {
+							char id[4];
+							id[0] = '#'; id[1] = '#'; id[2] = (i+1); id[3] = 0;
+							ImGui::Combo(id, (int*) &_node->notes[i], NOTES, 12);
+							if (i < SEQUENCER_SIZE-1) {
+								ImGui::SameLine();
 							}
-							ImGui::PopItemWidth();
-						ImGui::EndHorizontal();
+						}
+						ImGui::PopItemWidth();
 
-						ImGui::BeginHorizontal(this);
-							ImGui::PushItemWidth(32);
-							for (int i = 0; i < SEQUENCER_SIZE; i++) {
-								char id[5];
-								id[0] = '#'; id[1] = '#'; id[2] = (i+1); id[3] = 'o'; id[4] = 0;
-								ImGui::DragInt(id, &_node->octs[i], 0.1f, -5, 5);
+						ImGui::PushItemWidth(32);
+						for (int i = 0; i < SEQUENCER_SIZE; i++) {
+							char id[5];
+							id[0] = '#'; id[1] = '#'; id[2] = (i+1); id[3] = 'o'; id[4] = 0;
+							ImGui::DragInt(id, &_node->octs[i], 0.1f, -5, 5);
+							if (i < SEQUENCER_SIZE-1) {
+								ImGui::SameLine();
 							}
-							ImGui::PopItemWidth();
-						ImGui::EndHorizontal();
+						}
+						ImGui::PopItemWidth();
 
-						ImGui::BeginHorizontal(this);
-							ImGui::PushItemWidth(32);
-							for (int i = 0; i < SEQUENCER_SIZE; i++) {
-								char id[5];
-								id[0] = '#'; id[1] = '#'; id[2] = (i+1); id[3] = 's'; id[4] = 0;
-								ImGui::ToggleButton(id, &_node->enabled[i]);
+						ImGui::PushItemWidth(32);
+						for (int i = 0; i < SEQUENCER_SIZE; i++) {
+							char id[5];
+							id[0] = '#'; id[1] = '#'; id[2] = (i+1); id[3] = 's'; id[4] = 0;
+							ImGui::ToggleButton(id, &_node->enabled[i]);
+							if (i < SEQUENCER_SIZE-1) {
+								ImGui::SameLine();
 							}
-							ImGui::PopItemWidth();
-						ImGui::EndHorizontal();
+						}
+						ImGui::PopItemWidth();
 					ImGui::EndChildFrame();
 					ImGui::PopStyleColor();
 				} else if (nodeR->name() == ButtonNode::type()) {
@@ -725,8 +782,10 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 				if (nd->selected) {
 					nd->bounds.x += io.MouseDelta.x;
 					nd->bounds.y += io.MouseDelta.y;
-					m_moveDeltas[nodeList[j]].x += io.MouseDelta.x;
-					m_moveDeltas[nodeList[j]].y += io.MouseDelta.y;
+					if (std::abs(io.MouseDelta.x) > 0.0f || std::abs(io.MouseDelta.y) > 0.0f) {
+						m_moveDeltas[nodeList[j]].x += io.MouseDelta.x;
+						m_moveDeltas[nodeList[j]].y += io.MouseDelta.y;
+					}
 
 					if (m_snapToGrid) {
 						nd->gridPos.x = (int(nd->bounds.x) / 8) * 8;
@@ -735,7 +794,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 				}
 			}
 		} else {
-			if (!m_nodeOldActive && m_nodesMoving) {
+			if (!m_nodeOldActive && m_nodesMoving && !m_moveDeltas.empty()) {
 				m_nodeGraphs[m_activeGraph]->undoRedo()->performedAction<TMoveCommand>(
 					m_nodeGraphs[m_activeGraph].get(),
 					m_movingIDs,
@@ -820,7 +879,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 			if (ImGui::BeginMenu(e.first.c_str())) {
 				for (auto&& type : e.second) {
 					if (ImGui::MenuItem(type.title.c_str())) {
-						graph->addNode(scene_pos.x, scene_pos.y, type.type, params, 0);
+						graph->addNode(scene_pos.x, scene_pos.y, type.type, params);
 					}
 				}
 				ImGui::EndMenu();

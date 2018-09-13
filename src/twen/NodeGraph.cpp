@@ -118,7 +118,8 @@ void NodeGraph::solveNodes(const Vec<Node*>& solved) {
 				if (nd->enabled() && tgt->inputs()[lnk->outputSlot].connected) {
 					tgt->ins(lnk->outputSlot).set(nd->outs(lnk->inputSlot));
 				} else {
-					tgt->ins(lnk->outputSlot).set(0.0f);
+					nd->outs(lnk->inputSlot).set(nd->ins(0));
+					tgt->ins(lnk->outputSlot).set(nd->outs(lnk->inputSlot));
 				}
 			}
 		}

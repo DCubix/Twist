@@ -21,6 +21,13 @@ using namespace ImGui;
 #include "button.h"
 
 namespace ImGui {
+bool IsItemActiveLastFrame() {
+	ImGuiContext& g = *GImGui;
+	if (g.ActiveIdPreviousFrame)
+		return g.ActiveIdPreviousFrame == g.CurrentWindow->DC.LastItemId;
+	return false;
+}
+
 bool Splitter(bool split_vertically, float thickness, float* size1, float* size2, float min_size1, float min_size2, float splitter_long_axis_size) {
 	ImGuiContext& g = *GImGui;
 	ImGuiWindow* window = g.CurrentWindow;
@@ -28,7 +35,7 @@ bool Splitter(bool split_vertically, float thickness, float* size1, float* size2
 	ImRect bb;
 	bb.Min = window->DC.CursorPos + (split_vertically ? ImVec2(*size1, 0.0f) : ImVec2(0.0f, *size1));
 	bb.Max = bb.Min + CalcItemSize(split_vertically ? ImVec2(thickness, splitter_long_axis_size) : ImVec2(splitter_long_axis_size, thickness), 0.0f, 0.0f);
-	return SplitterBehavior(id, bb, split_vertically ? ImGuiAxis_X : ImGuiAxis_Y, size1, size2, min_size1, min_size2, 0.0f);
+	return SplitterBehavior(bb, id, split_vertically ? ImGuiAxis_X : ImGuiAxis_Y, size1, size2, min_size1, min_size2, 0.0f);
 }
 
 bool Knob(const char* label, float* p_value, float v_min, float v_max) {
@@ -1170,10 +1177,10 @@ bool ImGui::TabItem(const char* label, bool* p_open, ImGuiTabItemFlags flags)
 
 		// Text with alpha fade if it doesn't fit
 		// FIXME: Move into fancy RenderText* helpers.
-		int vert_start_idx = draw_list->_VtxCurrentIdx;
+//		int vert_start_idx = draw_list->_VtxCurrentIdx;
 		RenderTextClipped(text_clip_bb.Min, text_clip_bb.Max, label, NULL, &label_size, ImVec2(0.0f, 0.0f));
-		if (text_clip_bb.GetWidth() < label_size.x)
-			ShadeVertsLinearAlphaGradientForLeftToRightText(draw_list->_VtxWritePtr - (draw_list->_VtxCurrentIdx - vert_start_idx), draw_list->_VtxWritePtr, text_clip_bb.Max.x - text_gradient_extent, text_clip_bb.Max.x);
+//		if (text_clip_bb.GetWidth() < label_size.x)
+//			ShadeVertsLinearAlphaGradientForLeftToRightText(draw_list->_VtxWritePtr - (draw_list->_VtxCurrentIdx - vert_start_idx), draw_list->_VtxWritePtr, text_clip_bb.Max.x - text_gradient_extent, text_clip_bb.Max.x);
 	}
 
 	// Process close

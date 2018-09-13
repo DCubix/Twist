@@ -22,6 +22,7 @@
 #include "nodes/SequencerNode.hpp"
 #include "nodes/TimerNode.hpp"
 #include "nodes/ValueNode.hpp"
+#include "nodes/CompressorNode.hpp"
 
 namespace Twen {
 	inline void init() {
@@ -168,6 +169,18 @@ namespace Twen {
 		NodeBuilder::registerType<ValueNode>("General", TWEN_NODE_FAC {
 			return new ValueNode(
 				GET(float, "value", 0.0f)
+			);
+		});
+
+		NodeBuilder::registerType<CompressorNode>("Effects", TWEN_NODE_FAC {
+			return new CompressorNode(
+				GET(float, "sampleRate", 44100.0f),
+				GET(float, "pregain", 0.0f),
+				GET(float, "threshold", -24.0f),
+				GET(float, "knee", 30.0f),
+				GET(float, "ratio", 12.0f),
+				GET(float, "attack", 0.003f),
+				GET(float, "release", 0.25f)
 			);
 		});
 

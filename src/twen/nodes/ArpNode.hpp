@@ -32,10 +32,10 @@ public:
 		addOutput("Gate");
 		addOutput("Nt");
 
-		addParam("Note", { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" }, note, true, 50);
 		addParam("Type", { "maj", "min", "sus2", "sus4", "maj7", "min7", "9th", "oct" }, chord, false, 50);
+		addParam("Note", { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" }, note, true, 50);
+		addParam("Oct", 0.0f, 5.0f, oct, 1.0f, NodeParam::IntRange, false, 50);
 		addParam("Dir", { "Up", "Down", "Up+Down", "Random" }, dir, true, 50);
-		addParam("Oct", 0.0f, 5.0f, oct, 1.0f, NodeParam::DragRange, false, 50);
 	}
 
 	int index(float ntime, int n) {
@@ -47,7 +47,7 @@ public:
 			gate = true;
 		}
 
-		Direction direction = (Direction) paramOption(2);
+		Direction direction = (Direction) paramOption(3);
 		switch (direction) {
 			case Up: return rn;
 			case Down: return n - 1 - rn;
@@ -70,9 +70,9 @@ public:
 	void solve() {
 		float ntime = in(0);
 
-		Note note = (Note) paramOption(0);
-		Chord chordType = (Chord) paramOption(1);
-		Direction direction = (Direction) paramOption(2);
+		Chord chordType = (Chord) paramOption(0);
+		Note note = (Note) paramOption(1);
+		Direction direction = (Direction) paramOption(3);
 
 		int noteIn = note;
 
@@ -119,7 +119,7 @@ public:
 		} else {
 			outs(0).set(0.0f);
 		}
-		outs(1).set(nt + (12 * param(3)));
+		outs(1).set(nt + (12 * param(2)));
 	}
 
 private:

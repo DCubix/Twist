@@ -10,7 +10,7 @@ public:
 		addOutput("Nt");
 
 		addParam("Note", { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" }, note);
-		addParam("Oct", 0.0f, 5.0f, oct, 1.0f, NodeParam::DragRange);
+		addParam("Oct", 0.0f, 5.0f, oct, 1.0f, NodeParam::IntRange);
 	}
 
 	void solve() {
