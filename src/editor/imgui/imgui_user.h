@@ -15,8 +15,11 @@ static TTex* TwistTex = nullptr;
 static TTex* TwistBigTex = nullptr;
 static TTex* ButtonTex = nullptr;
 
+IMGUI_API               bool IsItemActiveLastFrame();
+
 IMGUI_API bool          Knob(const char* label, float* value_p, float minv, float maxv);
 IMGUI_API void          ToggleButton(const char* str_id, bool* v);
+
 IMGUI_API void          BeginTabBar(const char* str_id, ImGuiTabBarFlags flags = 0);
 IMGUI_API void          EndTabBar();
 IMGUI_API bool          TabItem(const char* label, bool* p_open = NULL, ImGuiTabItemFlags = 0);

@@ -11,7 +11,7 @@
 			"program": "${workspaceFolder}/build/Twist",
 			"args": [],
 			"stopAtEntry": false,
-			"cwd": "${workspaceFolder}",
+			"cwd": "${workspaceFolder}/build",
 			"environment": [],
 			"externalConsole": false,
 			"MIMode": "gdb",

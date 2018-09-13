@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.7)
-project(Twist VERSION 1.0 LANGUAGES C CXX)
+project(Twist VERSION 2.0 LANGUAGES C CXX)
 
 set(TWIST_VERSION ${PROJECT_VERSION})
 set(TWIST_NAME "${PROJECT_NAME}")
 
-set(CMAKE_BUILD_TYPE "Release")
+set(CMAKE_BUILD_TYPE "RelWithDebInfo")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -38,8 +38,8 @@ find_package(SndFile REQUIRED)
 # find_package(RtMIDI REQUIRED)
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/editor/imgui")
-add_subdirectory("${CMAKE_SOURCE_DIR}/deps/xsimd")
 add_subdirectory("${CMAKE_SOURCE_DIR}/deps/osdialog")
+add_subdirectory("${CMAKE_SOURCE_DIR}/src/twen")
 
 include_directories(
 	${SDL2_INCLUDE_DIRS}
@@ -48,29 +48,33 @@ include_directories(
 	"deps/xsimd/include"
 	"deps/rtmidi"
 	"deps/osdialog"
+	"src/"
 )
 
-file(GLOB_RECURSE INC
-	"src/*.h"
-	"src/*.hpp"
+file(GLOB SRC
+	"src/editor/*.h"
+	"src/editor/*.cpp"
+	"src/editor/*.hpp"
+	"src/editor/imgui/*.h"
+	"src/editor/imgui/*.cpp"
+	"src/editor/imgui/*.hpp"
+	"src/editor/nodes/*.hpp"
+	"src/glad/*.h"
+	"src/glad/*.cpp"
+	"src/stb/*.h"
+	"src/stb/*.cpp"
+	"src/main.cpp"
 )
 
-# message(STATUS "INCLUDES: ${INC}")
-
-file(GLOB_RECURSE SRC
-	"src/*.c"
-	"src/*.cpp"
-)
-
-add_executable(${PROJECT_NAME} ${INC} ${SRC})
+add_executable(${PROJECT_NAME} ${SRC})
 target_link_libraries(${PROJECT_NAME}
 	${SDL2_LIBRARIES}
 	${LIBSNDFILE_LIBRARIES}
 	# ${RTMIDI_LIBRARY}
 	osdialog
-	xsimd
 	rtmidi_static
 	ImGUI
+	twen
 )
 
 if (CMAKE_DL_LIBS)

@@ -1,26 +1,28 @@
 #include "TCommands.h"
+
 #include "TNodeEditor.h"
+#include "TNodeGraph.h"
 
 void TMoveCommand::execute() {
-	for (int id : ids) {
-		TNode* node = m_nodeGraph->node(id);
-		node->bounds().x += deltas[id].x;
-		node->bounds().y += deltas[id].y;
+	for (u64 id : ids) {
+		TNodeUI* node = m_nodeGraph->node(id);
+		node->bounds.x += deltas[id].x;
+		node->bounds.y += deltas[id].y;
 		if (m_nodeGraph->editor()->snapToGrid()) {
-			node->gridPosition().x = (int(node->bounds().x) / 8) * 8;
-			node->gridPosition().y = (int(node->bounds().y) / 8) * 8;
+			node->gridPos.x = (int(node->bounds.x) / 8) * 8;
+			node->gridPos.y = (int(node->bounds.y) / 8) * 8;
 		}
 	}
 }
 
 void TMoveCommand::revert() {
-	for (int id : ids) {
-		TNode* node = m_nodeGraph->node(id);
-		node->bounds().x -= deltas[id].x;
-		node->bounds().y -= deltas[id].y;
+	for (u64 id : ids) {
+		TNodeUI* node = m_nodeGraph->node(id);
+		node->bounds.x -= deltas[id].x;
+		node->bounds.y -= deltas[id].y;
 		if (m_nodeGraph->editor()->snapToGrid()) {
-			node->gridPosition().x = (int(node->bounds().x) / 8) * 8;
-			node->gridPosition().y = (int(node->bounds().y) / 8) * 8;
+			node->gridPos.x = (int(node->bounds.x) / 8) * 8;
+			node->gridPos.y = (int(node->bounds.y) / 8) * 8;
 		}
 	}
 }

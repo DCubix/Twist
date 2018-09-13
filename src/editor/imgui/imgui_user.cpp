@@ -21,6 +21,13 @@ using namespace ImGui;
 #include "button.h"
 
 namespace ImGui {
+bool IsItemActiveLastFrame() {
+	ImGuiContext& g = *GImGui;
+	if (g.ActiveIdPreviousFrame)
+		return g.ActiveIdPreviousFrame == g.CurrentWindow->DC.LastItemId;
+	return false;
+}
+
 bool Splitter(bool split_vertically, float thickness, float* size1, float* size2, float min_size1, float min_size2, float splitter_long_axis_size) {
 	ImGuiContext& g = *GImGui;
 	ImGuiWindow* window = g.CurrentWindow;
@@ -28,7 +35,7 @@ bool Splitter(bool split_vertically, float thickness, float* size1, float* size2
 	ImRect bb;
 	bb.Min = window->DC.CursorPos + (split_vertically ? ImVec2(*size1, 0.0f) : ImVec2(0.0f, *size1));
 	bb.Max = bb.Min + CalcItemSize(split_vertically ? ImVec2(thickness, splitter_long_axis_size) : ImVec2(splitter_long_axis_size, thickness), 0.0f, 0.0f);
-	return SplitterBehavior(id, bb, split_vertically ? ImGuiAxis_X : ImGuiAxis_Y, size1, size2, min_size1, min_size2, 0.0f);
+	return SplitterBehavior(bb, id, split_vertically ? ImGuiAxis_X : ImGuiAxis_Y, size1, size2, min_size1, min_size2, 0.0f);
 }
 
 bool Knob(const char* label, float* p_value, float v_min, float v_max) {
@@ -49,9 +56,6 @@ bool Knob(const char* label, float* p_value, float v_min, float v_max) {
 	ImVec2 pos = ImGui::GetCursorScreenPos();
 	float line_height = ImGui::GetTextLineHeight();
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
-
-	float ANGLE_MIN = 3.141592f * 0.75f;
-	float ANGLE_MAX = 3.141592f * 2.25f;
 
 	ImGui::BeginGroup();
 	ImGui::PushItemWidth(width);
@@ -166,14 +170,15 @@ float VUMeter(const char* id, float value) {
 	const float tw = 1.0f / 10;
 	const float th = 1.0f / 10;
 
-	int index = int(value * 99.0f);
+	int index = (int) std::floor(value * 99.0f);
+	index = ImClamp(index, 0, 100);
 
 	const ImVec2 wp = ImGui::GetCursorScreenPos();
 
 	draw_list->PushClipRect(wp, ImVec2(width, height) + wp, true);
 
-	float x = tw * (index % 10);
-	float y = th * int(index / 10);
+	float x = tw * float(index % 10);
+	float y = th * float(int(index / 10));
 	draw_list->AddImage(
 		(ImTextureID)(VUTex->id()),
 		wp,
@@ -264,12 +269,14 @@ void AudioView(const char* id, float width, float* values, int length, int pos, 
 		IM_COL32(80,80,80,255)
 	);
 
-	ImVec2 prev = ImVec2(0.0f, h) + wp;
-	for (int i = 0; i < width; i++) {
-		int j = int((float(i) / width) * length);
-		ImVec2 pos = ImVec2(i, values[j] * h + h) + wp;
-		draw_list->AddLine(prev, pos, col);
-		prev = pos;
+	if (values != nullptr) {
+		ImVec2 prev = ImVec2(0.0f, h) + wp;
+		for (int i = 0; i < width; i++) {
+			int j = int((float(i) / width) * length);
+			ImVec2 pos = ImVec2(i, values[j] * h + h) + wp;
+			draw_list->AddLine(prev, pos, col);
+			prev = pos;
+		}
 	}
 
 	draw_list->AddLine(
@@ -450,12 +457,12 @@ struct ImGuiBigStorage
 	ImVector<T>     Data;
 
 	~ImGuiBigStorage() { Clear(); }
-	void Clear() 
-	{ 
-		for (int n = 0; n < Data.Size; n++) 
-			Data[n].~T(); 
-		Map.Clear(); 
-		Data.clear(); 
+	void Clear()
+	{
+		for (int n = 0; n < Data.Size; n++)
+			Data[n].~T();
+		Map.Clear();
+		Data.clear();
 	}
 	T*  GetOrCreateByKey(ImGuiID key)
 	{
@@ -494,14 +501,14 @@ struct ImGuiTabItem
 	bool            SkipAppearAnim;
 	char            DebugName[16];
 
-	ImGuiTabItem() 
-	{ 
-		Id = 0; 
+	ImGuiTabItem()
+	{
+		Id = 0;
 		GlobalIndex = -1;
 		CurrentOrder = -1;
 		CurrentOrderVisible = -1;
 		LastFrameVisible = LastFrameSelected -1;
-		OffsetAnim = OffsetTarget = 0.0f; 
+		OffsetAnim = OffsetTarget = 0.0f;
 		WidthContents = WidthAnim = WidthTarget = 0.0f;
 		AppearAnim = 1.0f;
 		SkipOffsetAnim = SkipAppearAnim = false;
@@ -574,7 +581,7 @@ static bool ArrowButton(ImGuiID id, ImGuiDir dir, ImVec2 padding, ImGuiButtonFla
 	return pressed;
 }
 
-// FIXME: Helper for external extensions to handle multiple-context. 
+// FIXME: Helper for external extensions to handle multiple-context.
 // Possibly: require user to call setcontext functions on various subsystems, or have hooks in main SetCurrentContext()
 // Possibly: have a way for each extension to register themselves globally, so a void* can be stored in ImGuiContext that can be accessed in constant-time from a handle(=index).
 struct ImGuiTabsContext
@@ -659,7 +666,7 @@ void    ImGui::BeginTabBar(const char* str_id, ImGuiTabBarFlags flags)
 	PushID(str_id);
 	const ImGuiID id = window->GetID("");
 	ImGuiTabBar* tab_bar = ctx.TabBars.GetOrCreateByKey(id);
-	IM_ASSERT(tab_bar->CurrFrameVisible != g.FrameCount);   // Cannot call multiple times in the same frame 
+	IM_ASSERT(tab_bar->CurrFrameVisible != g.FrameCount);   // Cannot call multiple times in the same frame
 
 	ctx.CurrentTabBar.push_back(tab_bar);
 	tab_bar->Id = id;
@@ -806,10 +813,10 @@ static void TabBarLayout(ImGuiTabBar* tab_bar)
 		}
 		else if (tab_bar->Flags & ImGuiTabBarFlags_SizingPolicyFit)
 		{
-			const float TAB_MAX_WIDTH = FLT_MAX;// 100.0f; 
+			const float TAB_MAX_WIDTH = FLT_MAX;// 100.0f;
 			tab->WidthTarget = ImMin(tab->WidthContents, TAB_MAX_WIDTH);
 		}
-		
+
 		if (tab->SkipOffsetAnim)
 		{
 			tab->OffsetAnim = tab->OffsetTarget;
@@ -1170,10 +1177,10 @@ bool ImGui::TabItem(const char* label, bool* p_open, ImGuiTabItemFlags flags)
 
 		// Text with alpha fade if it doesn't fit
 		// FIXME: Move into fancy RenderText* helpers.
-		int vert_start_idx = draw_list->_VtxCurrentIdx;
+//		int vert_start_idx = draw_list->_VtxCurrentIdx;
 		RenderTextClipped(text_clip_bb.Min, text_clip_bb.Max, label, NULL, &label_size, ImVec2(0.0f, 0.0f));
-		if (text_clip_bb.GetWidth() < label_size.x)
-			ShadeVertsLinearAlphaGradientForLeftToRightText(draw_list->_VtxWritePtr - (draw_list->_VtxCurrentIdx - vert_start_idx), draw_list->_VtxWritePtr, text_clip_bb.Max.x - text_gradient_extent, text_clip_bb.Max.x);
+//		if (text_clip_bb.GetWidth() < label_size.x)
+//			ShadeVertsLinearAlphaGradientForLeftToRightText(draw_list->_VtxWritePtr - (draw_list->_VtxCurrentIdx - vert_start_idx), draw_list->_VtxWritePtr, text_clip_bb.Max.x - text_gradient_extent, text_clip_bb.Max.x);
 	}
 
 	// Process close
