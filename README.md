@@ -12,9 +12,9 @@ It is a 100% visual tool to help you create a broad variety of sounds, packed wi
 
 ## Main Features
 * Many useful nodes
-* Recording
+* Recording (OGG)
 * Sampling (WAV, OGG, AIFF and FLAC)
-* Reverb effect
+* Effects
 
 ## Building
 Tools Needed:
