@@ -1,5 +1,6 @@
 #include "Log.h"
 #include <cstdarg>
+#include <ctime>
 
 Out Log::_out = nullptr;
 bool Log::_colorize = true;
