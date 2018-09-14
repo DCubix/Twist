@@ -4,6 +4,10 @@
 #define _USE_MATH_DEFINES
 #include <cmath>
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 constexpr float PI = M_PI;
 constexpr float PI2 = M_PI * 2.0f;
 
