@@ -20,7 +20,7 @@ void Log::log(
 	if (_out == nullptr)
 		redirect(&std::cout);
 
-#define OUT (*_out)
+#define L_OUT (*_out)
 
 #define BOLD(o, msg, col) if (_colorize) { \
 	o << col << termcolor::bold << msg << termcolor::reset; \
@@ -41,23 +41,24 @@ void Log::log(
 	strftime(timeBuf, sizeof(timeBuf), "%m/%d/%Y %X", &tstruct);
 
 	if (_colorize) {
-		OUT << "[";
-		NORM(OUT, timeBuf, termcolor::green);
-		OUT << "] ";
+		L_OUT << "[";
+		NORM(L_OUT, timeBuf, termcolor::green);
+		L_OUT << "] ";
 	} else {
-		OUT << "[" << timeBuf << "] ";
+		L_OUT << "[" << timeBuf << "] ";
 	}
 
 	switch (level) {
-		case Info: BOLD(OUT, "[INFO]", termcolor::cyan); break;
-		case Warning: BOLD(OUT, "[WARN]", termcolor::yellow); break;
-		case Error: BOLD(OUT, "[ERROR]", termcolor::red); break;
-		case Assert: BOLD(OUT, "[FAIL]", termcolor::magenta << termcolor::blink); break;
+		case Info: BOLD(L_OUT, "[INFO]", termcolor::cyan); break;
+		case Warning: BOLD(L_OUT, "[WARN]", termcolor::yellow); break;
+		case Error: BOLD(L_OUT, "[ERROR]", termcolor::red); break;
+		case Assert: BOLD(L_OUT, "[FAIL]", termcolor::magenta << termcolor::blink); break;
 	}
 
 	std::string fileS(file);
 	fileS = fileS.substr(fileS.find_last_of(SEP)+1);
 
-	OUT << " [" << fileS << "(" << function << ")@" << line << "] " << msg << std::endl;
+	L_OUT << " [" << fileS << "(" << function << ")@" << line << "] " << msg << std::endl;
 
+#undef L_OUT
 }
