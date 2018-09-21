@@ -1073,7 +1073,11 @@ void TNodeEditor::draw(int w, int h) {
 		ImGui::EndGroup();
 
 		ImGui::Separator();
-		ImGui::SetCursorPosX(ImGui::GetContentRegionAvailWidth()-60);
+		if (ImGui::LinkText("User Manual")) {
+			osd::Dialog::web("https://github.com/DCubix/Twist/wiki/User-Manual");
+		}
+		ImGui::SameLine(0, 0);
+		ImGui::SetCursorPosX(ImGui::GetWindowContentRegionWidth() - 60);
 		if (ImGui::Button("Ok", ImVec2(60, 22)))
 			ImGui::CloseCurrentPopup();
 		ImGui::EndPopup();

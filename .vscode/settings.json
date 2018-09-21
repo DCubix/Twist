@@ -14,5 +14,6 @@
 		"array": "cpp",
 		"tuple": "cpp",
 		"utility": "cpp"
-	}
+	},
+	"C_Cpp.configurationWarnings": "Disabled"
 }
