@@ -40,7 +40,7 @@ bool Splitter(bool split_vertically, float thickness, float* size1, float* size2
 
 bool Knob(const char* label, float* p_value, float v_min, float v_max) {
 	if (KnobTex == nullptr) {
-		KnobTex = new TTex(knob_png, knob_png_len);
+		KnobTex = new TTex(out_data, out_size);
 	}
 
 	ImGuiWindow* window = GetCurrentWindow();
@@ -52,71 +52,78 @@ bool Knob(const char* label, float* p_value, float v_min, float v_max) {
 	ImGuiStyle& style = ImGui::GetStyle();
 	const ImGuiID id = window->GetID(label);
 
-	float width = 40.0f;
+	const float width = 32.0f;
 	ImVec2 pos = ImGui::GetCursorScreenPos();
 	float line_height = ImGui::GetTextLineHeight();
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
-	ImGui::BeginGroup();
-	ImGui::PushItemWidth(width);
+	// ImGui::BeginGroup();
+	// ImGui::PushItemWidth(width);
 
-	char ilbl[128] = {0};
-	ImFormatString(ilbl, 128, "##drag%s", label);
-	ImGui::PushStyleColor(ImGuiCol_FrameBg, ImGui::GetColorU32(ImGuiCol_TitleBgCollapsed));
-	bool in_drag = ImGui::DragFloat(ilbl, p_value, 0.01f, v_min, v_max);
-	ImGui::PopStyleColor();
+	// char ilbl[128] = {0};
+	// ImFormatString(ilbl, 128, "##drag%s", label);
+	// ImGui::PushStyleColor(ImGuiCol_FrameBg, ImGui::GetColorU32(ImGuiCol_TitleBgCollapsed));
+	// bool in_drag = ImGui::DragFloat(ilbl, p_value, 0.01f, v_min, v_max);
+	// ImGui::PopStyleColor();
 
-	ImGui::PopItemWidth();
+	// ImGui::PopItemWidth();
 	ImGui::InvisibleButton(label, ImVec2(width, width + line_height + style.ItemInnerSpacing.y));
 
 	bool value_changed = false;
 	bool is_active = ImGui::IsItemActive();
 	bool is_hovered = ImGui::IsItemActive();
 	bool is_dblclick = ImGui::IsMouseDoubleClicked(0) && is_hovered;
-	if (is_active && io.MouseDelta.x != 0.0f && !in_drag) {
+	if (is_active && io.MouseDelta.x != 0.0f) {
 		float step = (v_max - v_min) / 200.0f;
 		*p_value += io.MouseDelta.x * step;
 		if (*p_value < v_min) *p_value = v_min;
 		if (*p_value > v_max) *p_value = v_max;
+	} else if (!is_active && ImGui::IsItemActiveLastFrame()) {
 		value_changed = true;
 	}
 
-	ImGui::EndGroup();
+	// ImGui::EndGroup();
 
 	float t = (*p_value - v_min) / (v_max - v_min);
 
-	const float tw = 1.0f / 100;
-	const float th = 1.0f;
+	const float tw = 1.0f / 10;
+	const float th = 1.0f / 10;
 
-	int index = int(t * 99.0f);
+	int index = int(t * 99);
 
 	draw_list->PushClipRect(
 		pos,
-		pos + ImVec2(width, width + line_height*2 + style.ItemInnerSpacing.y),
+		pos + ImVec2(width, width + line_height + style.ItemInnerSpacing.y),
 		true
 	);
 
 	draw_list->AddRectFilled(
-		pos + ImVec2(0, line_height),
-		pos + ImVec2(width, width + line_height*2 + style.ItemInnerSpacing.y),
-		ImGui::GetColorU32(ImGuiCol_TitleBgCollapsed),
-		5.0f
+		pos + ImVec2(0, 0),
+		pos + ImVec2(width, width + line_height + style.ItemInnerSpacing.y),
+		IM_COL32(120, 120, 120, 128),
+		4.0f
 	);
 
 	draw_list->AddImage(
 		(ImTextureID)(KnobTex->id()),
-		pos + ImVec2(0, line_height),
-		pos + ImVec2(width, width + line_height),
-		ImVec2(tw * (index % 100), 0),
-		ImVec2(tw * (index % 100) + tw, th)
+		pos + ImVec2(0, 0),
+		pos + ImVec2(width, width),
+		ImVec2(tw * (index % 10), th * (index / 10)),
+		ImVec2(tw * (index % 10) + tw, th * (index / 10) + th)
 	);
 
 	ImVec2 tsz = ImGui::CalcTextSize(label);
 	float centerTextX = width/2 - tsz.x/2;
-	draw_list->AddText(ImVec2(pos.x + centerTextX, pos.y + width + line_height + style.ItemInnerSpacing.y+1.2f), ImGui::GetColorU32(ImGuiCol_FrameBg), label);
-	draw_list->AddText(ImVec2(pos.x + centerTextX, pos.y + width + line_height + style.ItemInnerSpacing.y), ImGui::GetColorU32(ImGuiCol_Text), label);
+	draw_list->AddText(ImVec2(pos.x + centerTextX, pos.y + width + style.ItemInnerSpacing.y+1.2f), ImGui::GetColorU32(ImGuiCol_FrameBg), label);
+	draw_list->AddText(ImVec2(pos.x + centerTextX, pos.y + width + style.ItemInnerSpacing.y), ImGui::GetColorU32(ImGuiCol_Text), label);
 
 	draw_list->PopClipRect();
+
+	if (is_hovered) {
+		ImGui::BeginTooltip();
+		ImGui::Text("%.03f", *p_value);
+		ImGui::EndTooltip();
+	}
 
 	return value_changed;
 }

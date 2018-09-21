@@ -18,50 +18,54 @@ Vec<u64> NodeGraph::getAllLinksRelatedToNode(u64 node) {
 			m_lock.unlock();
 		}
 	}
+	LogI("Found ", links.size(), " link(s) related to node ", node);
 	return links;
 }
 
-Vec<Node*> NodeGraph::getNodeInputs(Node* node) {
-	Vec<Node*> ins;
+Vec<u64> NodeGraph::getNodeInputs(u64 node) {
+	Vec<u64> ins;
 	for (auto&& lnk : m_links) {
-		if (lnk->outputID == node->id()) {
+		if (lnk->outputID == node) {
 			m_lock.lock();
-			ins.push_back(get<Node>(lnk->inputID));
+			ins.push_back(lnk->inputID);
 			m_lock.unlock();
 		}
 	}
+	LogI("Found ", ins.size(), " input(s) for ", get<Node>(node)->name());
 	return ins;
 }
 
-Vec<Node*> NodeGraph::buildNodes(Node* node) {
-	Vec<Node*> lst;
+Vec<u64> NodeGraph::buildNodes(u64 node) {
+	Vec<u64> lst;
 	lst.push_back(node);
 	return buildNodes(lst);
 }
 
-Vec<Node*> NodeGraph::buildNodes(const Vec<Node*>& nodes) {
+Vec<u64> NodeGraph::buildNodes(const Vec<u64>& nodes) {
 	if (nodes.empty())
-		return Vec<Node*>();
+		return Vec<u64>();
+	LogI("Building ", nodes.size(), " node(s)");
 
-	Vec<Node*> nodesG;
+	Vec<u64> nodesG;
 	m_lock.lock();
 	nodesG.insert(nodesG.end(), nodes.begin(), nodes.end());
 	m_lock.unlock();
 
-	for (Node* node : nodes) {
-		for (Node* in : getNodeInputs(node)) {
-			if (in == nullptr) continue;
+	for (u64 node : nodes) {
+		for (u64 in : getNodeInputs(node)) {
+			if (!has(in)) continue;
 
 			m_lock.lock();
 			nodesG.push_back(in);
 			m_lock.unlock();
 
-			for (Node* rnd : buildNodes(in)) {
-				if (rnd == nullptr) continue;
+			for (u64 rnd : buildNodes(in)) {
+				if (!has(rnd)) continue;
 
 				m_lock.lock();
 				if (std::find(nodesG.begin(), nodesG.end(), rnd) == nodesG.end()) {
 					nodesG.push_back(rnd);
+					LogI("New node found. ", rnd);
 				}
 				m_lock.unlock();
 			}
@@ -71,16 +75,17 @@ Vec<Node*> NodeGraph::buildNodes(const Vec<Node*>& nodes) {
 	m_lock.lock();
 	std::reverse(nodesG.begin(), nodesG.end());
 	m_lock.unlock();
+	LogI("Done building solve tree.");
 
 	return nodesG;
 }
 
 void NodeGraph::solveNodes() {
-	Vec<Node*> outNodes;
+	Vec<u64> outNodes;
 	for (auto&& nd : m_nodes) {
 		if (nd->name() != WriterNode::type()) continue;
 		m_lock.lock();
-		outNodes.push_back(nd.get());
+		outNodes.push_back(nd->id());
 		m_lock.unlock();
 	}
 
@@ -91,18 +96,22 @@ void NodeGraph::solveNodes() {
 	// } else {
 	Node* n = get<Node>(outputNode());
 	if (n != nullptr && n->name() == OutNode::type())
-		outNodes.push_back(n);
+		outNodes.push_back(n->id());
 	// }
 
 	m_solvedNodes = buildNodes(outNodes);
 }
 
-void NodeGraph::solveNodes(const Vec<Node*>& solved) {
-	for (Node* nd : solved) {
+void NodeGraph::solveNodes(const Vec<u64>& solved) {
+	for (u64 nid : solved) {
+		Node* nd = get<Node>(nid);
 		nd->m_solved = false;
 	}
 
-	for (Node* nd : solved) {
+	for (u64 nid : solved) {
+		Node* nd = get<Node>(nid);
+		if (nd == nullptr) continue;
+
 		if (!nd->m_solved && nd->enabled()) {
 			nd->solve();
 			nd->m_solved = true;
@@ -118,7 +127,8 @@ void NodeGraph::solveNodes(const Vec<Node*>& solved) {
 				if (nd->enabled() && tgt->inputs()[lnk->outputSlot].connected) {
 					tgt->ins(lnk->outputSlot).set(nd->outs(lnk->inputSlot));
 				} else {
-					nd->outs(lnk->inputSlot).set(nd->ins(0));
+					if (!nd->inputs().empty())
+						nd->outs(lnk->inputSlot).set(nd->ins(0));
 					tgt->ins(lnk->outputSlot).set(nd->outs(lnk->inputSlot));
 				}
 			}
@@ -127,6 +137,7 @@ void NodeGraph::solveNodes(const Vec<Node*>& solved) {
 }
 
 void NodeGraph::remove(u64 id) {
+	LogI("Removing node of ID ", id, "...");
 	Vec<u64> brokenLinks = getAllLinksRelatedToNode(id);
 
 	std::sort(m_nodes.begin(), m_nodes.end(), NodeSortComparator);
@@ -135,19 +146,25 @@ void NodeGraph::remove(u64 id) {
 		m_lock.lock();
 		m_nodes.erase(pos);
 		m_lock.unlock();
+		LogI("Deleted node of ID ", id);
+	} else {
+		LogW("Node ", id, " not found!");
 	}
 
 	// Find some more broken links...
+	u64 prevSize = brokenLinks.size();
 	for (auto&& lnk : m_links) {
 		if (get<Node>(lnk->inputID) == nullptr || get<Node>(lnk->outputID) == nullptr) {
 			if (std::find(brokenLinks.begin(), brokenLinks.end(), lnk->id) == brokenLinks.end())
 				brokenLinks.push_back(lnk->id);
 		}
 	}
+	LogI("Found ", brokenLinks.size() - prevSize, " more link(s)");
 
 	std::sort(brokenLinks.begin(), brokenLinks.end());
 	for (int i = brokenLinks.size() - 1; i >= 0; i--) {
 		m_links.erase(m_links.begin() + brokenLinks[i]);
+		LogI("Deleted link ", brokenLinks[i]);
 	}
 
 	solveNodes();
@@ -168,6 +185,7 @@ u64 NodeGraph::link(u64 inID, u32 inSlot, u64 outID, u32 outSlot) {
 	m_lock.lock();
 	m_links.push_back(Ptr<NodeLink>(std::move(link)));
 	m_lock.unlock();
+	LogI("Linked ", inID, " to ", outID, ". (", inSlot, " -> ", outSlot, ")");
 
 	solveNodes();
 
@@ -188,7 +206,12 @@ void NodeGraph::removeLink(u64 id) {
 		m_lock.lock();
 		m_links.erase(pos);
 		m_lock.unlock();
+		LogI("Removed link ", id);
+	} else {
+		LogE("Failed to remove link: ", id);
 	}
+
+	solveNodes();
 }
 
 NodeLink* NodeGraph::link(u64 id) {
@@ -220,7 +243,7 @@ void NodeGraph::addSample(const Str& fname, const Vec<float>& data, float sr, fl
 	entry->duration = dur;
 	entry->name = fname;
 	m_sampleLibrary[id] = std::move(entry);
-	m_sampleNames.push_back(fname);
+	m_sampleNames.push_back(fname.c_str());
 }
 
 bool NodeGraph::addSample(const Str& fileName) {
@@ -291,7 +314,7 @@ u64 NodeGraph::getSampleID(const Str& name) {
 	return 0;
 }
 
-Vec<Str> NodeGraph::getSampleNames() {
+Vec<RawStr> NodeGraph::getSampleNames() {
 	return m_sampleNames;
 }
 

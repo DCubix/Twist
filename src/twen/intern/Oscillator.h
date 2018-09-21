@@ -39,6 +39,7 @@ public:
 	void frequency(float freq) { m_frequency = freq; }
 
 	float sampleRate() const { return m_sampleRate; }
+	void sampleRate(float sr) { m_sampleRate = sr; }
 
 	void reset() { m_phase = 0; }
 

@@ -58,8 +58,16 @@ public:
 		);
 		// static_assert(IsNode<Nt>::value, "Not a valid node type.");
 		auto it = std::lower_bound(m_nodes.begin(), m_nodes.end(), id, NodeComparator);
-		if (it == m_nodes.end()) return nullptr;
+		if (it == m_nodes.end()) {
+			return nullptr;
+		}
 		return (Nt*) it->get();
+	}
+
+	bool has(u64 id) {
+		auto it = std::lower_bound(m_nodes.begin(), m_nodes.end(), id, NodeComparator);
+		if (it == m_nodes.end()) return false;
+		return true;
 	}
 
 	void remove(u64 id);
@@ -80,10 +88,11 @@ public:
 		u64 id = nt->id();
 		m_nodes.push_back(Ptr<Node>(std::move(nt)));
 
-		solveNodes();
+		LogI("Created node: ", m_nodes.back()->name());
 
 		if (Nt::type() == OutNode::type()) {
 			m_outputNode = id;
+			LogI("Assigned Node as Output");
 		}
 
 		return id;
@@ -98,12 +107,14 @@ public:
 		u64 nid = node->id();
 		m_nodes.push_back(Ptr<Node>(std::move(node)));
 
-		solveNodes();
+		LogI("Created node: ", m_nodes.back()->name());
 
 		if (node->name() == OutNode::type()) {
 			m_outputNode = nid;
+			LogI("Assigned Node as Output");
 		}
 
+		LogI("Node returned.");
 		return get<Node>(nid);
 	}
 
@@ -126,7 +137,7 @@ public:
 	u64 getSampleID(const Str& name);
 	RawSample* getSample(u64 id);
 	Map<u64, Ptr<RawSample>>& sampleLibrary() { return m_sampleLibrary; }
-	Vec<Str> getSampleNames();
+	Vec<RawStr> getSampleNames();
 
 	float solve();
 	void solveNodes();
@@ -139,10 +150,10 @@ public:
 private:
 	void addSample(const Str& fname, const Vec<float>& data, float sr, float dur);
 	Vec<u64> getAllLinksRelatedToNode(u64 node);
-	Vec<Node*> getNodeInputs(Node* node);
-	Vec<Node*> buildNodes(Node* node);
-	Vec<Node*> buildNodes(const Vec<Node*>& nodes);
-	void solveNodes(const Vec<Node*>& solved);
+	Vec<u64> getNodeInputs(u64 node);
+	Vec<u64> buildNodes(u64 node);
+	Vec<u64> buildNodes(const Vec<u64>& nodes);
+	void solveNodes(const Vec<u64>& solved);
 
 	GraphType m_type;
 	u64 m_outputNode = 0;
@@ -151,11 +162,11 @@ private:
 	Vec<Ptr<NodeLink>> m_links;
 	std::mutex m_lock;
 
-	Vec<Node*> m_solvedNodes;
+	Vec<u64> m_solvedNodes;
 
 	Arr<float, GLOBAL_STORAGE_SIZE> m_globalStorage;
 
-	Vec<Str> m_sampleNames;
+	Vec<RawStr> m_sampleNames;
 	Map<u64, Ptr<RawSample>> m_sampleLibrary;
 
 };

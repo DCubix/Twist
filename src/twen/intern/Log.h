@@ -9,6 +9,8 @@
 
 using Out = std::ostream*;
 
+#define STR(x) #x
+
 namespace _intern {
 	template<typename T>
 	inline std::string Stringfy(const T& value) {

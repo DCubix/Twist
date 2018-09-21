@@ -31,9 +31,9 @@
 #define PATH_SEPARATOR '/'
 #endif
 
-#define NODE_SLOT_RADIUS(x) (5.0f * x)
-#define NODE_SLOT_RADIUS2(x) (6.0f * x)
-#define LINK_THICKNESS(x) (5.0f * x)
+#define NODE_SLOT_RADIUS(x) (4.0f * x)
+#define NODE_SLOT_RADIUS2(x) (5.0f * x)
+#define LINK_THICKNESS(x) (3.0f * x)
 #define NODE_ROUNDING(x) (5.0f * x)
 #define NODE_PADDING(x) (5.0f * x)
 
@@ -113,17 +113,21 @@ TNodeEditor::TNodeEditor() {
 	}
 
 	// Initialize MIDI
-	m_MIDIin = std::unique_ptr<RtMidiIn>(new RtMidiIn(
+	try {
+		m_MIDIin = std::unique_ptr<RtMidiIn>(new RtMidiIn(
 		RtMidi::UNSPECIFIED, "Twist MIDI In"
-	));
-	m_MIDIin->openPort(0, "Twist - Main In");
-	m_MIDIin->setCallback(&midiCallback, nullptr);
-	m_MIDIin->ignoreTypes(false, false, false);
+		));
+		m_MIDIin->openPort(0, "Twist - Main In");
+		m_MIDIin->setCallback(&midiCallback, nullptr);
+		m_MIDIin->ignoreTypes(false, false, false);
 
-	m_MIDIout = std::unique_ptr<RtMidiOut>(new RtMidiOut(
-		RtMidi::UNSPECIFIED, "Twist MIDI Out"
-	));
-	m_MIDIout->openPort(0, "Twist - Main Out");
+		m_MIDIout = std::unique_ptr<RtMidiOut>(new RtMidiOut(
+			RtMidi::UNSPECIFIED, "Twist MIDI Out"
+		));
+		m_MIDIout->openPort(0, "Twist - Main Out");
+	} catch (RtMidiError err) {
+		LogE(err.getMessage());
+	}
 
 	// Register editor nodes
 	NodeBuilder::registerType<ButtonNode>("General", TWEN_NODE_FAC {
@@ -433,87 +437,87 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 				bool changed = false;
 				for (u32 p = 0; p < nodeR->params().size(); p++) {
 					Str k = nodeR->paramName(p);
-					NodeParam& param = nodeR->params()[p];
+					NodeParam* param = &nodeR->params()[p];
 
 					float oldValue = 0.0f;
 					u32 oldOption = 0;
 
 					const char* fmt = "%.3f";
-					ImGui::PushItemWidth(param.itemWidth);
-					switch (param.type) {
+					ImGui::PushItemWidth(param->itemWidth);
+					switch (param->type) {
 						case NodeParam::None: {
-							float val = param.value;
-							if (ImGui::InputFloat(k.c_str(), &val, param.step, param.step*2, fmt)) {
-								param.value = val;
+							float val = param->value;
+							if (ImGui::InputFloat(k.c_str(), &val, param->step, param->step*2, fmt)) {
+								param->value = val;
 							}
 							if (ImGui::IsItemActive() && !ImGui::IsItemActiveLastFrame()) {
-								oldValue = param.value;
+								oldValue = param->value;
 							}
 							changed |= ImGui::IsItemDeactivatedAfterEdit();
 						} break;
 						case NodeParam::Range: {
-							float val = param.value;
-							if (ImGui::InputFloat(k.c_str(), &val, param.step, param.step*2, fmt)) {
-								param.value = val;
-								param.value = ImClamp(param.value, param.min, param.max);
+							float val = param->value;
+							if (ImGui::InputFloat(k.c_str(), &val, param->step, param->step*2, fmt)) {
+								param->value = val;
+								param->value = ImClamp(param->value, param->min, param->max);
 							}
 							if (ImGui::IsItemActive() && !ImGui::IsItemActiveLastFrame()) {
-								oldValue = param.value;
+								oldValue = param->value;
 							}
 							changed |= ImGui::IsItemDeactivatedAfterEdit();
 						} break;
 						case NodeParam::IntRange: {
-							int ival = (int) param.value;
+							int ival = (int) param->value;
 							if (ImGui::InputInt(
 								k.c_str(),
 								&ival))
 							{
-								param.value = ival;
-								param.value = ImClamp(param.value, param.min, param.max);
+								param->value = ival;
+								param->value = ImClamp(param->value, param->min, param->max);
 							}
 							if (ImGui::IsItemActive() && !ImGui::IsItemActiveLastFrame()) {
-								oldValue = param.value;
+								oldValue = param->value;
 							}
 							changed |= ImGui::IsItemDeactivatedAfterEdit();
 						} break;
 						case NodeParam::DragRange: {
-							float val = param.value;
-							if (ImGui::DragFloat(k.c_str(), &val, param.step, param.min, param.max, fmt)) {
-								param.value = val;
+							float val = param->value;
+							if (ImGui::DragFloat(k.c_str(), &val, param->step, param->min, param->max, fmt)) {
+								param->value = val;
 							}
 							if (ImGui::IsItemActive() && !ImGui::IsItemActiveLastFrame()) {
-								oldValue = param.value;
+								oldValue = param->value;
 							}
 							changed |= ImGui::IsItemDeactivatedAfterEdit();
 						} break;
 						case NodeParam::KnobRange: {
-							float val = param.value;
-							if (ImGui::Knob(k.c_str(), &val, param.min, param.max)) {
-								param.value = val;
-							}
-							if (ImGui::IsItemActive() && !ImGui::IsItemActiveLastFrame()) {
-								oldValue = param.value;
-							}
-							changed |= ImGui::IsItemDeactivatedAfterEdit();
+							// float val = param->value;
+							// if (ImGui::Knob(k.c_str(), &val, param->min, param->max)) {
+							// 	param->value = val;
+							// }
+							// if (ImGui::IsItemActive() && !ImGui::IsItemActiveLastFrame()) {
+							// 	oldValue = param->value;
+							// }
+							changed |= ImGui::Knob(k.c_str(), &param->value, param->min, param->max);
 						} break;
 						case NodeParam::Option: {
-							u32 val = param.option;
+							u32 val = param->option;
 							if (ImGui::Combo(
 								k.c_str(),
 								(int*) &val,
 								nodeR->paramOptions(p).data(),
-								param.options.size()
+								int(param->options.size())
 							)) {
-								param.option = val;
+								param->option = val;
 							}
 							if (ImGui::IsItemActive() && !ImGui::IsItemActiveLastFrame()) {
-								oldOption = param.option;
+								oldOption = param->option;
 							}
 							changed |= ImGui::IsItemDeactivatedAfterEdit();
 						} break;
 					}
 					ImGui::PopItemWidth();
-					if (param.sameLine)
+					if (param->sameLine)
 						ImGui::SameLine();
 
 					/// Notify value change
@@ -521,9 +525,11 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 						graph->m_saved = false;
 						graph->undoRedo()->performedAction<TParamChangeCommand>(
 									graph, nodeR->id(), p,
-									param.value, param.option,
+									param->value, param->option,
 									oldValue, oldOption
 						);
+						LogI("Changed parameter '", k, "'");
+						LogI("Registered action: ", STR(TParamChangeCommand));
 						changed = false;
 					}
 
@@ -749,16 +755,9 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 				ImVec2 cp1 = p1 + ImVec2(50, 0);
 				ImVec2 cp2 = p2 - ImVec2(50, 0);
 
-				const int col = IM_COL32(200, 200, 100, 200);
-				const float r = slotRadius * 1.5f;
+				const u32 col = IM_COL32(200, 200, 100, 200);
 				draw_list->AddCircleFilled(p1, slotRadius*0.5f, col);
-				draw_list->AddTriangleFilled(
-					ImVec2(0, -r) + p2,
-					ImVec2(r+0.5f,  0) + p2,
-					ImVec2(0,  r) + p2,
-					col
-				);
-				draw_list->AddBezierCurve(p1, cp1, cp2, p2, col, 5.0f);
+				draw_list->AddBezierCurve(p1, cp1, cp2, p2, col, LINK_THICKNESS(scl));
 			}
 		}
 		ImGui::PopID();
@@ -1101,7 +1100,7 @@ void TNodeEditor::draw(int w, int h) {
 		if (ImGui::BeginChild("side_bar", ImVec2(sz0, -1), true, flags)) {
 			if (!m_nodeGraphs.empty()) {
 				ImGui::BeginGroup();
-				if (ImGui::Button(m_playing ? "Stop" : "Play", ImVec2(ImGui::GetContentRegionAvailWidth(), 26)) && !m_nodeGraphs.empty()) {
+				if (ImGui::Button(m_playing ? "Stop" : "Start", ImVec2(ImGui::GetContentRegionAvailWidth(), 26)) && !m_nodeGraphs.empty()) {
 					m_playing = !m_playing;
 				}
 				ImGui::EndGroup();
@@ -1193,6 +1192,10 @@ void TNodeEditor::draw(int w, int h) {
 						m_nodeGraphs[m_activeGraph]->m_scrolling.y = -nodeBounds[selectedNode].y + m_mainWindowSize.y * 0.5f - sz.y * 0.5f;
 					}
 					ImGui::PopItemWidth();
+					for (char* n : nodeNames) {
+						delete[] n;
+					}
+					nodeNames.clear();
 				}
 				if (ImGui::CollapsingHeader("Samples")) {
 					static int selectedSample = -1;
@@ -1229,6 +1232,7 @@ void TNodeEditor::draw(int w, int h) {
 					if (ImGui::Button("Delete", ImVec2(w, 18))) {
 						int sid = m_nodeGraphs[m_activeGraph]->actualNodeGraph()->getSampleID(std::string(items[selectedSample]));
 						m_nodeGraphs[m_activeGraph]->actualNodeGraph()->removeSample(sid);
+						LogI("Deleted sample ", sid);
 						selectedSample = -1;
 					}
 					ImGui::EndGroup();
@@ -1307,6 +1311,7 @@ void TNodeEditor::draw(int w, int h) {
 void TNodeEditor::closeGraph(int id) {
 	m_playing = false;
 	m_recording = false;
+	LogI("Closed graph: ", m_nodeGraphs[id]->name());
 	m_nodeGraphs.erase(m_nodeGraphs.begin() + id);
 	if (m_activeGraph > m_nodeGraphs.size()-1) {
 		m_activeGraph = m_nodeGraphs.size()-1;
@@ -1377,6 +1382,8 @@ void TNodeEditor::saveRecording(const std::string& fileName) {
 	SndfileHandle snd = SndfileHandle(fileName, SFM_WRITE, fmt, 1, int(sampleRate));
 	snd.writef(m_recordBuffer.data(), m_recordBuffer.size());
 
+	LogI("Saved recording to file: ", fileName);
+
 	m_rendering = false;
 }
 
@@ -1392,6 +1399,8 @@ void TNodeEditor::renderToFile(const std::string& fileName, float time) {
 	int fmt = SF_FORMAT_OGG | SF_FORMAT_VORBIS;
 	SndfileHandle snd = SndfileHandle(fileName, SFM_WRITE, fmt, 1, int(sampleRate));
 	snd.writef(data, sampleCount);
+
+	LogI("Saved recording to file: ", fileName);
 
 	m_rendering = false;
 }

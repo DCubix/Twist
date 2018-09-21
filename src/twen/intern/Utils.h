@@ -13,6 +13,7 @@ constexpr float PI2 = M_PI * 2.0f;
 
 #include <array>
 #include <vector>
+#include <stack>
 #include <map>
 #include <unordered_map>
 #include <string>
@@ -39,10 +40,13 @@ using TypeIndex = std::type_index;
 
 template <typename T, u32 N> using Arr = std::array<T, N>;
 template <typename T> using Vec = std::vector<T>;
+template <typename T> using Stack = std::stack<T>;
 template <typename K, typename V> using Map = std::map<K, V>;
 template <typename K, typename V> using UMap = std::unordered_map<K, V>;
 template <typename T> using Ptr = std::unique_ptr<T>;
 using Str = std::string;
+
+typedef const char* RawStr;
 
 namespace Utils {
 	float noteFrequency(int index);

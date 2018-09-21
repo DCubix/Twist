@@ -1,7 +1,7 @@
 #include "Oscillator.h"
 
 float Oscillator::sample() {
-	return sample(m_frequency) * 0.5f + 0.5f;
+	return sample(m_frequency);
 }
 
 float Oscillator::sample(float freq) {

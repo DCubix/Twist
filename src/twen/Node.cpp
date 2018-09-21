@@ -26,7 +26,7 @@ void Node::load(JSON json) {
 //	m_name = json["type"].is_string() ? json["type"].get<Str>() : m_name;
 	m_enabled = json["enabled"].is_boolean() ? json["enabled"].get<bool>() : m_enabled;
 	if (json["params"].is_array()) {
-		for (i32 i = 0; i < json["params"].size(); i++) {
+		for (u32 i = 0; i < json["params"].size(); i++) {
 			JSON param = json["params"][i];
 			m_params[i].value = !param["value"].is_number_float() ? 0.0f : param["value"].get<float>();
 			m_params[i].option = !param["option"].is_number_unsigned() ? 0 : param["option"].get<u32>();
@@ -96,16 +96,9 @@ u32& Node::paramOption(u32 param) {
 	return m_params[param].option;
 }
 
-Vec<const char*> Node::paramOptions(u32 param) {
+Vec<RawStr> Node::paramOptions(u32 param) {
 	LogAssert(isParamValid(param), "Invalid parameter.");
-	Vec<const char*> ops;
-	ops.resize(m_params[param].options.size());
-	for (i32 i = 0; i < ops.size(); i++) {
-		char* title = new char[m_params[param].options[i].size()];
-		strcpy(title, m_params[param].options[i].c_str());
-		ops[i] = title;
-	}
-	return ops;
+	return m_params[param].options;
 }
 
 Str Node::paramName(u32 param) {
@@ -114,17 +107,17 @@ Str Node::paramName(u32 param) {
 }
 
 void Node::addInput(const Str& name) {
-	m_inputNames[m_inputs.size()] = name;
+	m_inputNames[u32(m_inputs.size())] = name;
 	m_inputs.push_back(NodeSlot());
 	m_inputs.back().values.set(0.0f);
-	m_inputs.back().id = m_inputs.size()-1;
+	m_inputs.back().id = u32(m_inputs.size()-1);
 }
 
 void Node::addOutput(const Str& name) {
-	m_outputNames[m_outputs.size()] = name;
+	m_outputNames[u32(m_outputs.size())] = name;
 	m_outputs.push_back(NodeSlot());
 	m_outputs.back().values.set(0.0f);
-	m_outputs.back().id = m_outputs.size()-1;
+	m_outputs.back().id = u32(m_outputs.size()-1);
 }
 
 //void Node::removeInput(const Str& name) {
@@ -140,19 +133,19 @@ void Node::addOutput(const Str& name) {
 //}
 
 void Node::addParam(const Str& name, float value, float step, bool sameLine, i32 w) {
-	m_paramNames[m_params.size()] = name;
-	m_params.push_back(NodeParam(NodeParam::None, 0.0f, 0.0f, value, step, Vec<Str>(), w));
+	m_paramNames[u32(m_params.size())] = name.c_str();
+	m_params.push_back(NodeParam(NodeParam::None, 0.0f, 0.0f, value, step, Vec<RawStr>(), w));
 	m_params.back().sameLine = sameLine;
 }
 
 void Node::addParam(const Str& name, float min, float max, float value, float step, NodeParam::ParamType type, bool sameLine, i32 w) {
-	m_paramNames[m_params.size()] = name;
-	m_params.push_back(NodeParam(type, min, max, value, step, Vec<Str>(), w));
+	m_paramNames[u32(m_params.size())] = name.c_str();
+	m_params.push_back(NodeParam(type, min, max, value, step, Vec<RawStr>(), w));
 	m_params.back().sameLine = sameLine;
 }
 
-void Node::addParam(const Str& name, const std::initializer_list<Str>& options, u32 option, bool sameLine, i32 w) {
-	m_paramNames[m_params.size()] = name;
-	m_params.push_back(NodeParam(NodeParam::Option, 0, 0, option, Vec<Str>(options), w));
+void Node::addParam(const Str& name, const std::initializer_list<RawStr>& options, u32 option, bool sameLine, i32 w) {
+	m_paramNames[u32(m_params.size())] = name.c_str();
+	m_params.push_back(NodeParam(NodeParam::Option, 0, 0, option, Vec<RawStr>(options), w));
 	m_params.back().sameLine = sameLine;
 }

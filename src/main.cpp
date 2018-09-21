@@ -20,6 +20,8 @@ public:
 		m_editor->sampleRate = spec().freq;
 	}
 
+	virtual ~App() {}
+
 	void gui(int w, int h) {
 		m_editor->draw(w, h);
 	}
@@ -49,8 +51,8 @@ private:
 
 static void audioCallback(void* ud, Uint8* stream, int length) {
 	TNodeEditor* editor = static_cast<TNodeEditor*>(ud);
-	int flen = length / sizeof(float);
-	float* fstream = FBUFFER(stream);
+	int flen = length / int(sizeof(float));
+	float* fstream = reinterpret_cast<float*>(stream);
 
 	if (editor != nullptr) {
 		for (int i = 0; i < flen; i++) {
@@ -60,7 +62,7 @@ static void audioCallback(void* ud, Uint8* stream, int length) {
 }
 
 int main() {
-	srand(time(0));	
+	srand(u32(time(nullptr)));
 	
 	Twen::init();
 

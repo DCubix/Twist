@@ -77,6 +77,8 @@ public:
 	void gate(bool g);
 	float sample();
 
+	void reset();
+
 private:
 	State m_state;
 	float m_attack,

@@ -5,15 +5,23 @@
 #include "../TNodeEditor.h"
 #include "RtMidi.h"
 
-class MIDINode : public Node, public TMidiMessageSubscriber {
+#include "twen/intern/Voice.h"
+
+struct NoteVoice : Voice {
+	NoteVoice() : Voice() {}
+	float sample() { return noteIndex; }
+	u8 noteIndex;
+};
+
+class MIDINode : public Node, public TMidiMessageSubscriber, public VoiceManager<NoteVoice, FLOAT_ARRAY_MAX> {
 	TWEN_NODE(MIDINode, "MIDI")
 public:
 	MIDINode() : Node() {
 		addOutput("Nt");
 		addOutput("Gate");
-		gates.fill(false);
 
 		addParam("Channel", 0x0, 0xF, 0.0f, 1.0f, NodeParam::IntRange);
+		addParam("Transpose", -24, 24, 0.0f, 1.0f, NodeParam::IntRange);
 	}
 
 	void messageReceived(TMidiMessage msg) {
@@ -21,32 +29,40 @@ public:
 		switch (msg.command) {
 			default: break;
 			case TMidiCommand::NoteOn:
-				gates[msg.param0] = (msg.param1 > 0);
+				if (msg.param1 > 0) {
+					noteOn(msg.param0);
+				} else {
+					noteOff(msg.param0);
+				}
 				break;
 			case TMidiCommand::NoteOff:
-				gates[msg.param0] = false;
+				noteOff(msg.param0);
 				break;
 		}
 	}
 
 	int midiChannel() { return (int) param(0); }
 
+	void onTrigger(NoteVoice* voice, u8 note) {
+		voice->noteIndex = note;
+	}
+
+	void onRelease(NoteVoice* voice, u8 note) {
+		if (voice->triggered && voice->noteIndex == note) voice->triggered = false;
+	}
+
 	void solve() {
-//		outs(0).set(0.0f);
 		outs(1).set(0.0f);
 
-		for (int i = 0, s = 0; i < 128; i++) {
-			if (gates[i]) {
-				s = s % FLOAT_ARRAY_MAX;
-				out(0, s) = i;
-				out(1, s) = 1.0f;
-				s++;
+		for (u32 i = 0; i < size(); i++) {
+			if (get(i).triggered) {
+				out(0, i) = get(i).sample() + param(1);
+				out(1, i) = 1.0f;
 			}
 		}
 	}
 
 	int noteID = 0;
-	std::array<bool, 128> gates;
 };
 
 #endif // T_MIDI_NODE_H

@@ -11,7 +11,7 @@
 									static TypeIndex typeID() { return Utils::getTypeIndex<x>(); } \
 									static Str prettyName() { return title; }
 
-#define FLOAT_ARRAY_MAX 10
+#define FLOAT_ARRAY_MAX 16
 using FloatArray = Vector<FLOAT_ARRAY_MAX>;
 
 struct NodeLink {
@@ -48,7 +48,7 @@ struct NodeParam {
 	float value;
 
 	u32 option;
-	Vec<Str> options;
+	Vec<RawStr> options;
 
 	bool sameLine = false;
 	i32 itemWidth = 100;
@@ -58,7 +58,7 @@ struct NodeParam {
 		ParamType type,
 		float min, float max,
 		float value, float step,
-		const Vec<Str>& options,
+		const Vec<RawStr>& options,
 		i32 itemWidth=100
 	) : type(type), min(min), max(max), value(value), step(step), options(options), itemWidth(itemWidth)
 	{ }
@@ -67,7 +67,7 @@ struct NodeParam {
 		ParamType type,
 		float min, float max,
 		u32 option,
-		const Vec<Str>& options,
+		const Vec<RawStr>& options,
 		i32 itemWidth=100
 	) : type(type), min(min), max(max), option(option), options(options), itemWidth(itemWidth)
 	{ }
@@ -76,7 +76,7 @@ struct NodeParam {
 		ParamType type,
 		float min, float max,
 		float value, float step, u32 option,
-		const Vec<Str>& options,
+		const Vec<RawStr>& options,
 		i32 itemWidth=100
 	) : type(type), min(min), max(max), value(value), option(option), options(options), step(step), itemWidth(itemWidth)
 	{ }
@@ -112,7 +112,7 @@ public:
 
 	float& param(u32 param);
 	u32& paramOption(u32 param);
-	Vec<const char*> paramOptions(u32 param);
+	Vec<RawStr> paramOptions(u32 param);
 	Str paramName(u32 param);
 
 	u64 id() const { return m_id; }
@@ -166,7 +166,7 @@ protected:
 				  bool sameLine = false, i32 w=70);
 
 	void addParam(const Str& name,
-				  const std::initializer_list<Str>& options,
+				  const std::initializer_list<RawStr>& options,
 				  u32 option = 0,
 				  bool sameLine = false, i32 w=70);
 };

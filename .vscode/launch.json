@@ -8,13 +8,14 @@
 			"name": "(gdb) Launch",
 			"type": "cppdbg",
 			"request": "launch",
-			"program": "${workspaceFolder}/build/Twist",
+			"program": "${workspaceFolder}/build/Twist.exe",
 			"args": [],
 			"stopAtEntry": false,
-			"cwd": "${workspaceFolder}/build",
+			"cwd": "${workspaceFolder}",
 			"environment": [],
-			"externalConsole": false,
+			"externalConsole": true,
 			"MIMode": "gdb",
+			"miDebuggerPath": "C:\\msys64\\mingw64\\bin\\gdb.exe",
 			"setupCommands": [
 				{
 					"description": "Enable pretty-printing for gdb",

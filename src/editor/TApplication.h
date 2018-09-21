@@ -18,11 +18,10 @@
 #define TWIST_DEFAULT_SAMPLES 2048
 #define TWIST_DEFAULT_CHANNELS 1
 
-#define FBUFFER(x) ((float*)x)
-
 class TApplication {
 public:
 	TApplication() {}
+
 	void init(
 		SDL_AudioCallback callback,
 		void* udata = nullptr,

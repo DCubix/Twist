@@ -41,3 +41,8 @@ void ADSR::gate(bool g) {
 float ADSR::coef(float rate, float targetRatio) {
 	return (rate <= 0) ? 0.0f : std::exp(-std::log((1.0f + targetRatio) / targetRatio) / rate);
 }
+
+void ADSR::reset() {
+	m_state = Release;
+	m_out = 0.0f;
+}

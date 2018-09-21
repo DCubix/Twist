@@ -25,6 +25,7 @@ NodeLink* TNodeGraph::link(u64 id) {
 TNodeUI* TNodeGraph::addNode(int x, int y,
 	const Str& type, JSON params, bool canundo
 ) {
+	LogI("Adding editor node '", type, "' at x=", x, "y=", y);
 	TNodeUI* n = new TNodeUI();
 	n->node = m_actualNodeGraph->create(type, params);
 	n->bounds.x = x;
@@ -40,12 +41,14 @@ TNodeUI* TNodeGraph::addNode(int x, int y,
 
 	if (canundo) {
 		m_undoRedo->performedAction<TAddNodeCommand>(this, id, x, y, type, params);
+		LogI("Registered action: ", STR(TAddNodeCommand));
 	}
 
 	return n;
 }
 
 void TNodeGraph::deleteNode(u64 id, bool canundo) {
+	LogI("Deleting editor node: ", id);
 	// Save node
 	TNodeUI* nd = node(id);
 	Str type = nd->node->name();
@@ -59,28 +62,36 @@ void TNodeGraph::deleteNode(u64 id, bool canundo) {
 	auto pos = m_nodes.find(id);
 	if (pos != m_nodes.end()) {
 		m_nodes.erase(pos);
+		LogI("Editor Node was deleted successfully.");
+	} else {
+		LogE("Editor Node not found.");
 	}
+
 	m_actualNodeGraph->remove(id);
 	m_lock.unlock();
 
 	if (canundo) {
 		m_undoRedo->performedAction<TDeleteNodeCommand>(this, id, x, y, type, params);
+		LogI("Registered action: ", STR(TDeleteNodeCommand));
 	}
 
 	m_saved = false;
 }
 
 u64 TNodeGraph::link(u64 inID, u32 inSlot, u64 outID, u32 outSlot, bool canundo) {
+	LogI("Editor Linking...");
 	u64 id = m_actualNodeGraph->link(inID, inSlot, outID, outSlot);
 
 	if (canundo) {
 		m_undoRedo->performedAction<TLinkCommand>(this, id, inID, inSlot, outID, outSlot);
+		LogI("Registered action: ", STR(TLinkCommand));
 	}
 
 	return id;
 }
 
 void TNodeGraph::removeLink(u64 id, bool canundo) {
+	LogI("Editor link removing...");
 	NodeLink* lnk = m_actualNodeGraph->link(id);
 	if (canundo) {
 		m_undoRedo->performedAction<TUnLinkCommand>(
@@ -88,6 +99,7 @@ void TNodeGraph::removeLink(u64 id, bool canundo) {
 			id, lnk->inputID, lnk->inputSlot,
 			lnk->outputID, lnk->outputSlot
 		);
+		LogI("Registered action: ", STR(TUnLinkCommand));
 	}
 
 	m_actualNodeGraph->removeLink(id);
