@@ -1,52 +1,71 @@
 #ifndef TWEN_OSCILLATOR_NODE_H
 #define TWEN_OSCILLATOR_NODE_H
 
-#include "../Node.h"
-#include "../intern/Oscillator.h"
+#include "../NodeGraph.h"
+#include <cmath>
+
+class Phase {
+public:
+	Phase(float period = 0.0f) {
+		m_phase = 0.0f;
+		m_period = period;
+	}
+
+	float advance(float freq, float sampleRate) {
+		m_phase += freq * (PI * 2.0f / sampleRate);
+		m_phase = std::fmod(m_phase, m_period);
+		return m_phase;
+	}
+
+private:
+	float m_phase, m_period;
+};
 
 class OscillatorNode : public Node {
 	TWEN_NODE(OscillatorNode, "Oscillator")
 public:
-	OscillatorNode(float sampleRate=44100.0f, u32 wf=0, float freq=220, float amp=1)
-		: Node(), m_sampleRate(sampleRate)
+	enum WaveForm {
+		Sine = 0,
+		Square,
+		Saw,
+		Triangle,
+		Noise
+	};
+
+	OscillatorNode(float freq = 220, WaveForm wf = WaveForm::Sine)
+		: Node(), frequency(freq), waveForm(wf), m_lastNoise(0.0f), m_phase(Phase(PI2))
 	{
-		addInput("Freq");
-		addInput("Amp");
-		addOutput("Out");
-
-		addParam("WaveForm", { "Sine", "Pulse", "Square", "Saw", "Triangle", "Noise" }, wf);
-		addParam("Freq", 20.0f, 20000.0f, freq, 1.0f, NodeParam::DragRange);
-		addParam("Amp", 0.0f, 1.0f, amp, 0.05f, NodeParam::DragRange);
-
-		for (int i = 0; i < FLOAT_ARRAY_MAX; i++) {
-			m_osc[i] = Oscillator(m_sampleRate);
-		}
+		addInput("Mod"); // Frequency Modulator
+		addInput("Freq"); // Frequency
 	}
 
-	void solve() {
-		FloatArray freqs = ins(0, 1);
-		FloatArray amps = ins(1, 2, true);
+	float sample(NodeGraph *graph) override {
+		float freqMod = connected(0) ? get(0) : 0.0f;
+		float freqVal = connected(1) ? get(1) : frequency;
+		float freq = m_phase.advance(freqVal, graph->sampleRate()) + freqMod;
+		float nfreq = freq / PI2;
 
-		int wf = (int) paramOption(0);
-
-		int count = 0;
-		float value = 0.0f;
-		for (int i = 0; i < FLOAT_ARRAY_MAX; i++) {
-			if (std::abs(freqs[i]) > 0.0f) {
-				m_osc[i].waveForm((Oscillator::WaveForm) wf);
-				m_osc[i].amplitude(amps[i]);
-				value += m_osc[i].sample(freqs[i]);
-				count++;
-			}
+		switch (waveForm) {
+			case Sine: return std::sin(freq);
+			case Square: return (std::sin(freq) > 0.0f ? 1.0f : -1.0f);
+			case Saw: return (std::fmod(nfreq, 1.0f) * 2.0f - 1.0f);
+			case Triangle: return (std::asin(std::cos(freq)) / 1.5708f);
+			case Noise:
+				float dt = std::fmod(freq, frequency);
+				if (dt <= PI) {
+					m_lastNoise = (float(rand() % RAND_MAX) / float(RAND_MAX)) * 2.0f - 1.0f;
+				}
+				return m_lastNoise * 0.5f;
 		}
-		value /= (count == 0 ? 1 : count);
-
-		out(0) = value;
+		return 0.0f;
 	}
+
+	float frequency;
+	WaveForm waveForm;
 
 private:
-	float m_sampleRate;
-	Oscillator m_osc[FLOAT_ARRAY_MAX];
+	float m_lastNoise;
+	Phase m_phase;
 };
 
 #endif // TWEN_OSCILLATOR_NODE_H

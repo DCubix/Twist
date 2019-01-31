@@ -12,6 +12,8 @@ public:
 	void clear();
 	float sample(float in, float feedBack, float delay);
 
+	void sampleRate(float sr) { m_sampleRate = sr; }
+
 private:
 	float m_sampleRate;
 	Arr<float, WAVE_GUIDE_SAMPLES> m_buffer;

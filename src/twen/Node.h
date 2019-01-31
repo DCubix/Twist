@@ -11,75 +11,20 @@
 									static TypeIndex typeID() { return Utils::getTypeIndex<x>(); } \
 									static Str prettyName() { return title; }
 
-#define FLOAT_ARRAY_MAX 16
-using FloatArray = Vector<FLOAT_ARRAY_MAX>;
+#define TWEN_NODE_BUFFER_SIZE 128
 
-struct NodeLink {
-	u64 id;
-	u64 inputID;
-	u64 outputID;
-	u32 inputSlot;
-	u32 outputSlot;
+class Node;
+struct Connection {
+	Node *from, *to;
+	u32 toSlot;
 };
 
-struct NodeSlot {
-	FloatArray values;
+struct NodeInput {
+	float value;
 	bool connected;
 	u32 id;
 
-	FloatArray& operator* () { return values; }
-
-	NodeSlot() : connected(false), id(0) { values.set(0.0f); }
-};
-
-struct NodeParam {
-	enum ParamType {
-		None = 0,
-		Range,
-		IntRange,
-		KnobRange,
-		DragRange,
-		Option
-	};
-
-	ParamType type;
-
-	float min, max, step;
-	float value;
-
-	u32 option;
-	Vec<RawStr> options;
-
-	bool sameLine = false;
-	i32 itemWidth = 100;
-
-	NodeParam() {}
-	NodeParam(
-		ParamType type,
-		float min, float max,
-		float value, float step,
-		const Vec<RawStr>& options,
-		i32 itemWidth=100
-	) : type(type), min(min), max(max), value(value), step(step), options(options), itemWidth(itemWidth)
-	{ }
-
-	NodeParam(
-		ParamType type,
-		float min, float max,
-		u32 option,
-		const Vec<RawStr>& options,
-		i32 itemWidth=100
-	) : type(type), min(min), max(max), option(option), options(options), itemWidth(itemWidth)
-	{ }
-
-	NodeParam(
-		ParamType type,
-		float min, float max,
-		float value, float step, u32 option,
-		const Vec<RawStr>& options,
-		i32 itemWidth=100
-	) : type(type), min(min), max(max), value(value), option(option), options(options), step(step), itemWidth(itemWidth)
-	{ }
+	NodeInput(float value = 0.0f) : connected(false), id(0), value(value) {}
 };
 
 class NodeGraph;
@@ -92,83 +37,34 @@ class Node {
 public:
 	Node();
 
-	virtual void solve() {}
+	virtual float sample(NodeGraph *graph) { return 0.0f; }
 
-	virtual void save(JSON& json);
-	virtual void load(JSON json);
+	bool connected(u32 i) const { return m_inputs[i].connected; }
+	float get(u32 i) { return m_inputs[i].value; }
 
-	Vec<NodeSlot>& outputs() { return m_outputs; }
-	Vec<NodeSlot>& inputs() { return m_inputs; }
-	Vec<NodeParam>& params() { return m_params; }
+	Vec<NodeInput> inputs() const { return m_inputs; }
+	Vec<Str> inNames() const { return m_inputNames; }
 
-	float& in(u32 input, u32 param = 0, u32 slot = 0);
-	Str inName(u32 input);
-
-	float& out(u32 output, u32 slot = 0);
-	Str outName(u32 output);
-
-	FloatArray& ins(u32 input, u32 param = 0, bool fill=false);
-	FloatArray& outs(u32 output);
-
-	float& param(u32 param);
-	u32& paramOption(u32 param);
-	Vec<RawStr> paramOptions(u32 param);
-	Str paramName(u32 param);
-
-	u64 id() const { return m_id; }
 	Str name() const { return m_name; }
-	Str title() const { return m_title; }
-	NodeGraph* parent() { return m_parent; }
-	bool enabled() const { return m_enabled; }
-	void enabled(bool e) { m_enabled = e; }
+	TypeIndex getType() const { return m_type; }
+
+	Arr<float, TWEN_NODE_BUFFER_SIZE> buffer() { return m_buffer; }
 
 protected:
-	bool isParamValid(u32 param) {
-		return param >= 0 && param < m_params.size() && !m_params.empty();
-	}
+	Str m_name;
+	TypeIndex m_type;
 
-	bool isOutputValid(u32 output) {
-		return output >= 0 && output < m_outputs.size() && !m_outputs.empty();
-	}
+	Vec<Str> m_inputNames;
+	Vec<NodeInput> m_inputs;
 
-	bool isInputValid(u32 input) {
-		return input >= 0 && input < m_inputs.size() && !m_inputs.empty();
-	}
+	Arr<float, TWEN_NODE_BUFFER_SIZE> m_buffer;
+	u32 m_bufferPos;
 
-	u64 m_id;
+	bool m_solved;
+	float m_lastSample;
 
-	bool m_solved, m_enabled = true;
-
-	UMap<u32, Str> m_inputNames, m_outputNames;
-	Vec<NodeSlot> m_inputs, m_outputs;
-
-	UMap<u32, Str> m_paramNames;
-	Vec<NodeParam> m_params;
-
-	NodeGraph* m_parent;
-
-	Str m_name, m_title;
-	float m_default;
-	FloatArray m_defaultArr;
-
-	void addInput(const Str& name);
-	void addOutput(const Str& name);
-//	void removeInput(const Str& name);
-//	void removeOutput(const Str& name);
-
-	void addParam(const Str& name, float value, float step = 1.0f, bool sameLine = false, i32 w=70);
-
-	void addParam(const Str& name,
-				  float min, float max,
-				  float value = 0.0f,
-				  float step = 1.0f,
-				  NodeParam::ParamType type = NodeParam::Range,
-				  bool sameLine = false, i32 w=70);
-
-	void addParam(const Str& name,
-				  const std::initializer_list<RawStr>& options,
-				  u32 option = 0,
-				  bool sameLine = false, i32 w=70);
+	void addInput(const Str& name, float def = 0.0f);
+	void updateBuffer(float val);
 };
 
 #endif // TWEN_NODE_H

@@ -10,31 +10,35 @@
 #include "twen/Node.h"
 #include "twen/NodeGraph.h"
 
-struct TNodeUI {
+#include <functional>
+
+using TNodeGUI = std::function<void(Node*)>;
+struct TNode {
 	ImVec4 bounds;
 	ImRect selectionBounds;
 	ImVec2 gridPos;
 	bool open, selected;
-	Node* node;
+	Node *node;
 
-	ImVec2 inputPos(u32 s, float radius, float title, bool snap=false) const {
+	ImVec2 inputPos(u32 s, float radius, bool snap=false) const {
 		ImVec2 p = snap ? gridPos : ImVec2(bounds.x, bounds.y);
-		float y = /*size().y - */(title/2 + (s * (radius*2 + 3)));
+		float y = (s * (radius*2 + 4));
 		return ImVec2(p.x, p.y + y);
 	}
-	ImVec2 outputPos(u32 s, float radius, float title, bool snap=false) const {
+	ImVec2 outputPos(u32 s, float radius, bool snap=false) const {
 		ImVec2 p = snap ? gridPos : ImVec2(bounds.x, bounds.y);
-		float y = title/2 + (s * (radius*2 + 3));
+		float y = (s * (radius*2 + 4));
 		return ImVec2(p.x + size().x, p.y + y);
 	}
 	ImVec2 size() const { return ImVec2(bounds.z, bounds.w); }
+
+	virtual void save(JSON& json);
+	virtual void load(JSON json);
 };
 
-struct TLinking {
-	u64 inputID;
-	u32 inputSlot;
+struct TConnection {
+	TNode* from;
 	bool active;
-	TNodeUI* node;
 };
 
 class TNodeEditor;
@@ -43,18 +47,15 @@ class TNodeGraph {
 public:
 	TNodeGraph(NodeGraph* ang);
 
-	TNodeUI* addNode(int x, int y, const Str& type, JSON params, bool canundo=true);
-	void deleteNode(u64 id, bool canundo=true);
-	u64 link(u64 inID, u32 inSlot, u64 outID, u32 outSlot, bool canundo=true);
+	TNode* addNode(int x, int y, const Str& type, JSON params, bool canundo=true);
+	void removeNode(TNode *nd, bool canundo=true);
+	Connection* connect(TNode *from, TNode *to, u32 slot, bool canundo=true);
 
 	void selectAll();
 	void unselectAll();
-	u64 getActiveNode();
+	TNode* getActiveNode();
 
-	void removeLink(u64 id, bool canundo=true);
-
-	TNodeUI* node(u64 id);
-	NodeLink* link(u64 id);
+	void disconnect(Connection* conn, bool canundo=true);
 
 	void load(const Str& fileName);
 	void save(const Str& fileName);
@@ -63,9 +64,7 @@ public:
 	void editor(TNodeEditor* ed) { m_editor = ed; }
 
 	NodeGraph* actualNodeGraph() { return m_actualNodeGraph.get(); }
-
 	TUndoRedo* undoRedo() { return m_undoRedo.get(); }
-
 	Str name() const { return m_name; }
 
 protected:
@@ -77,8 +76,7 @@ protected:
 
 	std::mutex m_lock;
 
-	Vec<u64> m_solvedNodes;
-	UMap<u64, Ptr<TNodeUI>> m_nodes;
+	Map<Node*, Ptr<TNode>> m_tnodes;
 
 	ImVec2 m_scrolling;
 

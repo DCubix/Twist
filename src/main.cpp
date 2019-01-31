@@ -56,7 +56,7 @@ static void audioCallback(void* ud, Uint8* stream, int length) {
 
 	if (editor != nullptr) {
 		for (int i = 0; i < flen; i++) {
-			if (!editor->rendering()) fstream[i] = editor->output();
+			fstream[i] = editor->output();
 		}
 	}
 }
@@ -67,6 +67,7 @@ int main() {
 	Twen::init();
 
 #if 0
+
 	Arr<float, 44100> sine;
 
 	Ptr<NodeGraph> graph = Ptr<NodeGraph>(new NodeGraph());

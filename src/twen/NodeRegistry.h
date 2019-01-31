@@ -17,6 +17,9 @@ using NodeCtor = Node*(JSON);
 struct NodeFactory {
 	NodeCtor* ctor;
 	Str category, title, type;
+	TypeIndex typeID;
+
+	NodeFactory() : typeID(Utils::getTypeIndex<Node>()) {}
 };
 
 class NodeBuilder {
@@ -35,6 +38,7 @@ public:
 		factories[Nt::type()].category = category;
 		factories[Nt::type()].title = Nt::prettyName();
 		factories[Nt::type()].type = Nt::type();
+		factories[Nt::type()].typeID = Nt::typeID();
 	}
 
 	static Node* createNode(const Str& typeName, JSON params) {
@@ -42,9 +46,10 @@ public:
 			LogE("Invalid node type.");
 			return nullptr;
 		}
-		Node* node = factories[typeName].ctor(params);
-		node->m_title = factories[typeName].title;
-		return node;
+		Node* nd = factories[typeName].ctor(params);
+		nd->m_name = factories[typeName].title;
+		nd->m_type = factories[typeName].typeID;
+		return nd;
 	}
 
 	static Map<Str, NodeFactory> factories;

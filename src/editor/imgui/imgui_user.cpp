@@ -452,6 +452,51 @@ bool RubberButton(const char* id) {
 	return ret;
 }
 
+void DrawAudioView(float x, float y, float width, float* values, int length, float h, float rad, int corners) {
+	const UINT32 col = IM_COL32(0, 200, 100, 255);
+
+	const ImVec2 wp = ImVec2(x, y);
+	const ImVec2 rect_max = ImVec2(width, h) + wp;
+
+	ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+	draw_list->AddRectFilled(
+		wp,
+		rect_max,
+		IM_COL32(0, 0, 0, 255),
+		rad,
+		corners
+	);
+
+	draw_list->PushClipRect(wp, rect_max, true);
+
+	draw_list->AddLine(
+		ImVec2(0.0f, h/2) + wp,
+		ImVec2(width, h/2) + wp,
+		IM_COL32(80,80,80,255)
+	);
+
+	if (values != nullptr) {
+		ImVec2 prev = ImVec2(0.0f, h) + wp;
+		for (int i = 0; i < width; i++) {
+			int j = int((float(i) / width) * length);
+			float val = std::min(std::max(values[j],  -1.0f), 1.0f) * 0.5f + 0.5f;
+			ImVec2 pos = ImVec2(i, val * h) + wp;
+			draw_list->AddLine(prev, pos, col);
+			prev = pos;
+		}
+	}
+
+	draw_list->PopClipRect();
+
+//	draw_list->AddRect(
+//		wp,
+//		rect_max,
+//		IM_COL32(100, 100, 100, 255),
+//		rad
+//	);
+}
+
 }
 
 #define TAB_SMOOTH_DRAG 0   // This work nicely but has overlapping issues (maybe render dragged tab separately, at end)

@@ -2,7 +2,7 @@
 #define TWEN_ARP_NODE_H
 
 #include <iostream>
-#include "../Node.h"
+#include "../NodeGraph.h"
 
 class ArpNode : public Node {
 	TWEN_NODE(ArpNode, "Arp")
@@ -27,27 +27,13 @@ public:
 		DirectionCount
 	};
 
-	ArpNode(u32 note, u32 chord, u32 dir, float oct) : Node() {
-		addInput("Time");
-		addOutput("Gate");
-		addOutput("Nt");
-
-		addParam("Type", { "maj", "min", "sus2", "sus4", "maj7", "min7", "9th", "oct" }, chord, true, 50);
-		addParam("Note", { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" }, note, false, 50);
-		addParam("Oct", 0.0f, 5.0f, oct, 1.0f, NodeParam::IntRange, true, 50);
-		addParam("Dir", { "Up", "Down", "Up+Down", "Random" }, dir, false, 50);
-	}
+	ArpNode(Note note, Chord chord, Direction dir, u32 oct)
+		: Node(), note(note), chord(chord), direction(dir), oct(oct)
+	{}
 
 	int index(float ntime, int n) {
 		int rn = (int(Utils::lerp(0, n, ntime)) % n);
-		if (prevRN != rn) {
-			gate = false;
-			prevRN = rn;
-		} else {
-			gate = true;
-		}
 
-		Direction direction = (Direction) paramOption(3);
 		switch (direction) {
 			case Up: return rn;
 			case Down: return n - 1 - rn;
@@ -67,18 +53,14 @@ public:
 		}
 	}
 
-	void solve() {
-		float ntime = in(0);
-
-		Chord chordType = (Chord) paramOption(0);
-		Note note = (Note) paramOption(1);
-		Direction direction = (Direction) paramOption(3);
+	float sample(NodeGraph *graph) override {
+		float ntime = graph->time();
 
 		int noteIn = note;
 
 #define INDEX(n) index(ntime, n)
 		int nt = 0;
-		switch (chordType) {
+		switch (chord) {
 			case Major: {
 				const int n[] = { 0, 4, 7 };
 				nt = n[INDEX(3)] + int(noteIn);
@@ -114,16 +96,16 @@ public:
 			default: break;
 		}
 
-		if (gate) {
-			outs(0).set(1.0f);
-		} else {
-			outs(0).set(0.0f);
-		}
-		outs(1).set(nt + (12 * param(2)));
+		u32 outNote = nt + (12 * oct);
+		return Utils::noteFrequency(outNote);
 	}
 
+	Note note;
+	Chord chord;
+	Direction direction;
+	u32 oct;
+
 private:
-	bool gate = false;
 	int prevNt, prevRN = -1;
 	int prevN = 0, randN = 0;
 };

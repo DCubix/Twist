@@ -40,7 +40,7 @@ void TApplication::init(SDL_AudioCallback callback, void* udata, int sampleRate,
 	m_window = SDL_CreateWindow(
 		TWIST_NAME,
 		SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-		1024, 640, 
+		640, 480,
 		SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
 	);
 	setupIcon();

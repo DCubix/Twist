@@ -1,7 +1,7 @@
 #ifndef TWEN_FILTER_NODE_H
 #define TWEN_FILTER_NODE_H
 
-#include "../Node.h"
+#include "../NodeGraph.h"
 
 class FilterNode : public Node {
 	TWEN_NODE(FilterNode, "Filter")
@@ -11,34 +11,31 @@ public:
 		HighPass
 	};
 
-	FilterNode(float sampleRate=44100.0f, float co=20, u32 filter=0)
-		: Node(), sampleRate(sampleRate)
+	FilterNode(float co=20, Filter filter=Filter::LowPass)
+		: Node(), cutOff(co), filter(filter)
 	{
-		addInput("In");
-		addInput("CutOff");
-		addOutput("Out");
-
-		addParam("CutOff", 20.0f, 20000.0f, co);
-		addParam("Filter", { "Low-Pass", "High-Pass" }, filter);
+		addInput("In"); // Input
+		addInput("CutOff"); // Cutoff
 	}
 
-	void solve() {
-		float cutOff = std::min(std::max(in(1, 0), 20.0f), 20000.0f);
-		float _in = in(0);
-		Filter filter = (Filter) paramOption(1);
+	float sample(NodeGraph *graph) override {
+		float co = connected(1) ? get(1) : cutOff;
+		float _co = std::min(std::max(co, 20.0f), 20000.0f);
+		float _in = get(0);
+
 		switch (filter) {
 			case LowPass: {
-				if (cutOff > 0.0f) {
-					float dt = 1.0f / sampleRate;
-					float a = dt / (dt + 1.0f / (2.0 * M_PI * cutOff));
+				if (_co > 0.0f) {
+					float dt = 1.0f / graph->sampleRate();
+					float a = dt / (dt + 1.0f / (2.0 * M_PI * _co));
 					_out = Utils::lerp(_out, _in, a);
 				} else {
 					_out = 0.0f;
 				}
 			} break;
 			case HighPass: {
-				float rc = 1.0f / (2.0f * M_PI * cutOff);
-				float a = rc / (rc + 1.0f / sampleRate);
+				float rc = 1.0f / (2.0f * M_PI * _co);
+				float a = rc / (rc + 1.0f / graph->sampleRate());
 
 				float result = a * (prev + _in);
 				prev = result - _in;
@@ -46,11 +43,14 @@ public:
 				_out = result;
 			} break;
 		}
-		out(0) = _out;
+		return _out;
 	}
 
+	float cutOff;
+	Filter filter;
+
 private:
-	float sampleRate, _out, prev;
+	float _out, prev;
 };
 
 #endif // TWEN_FILTER_NODE_H

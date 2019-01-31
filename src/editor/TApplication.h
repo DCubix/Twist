@@ -15,7 +15,7 @@
 #include <cmath>
 
 #define TWIST_DEFAULT_SAMPLERATE 44100
-#define TWIST_DEFAULT_SAMPLES 2048
+#define TWIST_DEFAULT_SAMPLES 1024
 #define TWIST_DEFAULT_CHANNELS 1
 
 class TApplication {

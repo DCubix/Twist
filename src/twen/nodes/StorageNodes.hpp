@@ -1,33 +1,34 @@
 #ifndef TWEN_STORAGE_NODES_H
 #define TWEN_STORAGE_NODES_H
 
-#include "../Node.h"
 #include "../NodeGraph.h"
 
 class ReaderNode : public Node {
 	TWEN_NODE(ReaderNode, "Reader")
 public:
-	ReaderNode(int idx=0) : Node() {
-		addOutput("Out");
-		addParam("Slot", 0, GLOBAL_STORAGE_SIZE, idx, 1.0f, NodeParam::IntRange);
+	ReaderNode(u32 slot = 0) : Node(), slot(slot) {}
+
+	float sample(NodeGraph *graph) override {
+		return graph->load(slot);
 	}
 
-	void solve() {
-		out(0) = parent()->load((int) param(0));
-	}
+	u32 slot;
 };
 
 class WriterNode : public Node {
 	TWEN_NODE(WriterNode, "Writer")
 public:
-	WriterNode(int idx=0) : Node() {
-		addInput("In");
-		addParam("Slot", 0, GLOBAL_STORAGE_SIZE, idx, 1.0f, NodeParam::IntRange);
+	WriterNode(u32 slot = 0) : Node(), slot(slot) {
+		addInput("In", 0.0f);
 	}
 
-	void solve() {
-		parent()->store((int) param(0), in(0));
+	float sample(NodeGraph *graph) override {
+		float in = get(0);
+		graph->store(slot, in);
+		return in;
 	}
+
+	u32 slot;
 };
 
 

@@ -1,7 +1,7 @@
 #ifndef IMGUI_USER_H
 #define IMGUI_USER_H
 
-#include "../TTex.hpp"
+#include "../TTex.h"
 
 typedef int ImGuiTabBarFlags;
 typedef int ImGuiTabItemFlags;
@@ -29,6 +29,7 @@ IMGUI_API void          SetTabItemSelected(const char* label);
 
 IMGUI_API float         VUMeter(const char* id, float value);
 IMGUI_API void          AudioView(const char* id, float width, float* values, int length, int pos, float h=24);
+IMGUI_API void          DrawAudioView(float x, float y, float width, float* values, int length, float h=24, float rad=0.0f, int corners=ImDrawCornerFlags_All);
 IMGUI_API bool          KeyBed(const char* id, bool* keys, int keyCount);
 IMGUI_API bool          Splitter(bool split_vertically, float thickness, float* size1, float* size2, float min_size1, float min_size2, float splitter_long_axis_size = -1.0f);
 IMGUI_API bool          LinkText(const char* text);
