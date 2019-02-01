@@ -25,6 +25,7 @@ float NodeGraph::time() {
 Node* NodeGraph::add(Node *node) {
 	if (node == nullptr) return nullptr;
 
+	node->m_graph = this;
 	m_nodes.push_back(Ptr<Node>(node));
 	if (node->getType() == OutNode::typeID()) {
 		m_outputNode = m_nodes.back().get();
@@ -170,16 +171,15 @@ float NodeGraph::sample() {
 	return m_outputNode != nullptr ? m_outputNode->sample(this) : 0.0f;
 }
 
-void NodeGraph::addSample(const Str& fname, const Vec<float>& data, float sr, float dur) {
+void NodeGraph::addSample(const Str& fname, const Vec<float>& data, float sr) {
 	u64 id = UID::getNew();
 
 	Ptr<RawSample> entry = Ptr<RawSample>(new RawSample());
 	entry->data = data;
 	entry->sampleRate = sr;
-	entry->duration = dur;
 	entry->name = fname;
 	m_sampleLibrary[id] = std::move(entry);
-	m_sampleNames.push_back(fname.c_str());
+	m_sampleNames.push_back(fname);
 }
 
 bool NodeGraph::addSample(const Str& fileName) {
@@ -188,34 +188,33 @@ bool NodeGraph::addSample(const Str& fileName) {
 		pos = fileName.find_last_of('\\');
 	}
 
-	float sr = 1, dur = 0;
+	float sr = 1;
 	std::vector<float> sampleData;
 
 	SndfileHandle snd = SndfileHandle(fileName);
-	int maxSecs = 10;
+	int maxSecs = 15;
 	if (snd.samplerate() > 44100) {
-		maxSecs = 5;
+		maxSecs = 10;
 	}
 	if (snd.frames() < snd.samplerate() * maxSecs) {
 		sr = snd.samplerate();
-		dur = float(double(snd.frames()) / sr);
 
 		std::vector<float> samplesRaw;
 		samplesRaw.resize(snd.frames() * snd.channels());
-
 		snd.readf(samplesRaw.data(), samplesRaw.size());
 
 		sampleData.resize(snd.frames());
 		for (int i = 0; i < snd.frames(); i++) {
-			sampleData[i] = samplesRaw[i];
+			sampleData[i] = samplesRaw[0 + i * 2] * 0.5f;
+			sampleData[i] += samplesRaw[1 + i * 2] * 0.5f;
 		}
 	}
 
-	if (dur <= 0.0f || sampleData.empty()) {
+	if (sampleData.empty()) {
 		return false;
 	}
 
-	addSample(fileName.substr(pos+1), sampleData, sr, dur);
+	addSample(fileName.substr(pos+1), sampleData, sr);
 
 	return true;
 }
@@ -236,9 +235,10 @@ void NodeGraph::removeSample(u64 id) {
 RawSample* NodeGraph::getSample(u64 id) {
 	if (m_sampleLibrary.empty())
 		return nullptr;
-	if (m_sampleLibrary.find(id) == m_sampleLibrary.end())
+	auto pos = m_sampleLibrary.find(id);
+	if (pos == m_sampleLibrary.end())
 		return nullptr;
-	return m_sampleLibrary[id].get();
+	return pos->second.get();
 }
 
 u64 NodeGraph::getSampleID(const Str& name) {
@@ -250,6 +250,6 @@ u64 NodeGraph::getSampleID(const Str& name) {
 	return 0;
 }
 
-Vec<RawStr> NodeGraph::getSampleNames() {
+Vec<Str> NodeGraph::getSampleNames() {
 	return m_sampleNames;
 }

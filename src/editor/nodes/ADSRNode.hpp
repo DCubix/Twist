@@ -1,6 +1,7 @@
 #ifndef TWIST_ADSR_HPP
 #define TWIST_ADSR_HPP
 
+#define IMGUI_INCLUDE_IMGUI_USER_H
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "../imgui/imgui.h"
 #include "../imgui/imgui_internal.h"

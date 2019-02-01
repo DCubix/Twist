@@ -32,6 +32,20 @@ public:
 		return ((_out + get(0)) * 0.5f);
 	}
 
+	void save(JSON& json) override {
+		Node::save(json);
+		json["rate"] = rate;
+		json["depth"] = depth;
+		json["delay"] = delay;
+	}
+
+	void load(JSON json) override {
+		Node::load(json);
+		rate = json["rate"];
+		depth = json["depth"];
+		delay = json["delay"];
+	}
+
 	float rate, depth, delay;
 
 private:

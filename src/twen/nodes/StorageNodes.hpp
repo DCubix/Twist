@@ -12,6 +12,16 @@ public:
 		return graph->load(slot);
 	}
 
+	void save(JSON& json) override {
+		Node::save(json);
+		json["slot"] = slot;
+	}
+
+	void load(JSON json) override {
+		Node::load(json);
+		slot = json["slot"];
+	}
+
 	u32 slot;
 };
 
@@ -26,6 +36,16 @@ public:
 		float in = get(0);
 		graph->store(slot, in);
 		return in;
+	}
+
+	void save(JSON& json) override {
+		Node::save(json);
+		json["slot"] = slot;
+	}
+
+	void load(JSON json) override {
+		Node::load(json);
+		slot = json["slot"];
 	}
 
 	u32 slot;

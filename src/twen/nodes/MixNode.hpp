@@ -19,6 +19,16 @@ public:
 		return Utils::lerp(a, b, fac);
 	}
 
+	void save(JSON& json) override {
+		Node::save(json);
+		json["factor"] = factor;
+	}
+
+	void load(JSON json) override {
+		Node::load(json);
+		factor = json["factor"];
+	}
+
 	float factor;
 };
 

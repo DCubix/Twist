@@ -73,7 +73,7 @@ char *osdialog_file(osdialog_file_action action, const char *path, const char *f
 
 	if (filters) {
 		NSMutableArray *fileTypes = [[NSMutableArray alloc] init];
-		
+
 		for (; filters; filters = filters->next) {
 			for (osdialog_filter_patterns *patterns = filters->patterns; patterns; patterns = patterns->next) {
 				NSString *fileType = [NSString stringWithUTF8String:patterns->pattern];
@@ -153,5 +153,5 @@ int osdialog_color_picker(osdialog_color *color, int opacity) {
 void osdialog_web(const char* url) {
 	NSString *url_str = [NSString stringWithUTF8String:url];
 	NSURL* nurl = [[NSURL alloc] initWithString: url_str];
-	[[UIApplication sharedApplication] openURL: nurl];
+	[[NSApplication sharedApplication] openURL: nurl];
 }

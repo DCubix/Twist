@@ -9,7 +9,7 @@ public:
 	OutNode() : Node() {
 		addInput("In");
 		m_signalDC = 0.0f;
-		m_envelope = 1000.0f;
+		m_envelope = 100.0f;
 	}
 
 	float sample(NodeGraph *graph) override {
@@ -36,6 +36,16 @@ public:
 		m_envelope = std::max(m_envelope, 1.0f);
 
 		return std::min(std::max(input * 0.6f / m_envelope, -1.0f), 1.0f);
+	}
+
+	void save(JSON& json) override {
+		Node::save(json);
+		json["gain"] = gain;
+	}
+
+	void load(JSON json) override {
+		Node::load(json);
+		gain = json["gain"];
 	}
 
 	float gain = 1.0f;

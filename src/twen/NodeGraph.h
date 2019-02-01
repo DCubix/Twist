@@ -10,7 +10,7 @@
 
 struct RawSample {
 	Vec<float> data;
-	float sampleRate, duration;
+	float sampleRate;
 	Str name;
 };
 
@@ -39,7 +39,7 @@ public:
 	u64 getSampleID(const Str& name);
 	RawSample* getSample(u64 id);
 	Map<u64, Ptr<RawSample>>& sampleLibrary() { return m_sampleLibrary; }
-	Vec<RawStr> getSampleNames();
+	Vec<Str> getSampleNames();
 
 	float bpm() const { return m_bpm; }
 	void bpm(float bpm) { m_bpm = bpm; }
@@ -50,7 +50,7 @@ public:
 	float sample();
 
 private:
-	void addSample(const Str& fname, const Vec<float>& data, float sr, float dur);
+	void addSample(const Str& fname, const Vec<float>& data, float sr);
 
 	Node *m_outputNode;
 
@@ -63,7 +63,7 @@ private:
 
 	Arr<float, TWEN_GLOBAL_STORAGE_SIZE> m_globalStorage;
 
-	Vec<RawStr> m_sampleNames;
+	Vec<Str> m_sampleNames;
 	Map<u64, Ptr<RawSample>> m_sampleLibrary;
 
 };

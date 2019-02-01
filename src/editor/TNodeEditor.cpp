@@ -41,6 +41,8 @@
 #include "nodes/RemapNode.hpp"
 #include "nodes/ValueNode.hpp"
 #include "nodes/WriterNode.hpp"
+#include "nodes/ButtonNode.hpp"
+//#include "nodes/SamplerNode.hpp"
 
 #define NODE_SLOT_RADIUS(x) (4.0f * x)
 #define NODE_SLOT_RADIUS2(x) (5.0f * x)
@@ -138,7 +140,13 @@ TNodeEditor::TNodeEditor() {
 	m_guis[WriterNode::typeID()] = Writer_gui;
 	m_guis[RemapNode::typeID()] = Remap_gui;
 	m_guis[ValueNode::typeID()] = Value_gui;
+	m_guis[ButtonNode::typeID()] = Button_gui;
+//	m_guis[SamplerNode::typeID()] = Sampler_gui;
 	//
+
+	NodeBuilder::registerType<ButtonNode>("Generators", TWEN_NODE_FAC {
+		return new ButtonNode();
+	});
 
 	// Initialize MIDI
 //	try {
@@ -164,7 +172,7 @@ void TNodeEditor::menuActionOpen(const std::string& fileName) {
 		auto filePath = osd::Dialog::file(
 			osd::DialogAction::OpenFile,
 			".",
-			osd::Filters("Twist Node-Graph:tng")
+			osd::Filters("Twist Synth:syn")
 		);
 
 		if (filePath.has_value()) {
@@ -183,7 +191,7 @@ void TNodeEditor::menuActionSave() {
 			auto filePath = osd::Dialog::file(
 				osd::DialogAction::SaveFile,
 				".",
-				osd::Filters("Twist Node-Graph:tng")
+				osd::Filters("Twist Synth:syn")
 			);
 
 			if (filePath.has_value()) {
@@ -320,10 +328,10 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 		TNode* no = graph->m_tnodes[conn->to].get();
 		if (ni == nullptr || no == nullptr) continue;
 
-		ImVec2 p1 = offset + ni->outputPos(0, slotRadius, m_snapToGrid);
-		p1.y += nodeTitleBarBgHeight;
-		ImVec2 p2 = offset + no->inputPos(conn->toSlot, slotRadius, m_snapToGrid);
-		p2.y += nodeTitleBarBgHeight;
+		ImVec2 p1 = offset + ni->pos(0, slotRadius, m_snapToGrid, true);
+		ImVec2 p2 = offset + no->pos(conn->toSlot, slotRadius, m_snapToGrid);
+		if (ni->open) p1.y += nodeTitleBarBgHeight;
+		if (no->open) p2.y += nodeTitleBarBgHeight;
 		ImVec2 cp1 = p1 + ImVec2(50, 0);
 		ImVec2 cp2 = p2 - ImVec2(50, 0);
 
@@ -522,8 +530,8 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 		for (u32 in = 0; in < nodeR->inputs().size(); in++) {
 			Str name = nodeR->inNames()[in];
 			const char* label = name.c_str();
-			ImVec2 pos = offset + node->inputPos(in, slotRadius, m_snapToGrid);
-			pos.y += nodeTitleBarBgHeight;
+			ImVec2 pos = offset + node->pos(in, slotRadius, m_snapToGrid);
+			if (node->open) pos.y += nodeTitleBarBgHeight;
 
 			ImVec2 tsz = ImGui::CalcTextSize(label);
 			ImVec2 off = ImVec2(-(tsz.x + slotRadius + 3), -tsz.y * 0.5f);
@@ -539,13 +547,16 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 				m_connection.active && m_connection.from != node)
 			{
 				m_connection.active = false;
+				m_lock.lock();
 				graph->connect(m_connection.from, node, in);
+				m_lock.unlock();
 			}
 		}
 
 		// Output
-		ImVec2 pos = offset + node->outputPos(0, slotRadius, m_snapToGrid);
-		pos.y += nodeTitleBarBgHeight;
+		ImVec2 pos = offset + node->pos(0, slotRadius, m_snapToGrid, true);
+		if (node->open) pos.y += nodeTitleBarBgHeight;
+
 		ImVec2 tsz = ImGui::CalcTextSize("Out");
 		ImVec2 off = ImVec2(slotRadius + 3, -tsz.y * 0.5f);
 		ImVec2 off1 = ImVec2(slotRadius + 3, -tsz.y * 0.5f + 1);
@@ -627,7 +638,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 	}
 
 	/// Selecting nodes
-	if (m_selectingNodes) {
+	if (m_selectingNodes && !m_editingSamples) {
 		m_selectionEnd = io.MousePos;
 
 		ImRect selRect = ImRect(m_selectionStart, m_selectionEnd);
@@ -688,7 +699,9 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 			if (ImGui::BeginMenu(e.first.c_str())) {
 				for (auto&& type : e.second) {
 					if (ImGui::MenuItem(type.title.c_str())) {
+						m_lock.lock();
 						graph->addNode(scene_pos.x, scene_pos.y, type.type, params);
+						m_lock.unlock();
 					}
 				}
 				ImGui::EndMenu();
@@ -699,9 +712,11 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 	ImGui::PopStyleVar();
 
 	// Delete nodes
+	m_lock.lock();
 	for (auto&& node : toDelete) {
 		graph->removeNode(node);
 	}
+	m_lock.unlock();
 
 }
 
@@ -778,11 +793,11 @@ void TNodeEditor::draw(int w, int h) {
 			ImGui::TwistBigTex = new TTex(twist_big_png, twist_big_png_len);
 		}
 
-		ImGui::Image(
-			(ImTextureID)(ImGui::TwistTex->id()),
-			ImVec2(16, 16)
-		);
-		ImGui::SameLine();
+//		ImGui::Image(
+//			(ImTextureID)(ImGui::TwistTex->id()),
+//			ImVec2(16, 16)
+//		);
+//		ImGui::SameLine();
 
 		if (ImGui::BeginMenu("File")) {
 			if (ImGui::MenuItem("New", "Ctrl+N")) {
@@ -810,6 +825,10 @@ void TNodeEditor::draw(int w, int h) {
 				menuActionSave();
 			}
 			ImGui::Separator();
+//			if (ImGui::MenuItem("Samples") && m_nodeGraph) {
+//				m_editingSamples = true;
+//			}
+//			ImGui::Separator();
 			if (ImGui::MenuItem("Exit", "Ctrl+Q")) {
 				menuActionExit();
 			}
@@ -851,7 +870,10 @@ void TNodeEditor::draw(int w, int h) {
 			ImGui::EndMenu();
 		}
 
-		ImGui::ToggleButton("Play", &m_playing);
+		ImGui::SameLine(ImGui::GetWindowContentRegionMax().x-32);
+		if (ImGui::Button(m_playing ? "Stop" : "Play", ImVec2(32, 22))) {
+			m_playing = !m_playing;
+		}
 
 		ImGui::EndMainMenuBar();
 	}
@@ -890,8 +912,10 @@ void TNodeEditor::draw(int w, int h) {
 		}
 		ImGui::SameLine(0, 0);
 		ImGui::SetCursorPosX(ImGui::GetWindowContentRegionWidth() - 60);
-		if (ImGui::Button("Ok", ImVec2(60, 22)))
+		if (ImGui::Button("Ok", ImVec2(60, 22))) {
 			ImGui::CloseCurrentPopup();
+			showAbout = false;
+		}
 		ImGui::EndPopup();
 	}
 
@@ -939,6 +963,50 @@ void TNodeEditor::draw(int w, int h) {
 	ImGui::PopStyleVar();
 
 	ImGui::PopStyleVar();
+
+//	if (m_editingSamples)
+//		ImGui::OpenPopup("Sample Library");
+//	if (ImGui::BeginPopupModal("Sample Library", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+//		static int selectedSample = -1;
+//		auto items = m_nodeGraph->getSampleNames();
+
+//		ImGui::ListBox("##sampleLib", &selectedSample, items.data(), items.size(), 8);
+//		ImGui::SameLine();
+
+//		ImGui::BeginGroup();
+//		float w = ImGui::GetContentRegionAvailWidth();
+//		if (ImGui::Button("Load", ImVec2(w, 18))) {
+//			auto filePath = osd::Dialog::file(
+//				osd::DialogAction::OpenFile,
+//				".",
+//				osd::Filters("Audio Files:wav,ogg,aif,flac")
+//			);
+
+//			if (filePath.has_value()) {
+//				if (!m_nodeGraph->actualNodeGraph()->addSample(filePath.value())) {
+//					osd::Dialog::message(
+//						osd::MessageLevel::Error,
+//						osd::MessageButtons::Ok,
+//						"Ivalid sample. It must have <= 10 seconds."
+//					);
+//				}
+//			}
+//		}
+//		if (!items.empty()) {
+//			if (ImGui::Button("Delete", ImVec2(w, 18))) {
+//				u64 sid = m_nodeGraph->actualNodeGraph()->getSampleID(std::string(items[selectedSample]));
+//				m_nodeGraph->actualNodeGraph()->removeSample(sid);
+//				LogI("Deleted sample ", sid);
+//				selectedSample = -1;
+//			}
+//		}
+//		if (ImGui::Button("Close", ImVec2(w, 18))) {
+//			ImGui::CloseCurrentPopup();
+//			m_editingSamples = false;
+//		}
+//		ImGui::EndGroup();
+//		ImGui::EndPopup();
+//	}
 
 }
 

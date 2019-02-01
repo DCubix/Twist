@@ -100,6 +100,22 @@ public:
 		return Utils::noteFrequency(outNote);
 	}
 
+	void save(JSON& json) override {
+		Node::save(json);
+		json["note"] = int(note);
+		json["chord"] = int(chord);
+		json["direction"] = int(chord);
+		json["oct"] = oct;
+	}
+
+	void load(JSON json) override {
+		Node::load(json);
+		note = Note(json["note"].get<int>());
+		chord = Chord(json["chord"].get<int>());
+		direction = Direction(json["direction"].get<int>());
+		oct = json["oct"].get<u32>();
+	}
+
 	Note note;
 	Chord chord;
 	Direction direction;

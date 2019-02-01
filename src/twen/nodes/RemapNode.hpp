@@ -17,6 +17,20 @@ public:
 		return Utils::remap(get(0), fromMin, fromMax, toMin, toMax);
 	}
 
+	void save(JSON& json) override {
+		Node::save(json);
+		json["from"] = { fromMin, fromMax };
+		json["to"] = { toMin, toMax };
+	}
+
+	void load(JSON json) override {
+		Node::load(json);
+		fromMin = json["from"][0];
+		fromMax = json["from"][1];
+		toMin = json["to"][0];
+		toMax = json["to"][1];
+	}
+
 	float fromMin, fromMax, toMin, toMax;
 };
 

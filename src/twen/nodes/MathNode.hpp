@@ -25,16 +25,30 @@ public:
 	float sample(NodeGraph *graph) override {
 		float _a = connected(0) ? get(0) : a;
 		float _b = connected(1) ? get(1) : b;
-		float _out;
+		float _out = 0.0f;
 
 		switch (op) {
-			case Add: _out = a + b; break;
-			case Sub: _out = a - b; break;
-			case Mul: _out = a * b; break;
-			case Neg: _out = -a; break;
-			case Average: _out = (a + b) * 0.5f; break;
+			case Add: _out = _a + _b; break;
+			case Sub: _out = _a - _b; break;
+			case Mul: _out = _a * _b; break;
+			case Neg: _out = -_a; break;
+			case Average: _out = (_a + _b) * 0.5f; break;
+			default: break;
 		}
 		return _out;
+	}
+
+	void save(JSON& json) override {
+		Node::save(json);
+		json["op"] = int(op);
+		json["values"] = { a, b };
+	}
+
+	void load(JSON json) override {
+		Node::load(json);
+		op = MathOp(json["op"].get<int>());
+		a = json["values"][0];
+		b = json["values"][1];
 	}
 
 	MathOp op;

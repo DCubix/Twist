@@ -40,7 +40,7 @@ bool Splitter(bool split_vertically, float thickness, float* size1, float* size2
 
 bool Knob(const char* label, float* p_value, float v_min, float v_max) {
 	if (KnobTex == nullptr) {
-		KnobTex = new TTex(out_data, out_size);
+		KnobTex = new TTex(knob_data, knob_size);
 	}
 
 	ImGuiWindow* window = GetCurrentWindow();
@@ -52,22 +52,23 @@ bool Knob(const char* label, float* p_value, float v_min, float v_max) {
 	ImGuiStyle& style = ImGui::GetStyle();
 	const ImGuiID id = window->GetID(label);
 
-	const float width = 32.0f;
+	const float width = 40.0f;
+
 	ImVec2 pos = ImGui::GetCursorScreenPos();
 	float line_height = ImGui::GetTextLineHeight();
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
-	// ImGui::BeginGroup();
-	// ImGui::PushItemWidth(width);
+	ImGui::BeginGroup();
+	ImGui::PushItemWidth(width);
 
-	// char ilbl[128] = {0};
-	// ImFormatString(ilbl, 128, "##drag%s", label);
-	// ImGui::PushStyleColor(ImGuiCol_FrameBg, ImGui::GetColorU32(ImGuiCol_TitleBgCollapsed));
-	// bool in_drag = ImGui::DragFloat(ilbl, p_value, 0.01f, v_min, v_max);
-	// ImGui::PopStyleColor();
+	char ilbl[128] = {0};
+	ImFormatString(ilbl, 128, "##drag%s", label);
+	ImGui::PushStyleColor(ImGuiCol_FrameBg, ImGui::GetColorU32(ImGuiCol_TitleBgCollapsed));
+	ImGui::DragFloat(ilbl, p_value, 0.01f, v_min, v_max);
+	ImGui::PopStyleColor();
+	ImGui::PopItemWidth();
 
-	// ImGui::PopItemWidth();
-	ImGui::InvisibleButton(label, ImVec2(width, width + line_height + style.ItemInnerSpacing.y));
+	ImGui::InvisibleButton(label, ImVec2(width, width + style.ItemInnerSpacing.y));
 
 	bool value_changed = false;
 	bool is_active = ImGui::IsItemActive();
@@ -82,7 +83,7 @@ bool Knob(const char* label, float* p_value, float v_min, float v_max) {
 		value_changed = true;
 	}
 
-	// ImGui::EndGroup();
+	ImGui::EndGroup();
 
 	float t = (*p_value - v_min) / (v_max - v_min);
 
@@ -106,8 +107,8 @@ bool Knob(const char* label, float* p_value, float v_min, float v_max) {
 
 	draw_list->AddImage(
 		(ImTextureID)(KnobTex->id()),
-		pos + ImVec2(0, 0),
-		pos + ImVec2(width, width),
+		pos + ImVec2(0, line_height + style.ItemInnerSpacing.y),
+		pos + ImVec2(width, width + line_height + style.ItemInnerSpacing.y),
 		ImVec2(tw * (index % 10), th * (index / 10)),
 		ImVec2(tw * (index % 10) + tw, th * (index / 10) + th)
 	);

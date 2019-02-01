@@ -38,6 +38,22 @@ public:
 		return m_adsr.sample();
 	}
 
+	void save(JSON& json) override {
+		Node::save(json);
+		json["a"] = a;
+		json["d"] = d;
+		json["s"] = s;
+		json["r"] = r;
+	}
+
+	void load(JSON json) override {
+		Node::load(json);
+		a = json["a"];
+		d = json["d"];
+		s = json["s"];
+		r = json["r"];
+	}
+
 	float a, d, s, r;
 
 private:

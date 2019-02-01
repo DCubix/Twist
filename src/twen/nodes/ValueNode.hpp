@@ -12,6 +12,16 @@ public:
 		return value;
 	}
 
+	void save(JSON& json) override {
+		Node::save(json);
+		json["value"] = value;
+	}
+
+	void load(JSON json) override {
+		Node::load(json);
+		value = json["value"];
+	}
+
 	float value;
 };
 

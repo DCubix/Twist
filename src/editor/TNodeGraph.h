@@ -20,20 +20,13 @@ struct TNode {
 	bool open, selected;
 	Node *node;
 
-	ImVec2 inputPos(u32 s, float radius, bool snap=false) const {
+	ImVec2 pos(u32 s, float radius, bool snap=false, bool right=false) const {
 		ImVec2 p = snap ? gridPos : ImVec2(bounds.x, bounds.y);
-		float y = (s * (radius*2 + 4));
-		return ImVec2(p.x, p.y + y);
-	}
-	ImVec2 outputPos(u32 s, float radius, bool snap=false) const {
-		ImVec2 p = snap ? gridPos : ImVec2(bounds.x, bounds.y);
-		float y = (s * (radius*2 + 4));
-		return ImVec2(p.x + size().x, p.y + y);
+		float y = open ? (s * (radius*2 + 4)) : (s * radius * 2);
+		return ImVec2(right ? p.x + bounds.z : p.x, p.y + y);
 	}
 	ImVec2 size() const { return ImVec2(bounds.z, bounds.w); }
 
-	virtual void save(JSON& json);
-	virtual void load(JSON json);
 };
 
 struct TConnection {
@@ -66,6 +59,9 @@ public:
 	NodeGraph* actualNodeGraph() { return m_actualNodeGraph.get(); }
 	TUndoRedo* undoRedo() { return m_undoRedo.get(); }
 	Str name() const { return m_name; }
+
+	void fromJSON(JSON json);
+	void toJSON(JSON& json);
 
 protected:
 	Vec<const char*> getSampleNames();

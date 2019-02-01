@@ -1,6 +1,7 @@
 #include "TNodeGraph.h"
 
 #include <algorithm>
+#include <iomanip>
 #include <utility>
 
 #include "TCommands.h"
@@ -125,16 +126,105 @@ TNode* TNodeGraph::getActiveNode() {
 }
 
 void TNodeGraph::load(const Str& fileName) {
-	// TODO: Implement Loading
-	m_saved = true;
-	m_fileName = fileName;
+	JSON json;
+
+	std::ifstream fp(fileName);
+	if (fp.good()) {
+		fp >> json;
+		fromJSON(json);
+		fp.close();
+
+		m_saved = true;
+		m_fileName = fileName;
+	}
 }
 
 void TNodeGraph::save(const std::string& fileName) {
-	// TODO: Implement Saving
+	JSON json; toJSON(json);
 
-	m_saved = true;
-	m_fileName = fileName;
+	std::ofstream fp(fileName);
+	if (fp.good()) {
+		fp << std::setw(4) << json << std::endl;
+		fp.close();
+
+		m_saved = true;
+		m_fileName = fileName;
+	}
+}
+
+void TNodeGraph::fromJSON(JSON json) {
+	m_name = json["title"];
+	m_scrolling.x = json["scroll"][0];
+	m_scrolling.y = json["scroll"][1];
+
+	m_tnodes.clear();
+	m_undoRedo.reset(new TUndoRedo());
+
+	// Load the nodes
+	JSON nodes = json["nodes"];
+	Map<u32, TNode*> idnodeMap;
+	if (!nodes.is_array()) return;
+
+	for (u32 i = 0; i < nodes.size(); i++) {
+		JSON node = nodes[i];
+
+		Str type = node["type"];
+		float x = node["pos"][0];
+		float y = node["pos"][1];
+
+		TNode* n = addNode(x, y, type, node, false);
+		n->node->load(node);
+		n->open = node["open"];
+		n->selected = node["selected"];
+		idnodeMap[i] = n;
+	}
+
+	// Connect the nodes
+	JSON connections = json["connections"];
+	if (!connections.is_array()) return;
+
+	for (u32 i = 0; i < connections.size(); i++) {
+		JSON conn = connections[i];
+
+		TNode *from = idnodeMap[conn["from"].get<u32>()];
+		TNode *to = idnodeMap[conn["to"].get<u32>()];
+		u32 slot = conn["slot"];
+		connect(from, to, slot, false);
+	}
+}
+
+void TNodeGraph::toJSON(JSON& json) {
+	json["title"] = m_name;
+	json["scroll"] = { m_scrolling.x, m_scrolling.y };
+
+	// Save the Nodes
+	JSON nodes = JSON::array();
+	Map<Node*, u32> nodeidMap;
+
+	u32 i = 0;
+	for (auto&& [k, v] : m_tnodes) {
+		JSON node; k->save(node);
+		node["pos"] = { v->bounds.x, v->bounds.y };
+		node["open"] = v->open;
+		node["selected"] = v->selected;
+		nodes[i] = node;
+		nodeidMap[k] = i;
+		i++;
+	}
+	json["nodes"] = nodes;
+
+	// Save the Connections
+	i = 0;
+	JSON connections = JSON::array();
+
+	for (auto&& conn : m_actualNodeGraph->connections()) {
+		JSON jconn;
+		jconn["from"] = nodeidMap[conn->from];
+		jconn["to"] = nodeidMap[conn->to];
+		jconn["slot"] = conn->toSlot;
+		connections[i++] = jconn;
+	}
+	json["connections"] = connections;
 }
 
 Vec<const char*> TNodeGraph::getSampleNames() {
@@ -145,18 +235,4 @@ Vec<const char*> TNodeGraph::getSampleNames() {
 		sln.push_back(title);
 	}
 	return sln;
-}
-
-void TNode::save(JSON& json) {
-	json["type"] = node->name();
-	json["open"] = open;
-	json["pos"] = { bounds.x, bounds.y };
-	json["selected"] = selected;
-}
-
-void TNode::load(JSON json) {
-	open = json["open"];
-	selected = json["selected"];
-	bounds.x = json["pos"][0];
-	bounds.y = json["pos"][1];
 }

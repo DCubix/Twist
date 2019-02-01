@@ -39,6 +39,9 @@ public:
 
 	virtual float sample(NodeGraph *graph) { return 0.0f; }
 
+	virtual void save(JSON& json);
+	virtual void load(JSON json);
+
 	bool connected(u32 i) const { return m_inputs[i].connected; }
 	float get(u32 i) { return m_inputs[i].value; }
 
@@ -46,13 +49,18 @@ public:
 	Vec<Str> inNames() const { return m_inputNames; }
 
 	Str name() const { return m_name; }
+	Str typeName() const { return m_typeName; }
 	TypeIndex getType() const { return m_type; }
 
 	Arr<float, TWEN_NODE_BUFFER_SIZE> buffer() { return m_buffer; }
 
+	NodeGraph* graph() { return m_graph; }
+
 protected:
-	Str m_name;
+	Str m_name, m_typeName;
 	TypeIndex m_type;
+
+	NodeGraph *m_graph;
 
 	Vec<Str> m_inputNames;
 	Vec<NodeInput> m_inputs;

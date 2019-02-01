@@ -46,6 +46,18 @@ public:
 		return _out;
 	}
 
+	void save(JSON& json) override {
+		Node::save(json);
+		json["cutOff"] = cutOff;
+		json["filter"] = int(filter);
+	}
+
+	void load(JSON json) override {
+		Node::load(json);
+		cutOff = json["cutOff"];
+		filter = Filter(json["filter"].get<int>());
+	}
+
 	float cutOff;
 	Filter filter;
 

@@ -18,6 +18,18 @@ public:
 		return m_wv.sample(get(0), feedBack, delay);
 	}
 
+	void save(JSON& json) override {
+		Node::save(json);
+		json["feedBack"] = feedBack;
+		json["delay"] = delay;
+	}
+
+	void load(JSON json) override {
+		Node::load(json);
+		feedBack = json["feedBack"];
+		delay = json["delay"];
+	}
+
 	float feedBack, delay;
 
 private:

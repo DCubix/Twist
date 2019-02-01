@@ -14,6 +14,18 @@ public:
 		return Utils::noteFrequency(u32(note) % 12, oct);
 	}
 
+	void save(JSON& json) override {
+		Node::save(json);
+		json["note"] = int(note);
+		json["oct"] = oct;
+	}
+
+	void load(JSON json) override {
+		Node::load(json);
+		note = Note(json["note"].get<int>());
+		oct = json["oct"];
+	}
+
 	Note note;
 	u32 oct;
 };

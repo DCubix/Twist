@@ -60,6 +60,18 @@ public:
 		return 0.0f;
 	}
 
+	void save(JSON& json) override {
+		Node::save(json);
+		json["frequency"] = frequency;
+		json["waveForm"] = int(waveForm);
+	}
+
+	void load(JSON json) override {
+		Node::load(json);
+		frequency = json["frequency"];
+		waveForm = WaveForm(json["waveForm"].get<int>());
+	}
+
 	float frequency;
 	WaveForm waveForm;
 

@@ -65,7 +65,7 @@ private:
 
 	bool m_openContextMenu, m_selectingNodes = false,
 		m_nodeActive, m_nodeAnyActive, m_nodeOldActive,
-		m_nodesMoving, m_snapToGrid = false, m_snapToGridDisabled = false;
+		m_nodesMoving, m_snapToGrid = false, m_snapToGridDisabled = false, m_editingSamples = false;
 	float m_oldFontWindowScale, m_currentFontWindowScale;
 
 	Vec<TNode*> m_moving;

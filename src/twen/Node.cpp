@@ -21,3 +21,11 @@ void Node::addInput(const Str& name, float def) {
 void Node::updateBuffer(float val) {
 	m_buffer[m_bufferPos++ % TWEN_NODE_BUFFER_SIZE] = val;
 }
+
+void Node::save(JSON& json) {
+	json["type"] = typeName();
+}
+
+void Node::load(JSON json) {
+
+}

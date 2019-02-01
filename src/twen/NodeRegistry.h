@@ -48,6 +48,7 @@ public:
 		}
 		Node* nd = factories[typeName].ctor(params);
 		nd->m_name = factories[typeName].title;
+		nd->m_typeName = factories[typeName].type;
 		nd->m_type = factories[typeName].typeID;
 		return nd;
 	}
