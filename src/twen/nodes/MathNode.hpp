@@ -22,9 +22,9 @@ public:
 		addInput("B"); // B
 	}
 
-	float sample(NodeGraph *graph) override {
-		float _a = connected(0) ? get(0) : a;
-		float _b = connected(1) ? get(1) : b;
+	Value sample(NodeGraph *graph) override {
+		float _a = connected(0) ? in(0).value() : a;
+		float _b = connected(1) ? in(1).value() : b;
 		float _out = 0.0f;
 
 		switch (op) {
@@ -35,7 +35,7 @@ public:
 			case Average: _out = (_a + _b) * 0.5f; break;
 			default: break;
 		}
-		return _out;
+		return Value(_out);
 	}
 
 	void save(JSON& json) override {

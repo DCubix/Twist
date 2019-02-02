@@ -10,8 +10,8 @@ public:
 		: Node(), note(note), oct(oct)
 	{}
 
-	float sample(NodeGraph *graph) override {
-		return Utils::noteFrequency(u32(note) % 12, oct);
+	Value sample(NodeGraph *graph) override {
+		return Value(Utils::noteFrequency(u32(note) % 12, oct));
 	}
 
 	void save(JSON& json) override {

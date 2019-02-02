@@ -17,7 +17,7 @@ struct TNode {
 	ImVec4 bounds;
 	ImRect selectionBounds;
 	ImVec2 gridPos;
-	bool open, selected;
+	bool open, selected, closeable;
 	Node *node;
 
 	ImVec2 pos(u32 s, float radius, bool snap=false, bool right=false) const {

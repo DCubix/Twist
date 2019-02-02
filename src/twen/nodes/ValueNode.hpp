@@ -8,8 +8,8 @@ class ValueNode : public Node {
 public:
 	ValueNode(float v) : Node(), value(v) {}
 
-	float sample(NodeGraph *graph) override {
-		return value;
+	Value sample(NodeGraph *graph) override {
+		return Value(value);
 	}
 
 	void save(JSON& json) override {

@@ -23,7 +23,11 @@
 #include "twen/NodeGraph.h"
 #include "twen/Node.h"
 
+#if defined(__MINGW32__) || defined(__MINGW64__)
 #include "SDL2/SDL.h"
+#else
+#include "SDL.h"
+#endif
 
 #define MAX_RECENT_FILES 6
 

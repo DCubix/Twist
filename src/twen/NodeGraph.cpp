@@ -12,7 +12,8 @@
 NodeGraph::NodeGraph()
 	: m_gain(1.0f), m_time(0.0f),
 	  m_sampleRate(44100.0f), m_bpm(120.0f),
-	  m_outputNode(nullptr)
+	  m_outputNode(nullptr),
+	  m_bars(4), m_noteIndex(0)
 {
 	m_globalStorage.fill(0.0f);
 }
@@ -140,13 +141,15 @@ float NodeGraph::sample() {
 		i++;
 		//
 
-		float sample = conn->from->m_lastSample;
+		Value sample = conn->from->m_lastSample;
 		if (!conn->from->m_solved) {
 			sample = conn->from->sample(this);
 			conn->from->m_solved = true;
+			conn->from->m_lastSample = sample;
 		}
-		conn->from->updateBuffer(sample);
-		conn->to->m_inputs[conn->toSlot].value = sample;
+		conn->from->updateBuffer(sample.value * sample.velocity * float(sample.gate));
+
+		conn->to->in(conn->toSlot).data = sample;
 	}
 
 	// Cleanup
@@ -165,10 +168,13 @@ float NodeGraph::sample() {
 
 	m_time += step;
 	if (m_time >= delay) {
+		m_noteIndex++;
+		m_noteIndex %= (m_bars * 4);
 		m_time = 0.0f;
 	}
 
-	return m_outputNode != nullptr ? m_outputNode->sample(this) : 0.0f;
+	Value s = m_outputNode != nullptr ? m_outputNode->sample(this) : Value();
+	return s.value;
 }
 
 void NodeGraph::addSample(const Str& fname, const Vec<float>& data, float sr) {

@@ -13,8 +13,9 @@ class ButtonNode : public Node {
 public:
 	ButtonNode() : Node(), active(false) {	}
 
-	float sample(NodeGraph *graph) override {
-		return active ? 1.0f : 0.0f;
+	Value sample(NodeGraph *graph) override {
+		float val = active ? 1.0f : 0.0f;
+		return Value(val, val, active);
 	}
 
 	bool active;

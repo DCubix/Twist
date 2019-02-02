@@ -16,14 +16,14 @@ public:
 		m_trigger = false;
 	}
 
-	float sample(NodeGraph *graph) override {
+	Value sample(NodeGraph *graph) override {
 		float sr = graph->sampleRate();
 		m_adsr.attack(a * sr);
 		m_adsr.decay(d * sr);
 		m_adsr.sustain(s * sr);
 		m_adsr.release(r * sr);
 
-		if (get(0) >= 0.5f) {
+		if (in(0).gate()) {
 			if (!m_trigger) {
 				m_adsr.gate(true);
 				m_trigger = true;

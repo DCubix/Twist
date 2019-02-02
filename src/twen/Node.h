@@ -19,12 +19,25 @@ struct Connection {
 	u32 toSlot;
 };
 
+struct Value {
+	float value, velocity;
+	bool gate;
+
+	Value(float val = 0.0f, float vel = 1.0f, bool gate = true)
+		: value(val), velocity(vel), gate(gate)
+	{}
+};
+
 struct NodeInput {
-	float value;
+	Value data;
 	bool connected;
 	u32 id;
 
-	NodeInput(float value = 0.0f) : connected(false), id(0), value(value) {}
+	NodeInput(float value = 0.0f) : connected(false), id(0), data(value) {}
+
+	float& value() { return data.value; }
+	float& velocity() { return data.velocity; }
+	bool& gate() { return data.gate; }
 };
 
 class NodeGraph;
@@ -37,13 +50,13 @@ class Node {
 public:
 	Node();
 
-	virtual float sample(NodeGraph *graph) { return 0.0f; }
+	virtual Value sample(NodeGraph *graph) { return 0.0f; }
 
 	virtual void save(JSON& json);
 	virtual void load(JSON json);
 
 	bool connected(u32 i) const { return m_inputs[i].connected; }
-	float get(u32 i) { return m_inputs[i].value; }
+	NodeInput& in(u32 i) { return m_inputs[i]; }
 
 	Vec<NodeInput> inputs() const { return m_inputs; }
 	Vec<Str> inNames() const { return m_inputNames; }
@@ -69,7 +82,7 @@ protected:
 	u32 m_bufferPos;
 
 	bool m_solved;
-	float m_lastSample;
+	Value m_lastSample;
 
 	void addInput(const Str& name, float def = 0.0f);
 	void updateBuffer(float val);

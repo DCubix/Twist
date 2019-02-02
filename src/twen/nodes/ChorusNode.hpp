@@ -21,15 +21,15 @@ public:
 		addInput("In"); // Input
 	}
 
-	float sample(NodeGraph *graph) override {
+	Value sample(NodeGraph *graph) override {
 		m_lfo.sampleRate(graph->sampleRate());
 		m_wv.sampleRate(graph->sampleRate());
 
 		float sgn = m_lfo.sample(rate) * depth;
 		float sgnDT = sgn * delay;
 		dt = sgnDT + delay;
-		float _out = m_wv.sample(get(0), 0.0f, dt);
-		return ((_out + get(0)) * 0.5f);
+		float _out = m_wv.sample(in(0).value(), 0.0f, dt);
+		return Value(((_out + in(0).value()) * 0.5f));
 	}
 
 	void save(JSON& json) override {

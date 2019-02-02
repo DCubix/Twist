@@ -15,7 +15,7 @@ static void Oscillator_gui(Node* node) {
 	ImGui::PushItemWidth(80);
 	ImGui::Combo("WaveForm", (int*)&n->waveForm, WF, 5);
 	if (n->connected(1)) {
-		ImGui::Text("Freq.: %.2f", n->get(1));
+		ImGui::Text("Freq.: %.2f", n->in(1).value());
 	} else {
 		ImGui::DragFloat("Freq.", &n->frequency, 0.1f, 30.0f, 15000.0f);
 	}

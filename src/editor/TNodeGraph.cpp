@@ -13,6 +13,11 @@ TNodeGraph::TNodeGraph(NodeGraph* ang) {
 	m_actualNodeGraph = Ptr<NodeGraph>(std::move(ang));
 	m_name = "Untitled";
 	m_undoRedo = Ptr<TUndoRedo>(new TUndoRedo());
+
+	JSON json;
+	json["gain"] = 1.0f;
+	TNode *out = addNode(320, 240, "OutNode", json, false);
+	out->closeable = false;
 }
 
 TNode* TNodeGraph::addNode(int x, int y,
@@ -21,6 +26,7 @@ TNode* TNodeGraph::addNode(int x, int y,
 	LogI("Adding editor node '", type, "' at x=", x, "y=", y);
 	TNode* n = new TNode();
 	n->node = m_actualNodeGraph->add(NodeBuilder::createNode(type, params));
+	n->closeable = true;
 	n->bounds.x = x;
 	n->bounds.y = y;
 	n->gridPos.x = x;
@@ -157,7 +163,6 @@ void TNodeGraph::fromJSON(JSON json) {
 	m_scrolling.x = json["scroll"][0];
 	m_scrolling.y = json["scroll"][1];
 
-	m_tnodes.clear();
 	m_undoRedo.reset(new TUndoRedo());
 
 	// Load the nodes
@@ -165,6 +170,14 @@ void TNodeGraph::fromJSON(JSON json) {
 	Map<u32, TNode*> idnodeMap;
 	if (!nodes.is_array()) return;
 
+	TNode* outNode = m_tnodes.begin()->second.get();
+	outNode->bounds.x = json["outPos"][0];
+	outNode->bounds.y = json["outPos"][1];
+	outNode->gridPos.x = json["outPos"][0];
+	outNode->gridPos.y = json["outPos"][1];
+	idnodeMap[0] = outNode;
+
+	u32 nodeID = 1;
 	for (u32 i = 0; i < nodes.size(); i++) {
 		JSON node = nodes[i];
 
@@ -176,7 +189,7 @@ void TNodeGraph::fromJSON(JSON json) {
 		n->node->load(node);
 		n->open = node["open"];
 		n->selected = node["selected"];
-		idnodeMap[i] = n;
+		idnodeMap[nodeID++] = n;
 	}
 
 	// Connect the nodes
@@ -197,18 +210,23 @@ void TNodeGraph::toJSON(JSON& json) {
 	json["title"] = m_name;
 	json["scroll"] = { m_scrolling.x, m_scrolling.y };
 
+	TNode* outNode = m_tnodes.begin()->second.get();
+	json["outPos"] = { outNode->gridPos.x, outNode->gridPos.y };
+
 	// Save the Nodes
 	JSON nodes = JSON::array();
 	Map<Node*, u32> nodeidMap;
 
 	u32 i = 0;
 	for (auto&& [k, v] : m_tnodes) {
+		if (k->typeName() == "OutNode") continue;
+
 		JSON node; k->save(node);
-		node["pos"] = { v->bounds.x, v->bounds.y };
+		node["pos"] = { v->gridPos.x, v->gridPos.y };
 		node["open"] = v->open;
 		node["selected"] = v->selected;
 		nodes[i] = node;
-		nodeidMap[k] = i;
+		nodeidMap[k] = i+1;
 		i++;
 	}
 	json["nodes"] = nodes;

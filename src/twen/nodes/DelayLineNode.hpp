@@ -13,9 +13,9 @@ public:
 		addInput("In"); // Input
 	}
 
-	float sample(NodeGraph *graph) override {
+	Value sample(NodeGraph *graph) override {
 		m_wv.sampleRate(graph->sampleRate());
-		return m_wv.sample(get(0), feedBack, delay);
+		return Value(m_wv.sample(in(0).value(), feedBack, delay));
 	}
 
 	void save(JSON& json) override {

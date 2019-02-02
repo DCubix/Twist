@@ -15,13 +15,13 @@ static void Math_gui(Node* node) {
 	ImGui::PushItemWidth(80);
 	ImGui::Combo("Op", (int*)&n->op, OPS, 5);
 	if (n->connected(0)) {
-		ImGui::Text("A: %.2f", n->get(0));
+		ImGui::Text("A: %.2f", n->in(0).value());
 	} else {
 		ImGui::InputFloat("A", &n->a, 0.01f, 0.1f);
 	}
 
 	if (n->connected(1)) {
-		ImGui::Text("B: %.2f", n->get(1));
+		ImGui::Text("B: %.2f", n->in(1).value());
 	} else {
 		ImGui::InputFloat("B", &n->b, 0.01f, 0.1f);
 	}

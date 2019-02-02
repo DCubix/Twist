@@ -42,6 +42,7 @@
 #include "nodes/ValueNode.hpp"
 #include "nodes/WriterNode.hpp"
 #include "nodes/ButtonNode.hpp"
+#include "nodes/SequencerNode.hpp"
 //#include "nodes/SamplerNode.hpp"
 
 #define NODE_SLOT_RADIUS(x) (4.0f * x)
@@ -141,11 +142,16 @@ TNodeEditor::TNodeEditor() {
 	m_guis[RemapNode::typeID()] = Remap_gui;
 	m_guis[ValueNode::typeID()] = Value_gui;
 	m_guis[ButtonNode::typeID()] = Button_gui;
+	m_guis[SequencerNode::typeID()] = Sequencer_gui;
 //	m_guis[SamplerNode::typeID()] = Sampler_gui;
 	//
 
 	NodeBuilder::registerType<ButtonNode>("Generators", TWEN_NODE_FAC {
 		return new ButtonNode();
+	});
+
+	NodeBuilder::registerType<SequencerNode>("Generators", TWEN_NODE_FAC {
+		return new SequencerNode(json);
 	});
 
 	// Initialize MIDI
@@ -234,6 +240,7 @@ void TNodeEditor::menuActionSnapAllToGrid() {
 		TNode* nd = v.get();
 		nd->gridPos.x = (int(nd->bounds.x) / 8) * 8;
 		nd->gridPos.y = (int(nd->bounds.y) / 8) * 8;
+
 		movs.push_back(nd);
 		movDel[nd] = TMoveCommand::Point(
 			nd->gridPos.x - nd->bounds.x,
@@ -425,19 +432,21 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 //				int cy = int(node->bounds.y + node->bounds.w);
 //				JSON params; node->save(params);
 //				params["open"] = true;
-//				m_activeNode = graph->addNode(cx, cy, nodeR->name(), params, 0);
+//				m_activeNode = graph->addNode(cx, cy, nodeR->typeName(), params, 0);
 //			}
 //			if (ImGui::IsItemHovered()) {
 //				ImGui::SetTooltip("Clone");
 //			}
 //			ImGui::SameLine();
-			if (ImGui::Button("X", ImVec2(15, 15))) {
-				toDelete.push_back(node);
-				m_hoveredNode = nullptr;
-				m_activeNode = nullptr;
-			}
-			if (ImGui::IsItemHovered()) {
-				ImGui::SetTooltip("Delete");
+			if (node->closeable) {
+				if (ImGui::Button("X", ImVec2(15, 15))) {
+					toDelete.push_back(node);
+					m_hoveredNode = nullptr;
+					m_activeNode = nullptr;
+				}
+				if (ImGui::IsItemHovered()) {
+					ImGui::SetTooltip("Delete");
+				}
 			}
 
 			ImGui::PopID();
@@ -868,6 +877,11 @@ void TNodeEditor::draw(int w, int h) {
 				showAbout = true;
 			}
 			ImGui::EndMenu();
+		}
+
+		if (m_nodeGraph) {
+			ImGui::SameLine();
+			ImGui::Text("%d", m_nodeGraph->actualNodeGraph()->index());
 		}
 
 		ImGui::SameLine(ImGui::GetWindowContentRegionMax().x-32);

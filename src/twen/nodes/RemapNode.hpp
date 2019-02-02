@@ -13,8 +13,8 @@ public:
 		addInput("In");
 	}
 
-	float sample(NodeGraph *graph) override {
-		return Utils::remap(get(0), fromMin, fromMax, toMin, toMax);
+	Value sample(NodeGraph *graph) override {
+		return Value(Utils::remap(in(0).value(), fromMin, fromMax, toMin, toMax));
 	}
 
 	void save(JSON& json) override {

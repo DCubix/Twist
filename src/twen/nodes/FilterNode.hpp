@@ -18,10 +18,10 @@ public:
 		addInput("CutOff"); // Cutoff
 	}
 
-	float sample(NodeGraph *graph) override {
-		float co = connected(1) ? get(1) : cutOff;
+	Value sample(NodeGraph *graph) override {
+		float co = connected(1) ? in(1).value() : cutOff;
 		float _co = std::min(std::max(co, 20.0f), 20000.0f);
-		float _in = get(0);
+		float _in = in(0).value();
 
 		switch (filter) {
 			case LowPass: {
@@ -43,7 +43,7 @@ public:
 				_out = result;
 			} break;
 		}
-		return _out;
+		return Value(_out);
 	}
 
 	void save(JSON& json) override {

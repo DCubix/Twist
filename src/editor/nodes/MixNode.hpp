@@ -13,7 +13,7 @@ static void Mix_gui(Node* node) {
 	ImGui::PushItemWidth(80);
 	ImGui::Spacing();
 	if (n->connected(2)) {
-		ImGui::Text("Fac.: %.2f", n->get(2));
+		ImGui::Text("Fac.: %.2f", n->in(2).value());
 	} else {
 		ImGui::SliderFloat("Fac.", &n->factor, 0, 1);
 	}

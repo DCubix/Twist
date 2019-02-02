@@ -1,8 +1,13 @@
 #ifndef T_APPLICATION_H
 #define T_APPLICATION_H
 
+#if defined(__MINGW32__) || defined(__MINGW64__)
 #include "SDL2/SDL.h"
 #include "SDL2/SDL_audio.h"
+#else
+#include "SDL.h"
+#include "SDL_audio.h"
+#endif
 
 #include "../imgui/imgui.h"
 #include "../imgui/imgui_impl.h"

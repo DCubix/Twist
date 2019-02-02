@@ -44,6 +44,11 @@ public:
 	float bpm() const { return m_bpm; }
 	void bpm(float bpm) { m_bpm = bpm; }
 
+	u32 index() const { return m_noteIndex; }
+
+	u32 bars() const { return m_bars; }
+	void bars(u32 b) { m_bars = b; }
+
 	float sampleRate() const { return m_sampleRate; }
 
 	float time();
@@ -60,6 +65,7 @@ private:
 	std::mutex m_lock;
 
 	float m_gain, m_time, m_sampleRate, m_bpm;
+	u32 m_noteIndex, m_bars;
 
 	Arr<float, TWEN_GLOBAL_STORAGE_SIZE> m_globalStorage;
 

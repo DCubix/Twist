@@ -19,8 +19,8 @@ public:
 		}
 	}
 
-	float sample(NodeGraph *graph) override {
-		return sampleData.valid() ? sampleData.sampleDirect(graph->sampleRate()) : 0.0f;
+	Value sample(NodeGraph *graph) override {
+		return Value(sampleData.valid() ? sampleData.sampleDirect(graph->sampleRate()) : 0.0f);
 	}
 
 	void save(JSON& json) override {

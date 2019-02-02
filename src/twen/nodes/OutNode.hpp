@@ -12,7 +12,7 @@ public:
 		m_envelope = 100.0f;
 	}
 
-	float sample(NodeGraph *graph) override {
+	Value sample(NodeGraph *graph) override {
 		// Compressor
 		// from https://github.com/manpat/voi-synth/blob/master/src/context.rs#L182
 		// (thanks manpat!)
@@ -22,7 +22,7 @@ public:
 		float attack =  1.0f - std::exp((-1.0f / (ATTACK_TIME * graph->sampleRate())));
 		float release = 1.0f - std::exp((-1.0f / (RELEASE_TIME * graph->sampleRate())));
 
-		float input = get(0) * gain;
+		float input = in(0).value() * gain;
 
 		m_signalDC = Utils::lerp(m_signalDC, input, 0.5f / graph->sampleRate());
 		input -= m_signalDC;
@@ -35,7 +35,7 @@ public:
 		}
 		m_envelope = std::max(m_envelope, 1.0f);
 
-		return std::min(std::max(input * 0.6f / m_envelope, -1.0f), 1.0f);
+		return Value(std::min(std::max(input * 0.6f / m_envelope, -1.0f), 1.0f));
 	}
 
 	void save(JSON& json) override {

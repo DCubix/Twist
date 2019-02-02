@@ -15,7 +15,7 @@ static void Filter_gui(Node* node) {
 	ImGui::PushItemWidth(80);
 	ImGui::Combo("Filter", (int*)&n->filter, FILTERS, 2);
 	if (n->connected(1)) {
-		ImGui::Text("CutOff: %.2f", n->get(1));
+		ImGui::Text("CutOff: %.2f", n->in(1).value());
 	} else {
 		ImGui::DragFloat("CutOff", &n->cutOff, 1.0f, 20.0f, 20000.0f);
 	}

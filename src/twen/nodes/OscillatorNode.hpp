@@ -39,25 +39,26 @@ public:
 		addInput("Freq"); // Frequency
 	}
 
-	float sample(NodeGraph *graph) override {
-		float freqMod = connected(0) ? get(0) : 0.0f;
-		float freqVal = connected(1) ? get(1) : frequency;
+	Value sample(NodeGraph *graph) override {
+		float freqMod = connected(0) ? in(0).value() : 0.0f;
+		float freqVal = connected(1) ? in(1).value() : frequency;
 		float freq = m_phase.advance(freqVal, graph->sampleRate()) + freqMod;
 		float nfreq = freq / PI2;
+		float amp = connected(1) ? in(1).velocity() : 1.0f;
 
 		switch (waveForm) {
-			case Sine: return std::sin(freq);
-			case Square: return (std::sin(freq) > 0.0f ? 1.0f : -1.0f);
-			case Saw: return (std::fmod(nfreq, 1.0f) * 2.0f - 1.0f);
-			case Triangle: return (std::asin(std::cos(freq)) / 1.5708f);
+			case Sine: return Value(std::sin(freq) * amp);
+			case Square: return Value((std::sin(freq) > 0.0f ? 1.0f : -1.0f) * amp);
+			case Saw: return Value((std::fmod(nfreq, 1.0f) * 2.0f - 1.0f) * amp);
+			case Triangle: return Value((std::asin(std::cos(freq)) / 1.5708f) * amp);
 			case Noise:
 				float dt = std::fmod(freq, frequency);
 				if (dt <= PI) {
 					m_lastNoise = (float(rand() % RAND_MAX) / float(RAND_MAX)) * 2.0f - 1.0f;
 				}
-				return m_lastNoise * 0.5f;
+				return Value((m_lastNoise * 0.5f) * amp);
 		}
-		return 0.0f;
+		return Value();
 	}
 
 	void save(JSON& json) override {

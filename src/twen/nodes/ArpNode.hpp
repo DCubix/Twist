@@ -16,6 +16,9 @@ public:
 		Minor7,
 		Nineth,
 		Octave,
+		Sharp5,
+		Dim,
+		Sixth,
 		ChordTypeCount
 	};
 
@@ -33,6 +36,12 @@ public:
 
 	int index(float ntime, int n) {
 		int rn = (int(Utils::lerp(0, n, ntime)) % n);
+		if (prevRN != rn) {
+			gate = false;
+			prevRN = rn;
+		} else {
+			gate = true;
+		}
 
 		switch (direction) {
 			case Up: return rn;
@@ -53,7 +62,7 @@ public:
 		}
 	}
 
-	float sample(NodeGraph *graph) override {
+	Value sample(NodeGraph *graph) override {
 		float ntime = graph->time();
 
 		int noteIn = note;
@@ -93,11 +102,24 @@ public:
 				const int n[] = { 0, 12 };
 				nt = n[INDEX(2)] + int(noteIn);
 			} break;
+			case Sharp5: {
+				const int n[] = { 0, 4, 8 };
+				nt = n[INDEX(3)] + int(noteIn);
+			} break;
+			case Dim: {
+				const int n[] = { 0, 3, 6 };
+				nt = n[INDEX(3)] + int(noteIn);
+			} break;
+			case Sixth: {
+				const int n[] = { 0, 3, 9 };
+				nt = n[INDEX(3)] + int(noteIn);
+			} break;
 			default: break;
 		}
 
-		u32 outNote = nt + (12 * oct);
-		return Utils::noteFrequency(outNote);
+		u32 outNote = u32(nt) + (12 * oct);
+		float value = Utils::noteFrequency(outNote);
+		return Value(value, 1.0f, gate);
 	}
 
 	void save(JSON& json) override {
@@ -122,6 +144,7 @@ public:
 	u32 oct;
 
 private:
+	bool gate = false;
 	int prevNt, prevRN = -1;
 	int prevN = 0, randN = 0;
 };

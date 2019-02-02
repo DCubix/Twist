@@ -8,7 +8,7 @@ Node::Node()
  :	m_solved(false),
 	m_bufferPos(0),
 	m_type(Utils::getTypeIndex<Node>()),
-	m_lastSample(0.0f)
+	m_lastSample(Value())
 {
 	m_buffer.fill(0.0f);
 }

@@ -12,11 +12,11 @@ public:
 		addInput("Fac"); // Fac
 	}
 
-	float sample(NodeGraph *graph) override {
-		float fac = connected(2) ? get(2) : factor;
-		float a = get(0);
-		float b = get(1);
-		return Utils::lerp(a, b, fac);
+	Value sample(NodeGraph *graph) override {
+		float fac = connected(2) ? in(2).value() : factor;
+		float a = in(0).value();
+		float b = in(1).value();
+		return Value(Utils::lerp(a, b, fac));
 	}
 
 	void save(JSON& json) override {
