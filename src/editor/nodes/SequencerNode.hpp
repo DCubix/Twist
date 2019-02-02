@@ -31,7 +31,7 @@ public:
 	}
 
 	Value sample(NodeGraph *graph) override {
-		idx = graph->index();
+		idx = graph->index() % TWIST_SEQUENCER_SIZE;
 		//u32(Utils::lerp(0, TWEN_NODE_BUFFER_SIZE, graph->time())) % TWEN_NODE_BUFFER_SIZE;
 		u32 outNote = 0;
 		float value = 0, vel = 0;

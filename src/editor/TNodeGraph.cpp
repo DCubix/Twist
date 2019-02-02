@@ -163,6 +163,12 @@ void TNodeGraph::fromJSON(JSON json) {
 	m_scrolling.x = json["scroll"][0];
 	m_scrolling.y = json["scroll"][1];
 
+	float bpm = json.value("bpm", 120.0f);
+	u32 bars = json.value("bars", 4);
+
+	m_actualNodeGraph->bpm(bpm);
+	m_actualNodeGraph->bars(bars);
+
 	m_undoRedo.reset(new TUndoRedo());
 
 	// Load the nodes
@@ -212,6 +218,9 @@ void TNodeGraph::toJSON(JSON& json) {
 
 	TNode* outNode = m_tnodes.begin()->second.get();
 	json["outPos"] = { outNode->gridPos.x, outNode->gridPos.y };
+
+	json["bpm"] = m_actualNodeGraph->bpm();
+	json["bars"] = m_actualNodeGraph->bars();
 
 	// Save the Nodes
 	JSON nodes = JSON::array();

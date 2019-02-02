@@ -16,6 +16,7 @@
 #include "TMidi.h"
 #include "TCommands.h"
 #include "TNodeGraph.h"
+#include "TTex.h"
 
 #include "imgui.h"
 
@@ -36,6 +37,7 @@ void midiCallback(double dt, std::vector<uint8_t>* message, void* userData);
 class TNodeEditor {
 public:
 	TNodeEditor();
+	~TNodeEditor();
 
 	void draw(int w, int h);
 
@@ -87,6 +89,8 @@ private:
 
 	Ptr<RtMidiIn> m_MIDIin;
 	Ptr<RtMidiOut> m_MIDIout;
+
+	TTex *m_playIcon, *m_stopIcon;
 
 	std::mutex m_lock;
 };

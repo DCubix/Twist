@@ -18,6 +18,8 @@
 #include "icon_small.h"
 #include "icon_big.h"
 #include "about.h"
+#include "play.h"
+#include "stop.h"
 
 #ifdef WINDOWS
 #define PATH_SEPARATOR '\\'
@@ -113,6 +115,9 @@ TNodeEditor::TNodeEditor() {
 	m_snapToGrid = true;
 	m_snapToGridDisabled = false;
 
+	m_playIcon = nullptr;
+	m_stopIcon = nullptr;
+
 	// Load recent files
 	std::ifstream fp(".recent");
 	if (!fp.bad()) {
@@ -171,6 +176,11 @@ TNodeEditor::TNodeEditor() {
 //		LogE(err.getMessage());
 //	}
 
+}
+
+TNodeEditor::~TNodeEditor() {
+	delete m_playIcon;
+	delete m_stopIcon;
 }
 
 void TNodeEditor::menuActionOpen(const std::string& fileName) {
@@ -357,7 +367,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 			const float d = GetSquaredDistanceToBezierCurve(io.MousePos, p1, cp1, cp2, p2);
 			if (d < hoveredLinkDistSqrThres) {
 				nearestConn = conn.get();
-				draw_list->AddBezierCurve(p1, cp1, cp2, p2, IM_COL32(200, 200, 100, 128), thick*2);
+				draw_list->AddBezierCurve(p1, cp1, cp2, p2, IM_COL32(250, 200, 100, 128), thick*4);
 			}
 		}
 	}
@@ -423,10 +433,6 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, vec2zero);
 			ImGui::PushID("NodeButtons");
 
-			if (ImGui::IsItemHovered()) {
-				ImGui::SetTooltip("Enabled");
-			}
-			ImGui::SameLine();
 //			if (ImGui::Button("C", ImVec2(15, 15))) {
 //				int cx = int(node->bounds.x);
 //				int cy = int(node->bounds.y + node->bounds.w);
@@ -470,7 +476,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 		node->bounds.w = nodeSize.y;
 		ImVec2 node_rect_max = node_rect_min + node->size();
 
-		node->selectionBounds = ImRect(node_rect_min, node_rect_max-node_rect_min);
+		node->selectionBounds = ImRect(node_rect_min, node_rect_max);
 
 		// Display node box
 		draw_list->ChannelsSetCurrent(m_activeNode == node ? 3 : 1); // Background
@@ -638,7 +644,10 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 	m_snapToGridDisabled = false;
 
 	/// Selecting nodes
-	if (!m_nodesMoving && ImGui::IsMouseClicked(0) && !m_connection.active && !ImGui::IsAnyItemActive() && !ImGui::IsAnyItemHovered()) {
+	if (!m_nodesMoving && ImGui::IsMouseClicked(0) &&
+		!m_connection.active && !ImGui::IsAnyItemActive() &&
+		!ImGui::IsAnyItemHovered())
+	{
 		if (!io.KeyCtrl) graph->unselectAll();
 		m_selectionStart = io.MousePos;
 		m_selectingNodes = true;
@@ -651,8 +660,12 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 		m_selectionEnd = io.MousePos;
 
 		ImRect selRect = ImRect(m_selectionStart, m_selectionEnd);
-		if (selRect.Min.x>selRect.Max.x) {float tmp = selRect.Min.x;selRect.Min.x=selRect.Max.x;selRect.Max.x=tmp;}
-		if (selRect.Min.y>selRect.Max.y) {float tmp = selRect.Min.y;selRect.Min.y=selRect.Max.y;selRect.Max.y=tmp;}
+		if (selRect.Min.x > selRect.Max.x) {
+			std::swap(selRect.Min.x, selRect.Max.x);
+		}
+		if (selRect.Min.y > selRect.Max.y) {
+			std::swap(selRect.Min.y, selRect.Max.y);
+		}
 
 		draw_list->AddRectFilled(
 			selRect.Min,
@@ -665,13 +678,26 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 			IM_COL32(150, 150, 150, 150)
 		);
 
+		//selRect.Min -= m_nodeGraph->m_scrolling;
+		//selRect.Max -= m_nodeGraph->m_scrolling;
+
 		for (auto&& [k, v] : graph->m_tnodes) {
 			TNode* node = v.get();
+			draw_list->AddRect(
+				node->selectionBounds.Min,
+				node->selectionBounds.Max,
+				IM_COL32(255, 0, 0, 150)
+			);
+
 			ImRect nbounds = node->selectionBounds;
 
 			if (selRect.Overlaps(nbounds)) {
 				node->selected = true;
 				if (m_activeNode == nullptr) m_activeNode = node;
+			} else {
+				if (node->selected) {
+					node->selected = false;
+				}
 			}
 		}
 	}
@@ -778,6 +804,9 @@ void TNodeEditor::draw(int w, int h) {
 	style->Colors[ImGuiCol_ModalWindowDarkening]  = {0.0f, 0.0f, 0.0f, 0.5f};
 
 	bool showAbout = false;
+
+	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4.0f, 12.0f));
+	float menuHeight = 0.0f;
 	if (ImGui::BeginMainMenuBar()) {
 		/// Shortcut handling
 		if (ImGui::HotKey(CTRL, SDL_SCANCODE_N)) {
@@ -800,6 +829,14 @@ void TNodeEditor::draw(int w, int h) {
 
 		if (ImGui::TwistBigTex == nullptr) {
 			ImGui::TwistBigTex = new TTex(twist_big_png, twist_big_png_len);
+		}
+
+		if (m_playIcon == nullptr) {
+			m_playIcon = new TTex(play_data, play_size);
+		}
+
+		if (m_stopIcon == nullptr) {
+			m_stopIcon = new TTex(stop_data, stop_size);
 		}
 
 //		ImGui::Image(
@@ -881,16 +918,35 @@ void TNodeEditor::draw(int w, int h) {
 
 		if (m_nodeGraph) {
 			ImGui::SameLine();
-			ImGui::Text("%d", m_nodeGraph->actualNodeGraph()->index());
+
+			ImGui::PushItemWidth(80);
+			float bpm = m_nodeGraph->actualNodeGraph()->bpm();
+			if (ImGui::DragFloat("BPM", &bpm, 0.1f, 40, 240)) {
+				m_nodeGraph->actualNodeGraph()->bpm(bpm);
+			}
+			ImGui::SameLine();
+
+			u32 bars = m_nodeGraph->actualNodeGraph()->bars();
+			if (ImGui::DragInt("Bars", (int*)&bars, 0.1f, 2, 7)) {
+				m_nodeGraph->actualNodeGraph()->bars(bars);
+			}
+			ImGui::SameLine();
+			ImGui::PopItemWidth();
+
+			ImGui::SameLine();
+			bool playPressed = ImGui::ImageButton(
+				m_playing ? (ImTextureID)(m_stopIcon->id()) : (ImTextureID)(m_playIcon->id()),
+				ImVec2(22, 22)
+			);
+			if (playPressed) {
+				m_playing = !m_playing;
+			}
 		}
 
-		ImGui::SameLine(ImGui::GetWindowContentRegionMax().x-32);
-		if (ImGui::Button(m_playing ? "Stop" : "Play", ImVec2(32, 22))) {
-			m_playing = !m_playing;
-		}
-
+		menuHeight = ImGui::GetWindowSize().y;
 		ImGui::EndMainMenuBar();
 	}
+	ImGui::PopStyleVar();
 
 	if (showAbout)
 		ImGui::OpenPopup("About Twist");
@@ -933,8 +989,8 @@ void TNodeEditor::draw(int w, int h) {
 		ImGui::EndPopup();
 	}
 
-	ImGui::SetNextWindowSize(ImVec2(w, h-18), 0);
-	ImGui::SetNextWindowPos(ImVec2(0, 18), 0);
+	ImGui::SetNextWindowSize(ImVec2(w, h - menuHeight), 0);
+	ImGui::SetNextWindowPos(ImVec2(0, menuHeight), 0);
 	ImGui::SetNextWindowBgAlpha(1.0f);
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);

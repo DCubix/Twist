@@ -481,7 +481,7 @@ void DrawAudioView(float x, float y, float width, float* values, int length, flo
 		ImVec2 prev = ImVec2(0.0f, h) + wp;
 		for (int i = 0; i < width; i++) {
 			int j = int((float(i) / width) * length);
-			float val = std::min(std::max(values[j],  -1.0f), 1.0f) * 0.5f + 0.5f;
+			float val = (std::min(std::max(values[j],  -1.0f), 1.0f) * 0.5f + 0.5f) * 0.9f;
 			ImVec2 pos = ImVec2(i, val * h) + wp;
 			draw_list->AddLine(prev, pos, col);
 			prev = pos;
