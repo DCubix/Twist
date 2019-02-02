@@ -18,8 +18,6 @@
 #include "TNodeGraph.h"
 #include "TTex.h"
 
-#include "imgui.h"
-
 #include "twen/intern/Utils.h"
 #include "twen/NodeGraph.h"
 #include "twen/Node.h"
@@ -29,6 +27,8 @@
 #else
 #include "SDL.h"
 #endif
+
+#include "imgui.h"
 
 #define MAX_RECENT_FILES 6
 

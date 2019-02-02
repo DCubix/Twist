@@ -33,7 +33,9 @@ TNode* TNodeGraph::addNode(int x, int y,
 	n->gridPos.y = y;
 	n->open = true;
 
+	m_lock.lock();
 	m_tnodes.insert({ n->node, Ptr<TNode>(n) });
+	m_lock.unlock();
 
 	m_saved = false;
 
@@ -88,7 +90,9 @@ void TNodeGraph::removeNode(TNode *nd, bool canundo) {
 
 Connection* TNodeGraph::connect(TNode *from, TNode *to, u32 slot, bool canundo) {
 	LogI("Editor Linking");
+	m_lock.lock();
 	Connection* conn = m_actualNodeGraph->connect(from->node, to->node, slot);
+	m_lock.unlock();
 
 	if (canundo) {
 		m_undoRedo->performedAction<TLinkCommand>(this, conn, from->node, to->node, slot);
@@ -107,7 +111,9 @@ void TNodeGraph::disconnect(Connection* conn, bool canundo) {
 		);
 		LogI("Registered action: ", STR(TUnLinkCommand));
 	}
+	m_lock.lock();
 	m_actualNodeGraph->disconnect(conn);
+	m_lock.unlock();
 
 	m_saved = false;
 }

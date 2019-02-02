@@ -151,7 +151,9 @@ int osdialog_color_picker(osdialog_color *color, int opacity) {
 
 /// XXX: I don't know if this works :P
 void osdialog_web(const char* url) {
-	NSString *url_str = [NSString stringWithUTF8String:url];
+	NSString *url_str = [NSString stringWithUTF8String: url];
 	NSURL* nurl = [[NSURL alloc] initWithString: url_str];
-	[[NSApplication sharedApplication] openURL: nurl];
+
+	if(![[NSWorkspace sharedWorkspace] openURL: nurl])
+		NSLog(@"Failed to open url: %@",[nurl description]);
 }
