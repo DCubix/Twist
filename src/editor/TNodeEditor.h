@@ -81,7 +81,11 @@ private:
 
 	ImVec2 m_mainWindowSize, m_selectionStart, m_selectionEnd;
 
-	bool m_playing = false, m_exit = false;
+	bool m_playing = false, m_exit = false, m_recording = false;
+
+	Vec<float> m_recordingBuffer;
+	float m_recordingDuration;
+	u32 m_recordingBufferPos;
 
 	Ptr<TNodeGraph> m_nodeGraph;
 
@@ -90,7 +94,7 @@ private:
 	Ptr<RtMidiIn> m_MIDIin;
 	Ptr<RtMidiOut> m_MIDIout;
 
-	TTex *m_playIcon, *m_stopIcon;
+	TTex *m_playIcon, *m_stopIcon, *m_recIcon;
 
 	std::mutex m_lock;
 };

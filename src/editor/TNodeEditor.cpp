@@ -20,6 +20,7 @@
 #include "about.h"
 #include "play.h"
 #include "stop.h"
+#include "record.h"
 
 #ifdef WINDOWS
 #define PATH_SEPARATOR '\\'
@@ -118,6 +119,9 @@ TNodeEditor::TNodeEditor() {
 	m_playIcon = nullptr;
 	m_stopIcon = nullptr;
 
+	m_recordingDuration = 1;
+	m_recordingBufferPos = 0;
+
 	// Load recent files
 	std::ifstream fp(".recent");
 	if (!fp.bad()) {
@@ -181,6 +185,7 @@ TNodeEditor::TNodeEditor() {
 TNodeEditor::~TNodeEditor() {
 	delete m_playIcon;
 	delete m_stopIcon;
+	delete m_recIcon;
 }
 
 void TNodeEditor::menuActionOpen(const std::string& fileName) {
@@ -839,6 +844,10 @@ void TNodeEditor::draw(int w, int h) {
 			m_stopIcon = new TTex(stop_data, stop_size);
 		}
 
+		if (m_recIcon == nullptr) {
+			m_recIcon = new TTex(record_data, record_size);
+		}
+
 //		ImGui::Image(
 //			(ImTextureID)(ImGui::TwistTex->id()),
 //			ImVec2(16, 16)
@@ -989,7 +998,9 @@ void TNodeEditor::draw(int w, int h) {
 		ImGui::EndPopup();
 	}
 
-	ImGui::SetNextWindowSize(ImVec2(w, h - menuHeight), 0);
+	const float recordingAreaHeight = 120;
+
+	ImGui::SetNextWindowSize(ImVec2(w, h - menuHeight - recordingAreaHeight), 0);
 	ImGui::SetNextWindowPos(ImVec2(0, menuHeight), 0);
 	ImGui::SetNextWindowBgAlpha(1.0f);
 
@@ -1031,6 +1042,87 @@ void TNodeEditor::draw(int w, int h) {
 	}
 	ImGui::End();
 	ImGui::PopStyleVar();
+
+	ImGui::SetNextWindowSize(ImVec2(w, recordingAreaHeight), 0);
+	ImGui::SetNextWindowPos(ImVec2(0, h - recordingAreaHeight), 0);
+	ImGui::SetNextWindowBgAlpha(1.0f);
+
+	flags &= ~ImGuiWindowFlags_NoTitleBar;
+	flags |= ImGuiWindowFlags_NoCollapse;
+
+	if (ImGui::Begin("Recording", nullptr, flags)) {
+		if (ImGui::BeginChild("##rec_buttons", ImVec2(180, -1), true, flags)) {
+			float w = ImGui::GetWindowContentRegionMax().x;
+			ImGui::PushItemWidth(100);
+			if (!m_recording) {
+				if (ImGui::DragFloat("Duration", &m_recordingDuration, 0.1f, 0.1f, 60.0f)) {
+					m_recordingBuffer.resize(
+						u32(m_nodeGraph->actualNodeGraph()->sampleRate() * m_recordingDuration)
+					);
+				}
+			} else {
+				u32 dsecs = u32(m_recordingDuration) % 60;
+				u32 dmins = u32(m_recordingDuration) / 60;
+				u32 dmillis = u32(m_recordingDuration * 1000.0f) % 1000;
+
+				float secRaw = (float(m_recordingBufferPos) / m_nodeGraph->actualNodeGraph()->sampleRate()) * 1000.0f;
+				u32 secsRaw = u32(secRaw / 1000.0f);
+				u32 secs = secsRaw % 60;
+				u32 mins = secsRaw / 60;
+				u32 millis = u32(secRaw) % 1000;
+				ImGui::Text("Recorded: ");
+				ImGui::Text("%02d:%02d:%02d/%02d:%02d:%02d", mins, secs, millis, dmins, dsecs, dmillis);
+			}
+
+			bool recClick = ImGui::Button(m_recording ? "Stop" : "Record", ImVec2(-1, 22));
+
+			if (recClick && m_nodeGraph) {
+				m_recordingBufferPos = 0;
+				m_recording = !m_recording;
+				std::fill(m_recordingBuffer.begin(), m_recordingBuffer.end(), 0.0f);
+			}
+
+			if (!m_recordingBuffer.empty() && !m_playing && !m_recording) {
+				if (ImGui::Button("Save", ImVec2(-1, 22))) {
+					auto filePath = osd::Dialog::file(
+						osd::DialogAction::SaveFile,
+						".",
+						osd::Filters("Waveform Audio Format:wav")
+					);
+
+					if (filePath.has_value()) {
+						const u32 sr = u32(m_nodeGraph->actualNodeGraph()->sampleRate());
+						int fmt = SF_FORMAT_WAV | SF_FORMAT_PCM_16;
+						SndfileHandle snd = SndfileHandle(filePath.value(), SFM_WRITE, fmt, 1, sr);
+						snd.writef(m_recordingBuffer.data(), m_recordingBuffer.size());
+						m_recordingBuffer.clear();
+					}
+				}
+			}
+
+			ImGui::PopItemWidth();
+		}
+		ImGui::EndChild();
+		ImGui::SameLine();
+
+		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(1, 1));
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+
+		ImVec2 sz = ImGui::GetContentRegionAvail();
+		if (ImGui::BeginChild("##rec_buf", ImVec2(sz.x, -1), true, flags)) {
+			ImGui::AudioView(
+				"##audio_view_rec_buf",
+				sz.x,
+				m_recordingBuffer.data(),
+				m_recordingBuffer.size(),
+				m_recordingBufferPos, sz.y / 2
+			);
+		}
+		ImGui::EndChild();
+
+		ImGui::PopStyleVar(2);
+	}
+	ImGui::End();
 
 	ImGui::PopStyleVar();
 
@@ -1100,10 +1192,23 @@ TNodeGraph* TNodeEditor::newGraph() {
 
 float TNodeEditor::output() {
 	float sample = 0.0f;
-	if (m_playing && m_nodeGraph) {
+	if ((m_playing || m_recording) && m_nodeGraph) {
 		TMessageBus::process();
 		sample = m_nodeGraph->actualNodeGraph()->sample();
 	}
+
+	if (m_recording) {
+		if (m_recordingBuffer.empty()) {
+			m_recordingBuffer.resize(u32(m_recordingDuration * m_nodeGraph->actualNodeGraph()->sampleRate()));
+			std::fill(m_recordingBuffer.begin(), m_recordingBuffer.end(), 0.0f);
+		}
+		m_recordingBuffer[m_recordingBufferPos] = sample;
+		if (m_recordingBufferPos++ >= m_recordingBuffer.size()) {
+			m_recordingBufferPos = 0;
+			m_recording = false;
+		}
+	}
+
 	return sample;
 }
 
