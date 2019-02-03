@@ -31,8 +31,8 @@ public:
 
 	Node* outputNode() { return m_outputNode; }
 
-	void store(u32 loc, float value) { m_globalStorage[loc] = value; }
-	float load(u32 loc) const { return m_globalStorage[loc]; }
+	void store(u32 loc, Value value) { m_globalStorage[loc] = value; }
+	Value load(u32 loc) const { return m_globalStorage[loc]; }
 
 	bool addSample(const Str& fileName);
 	void removeSample(const Str& name);
@@ -57,7 +57,6 @@ public:
 
 	void addSample(const Str& fname, const Vec<float>& data, float sr);
 private:
-
 	Node *m_outputNode;
 
 	Vec<Ptr<Node>> m_nodes;
@@ -68,7 +67,7 @@ private:
 	float m_gain, m_time, m_sampleRate, m_bpm;
 	u32 m_noteIndex, m_bars;
 
-	Arr<float, TWEN_GLOBAL_STORAGE_SIZE> m_globalStorage;
+	Arr<Value, TWEN_GLOBAL_STORAGE_SIZE> m_globalStorage;
 
 	Map<Str, Ptr<RawSample>> m_sampleLibrary;
 

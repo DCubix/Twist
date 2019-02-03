@@ -15,7 +15,7 @@ NodeGraph::NodeGraph()
 	  m_outputNode(nullptr),
 	  m_bars(4), m_noteIndex(0)
 {
-	m_globalStorage.fill(0.0f);
+	m_globalStorage.fill(Value());
 }
 
 float NodeGraph::time() {
@@ -147,6 +147,15 @@ float NodeGraph::sample() {
 			conn->from->m_solved = true;
 			conn->from->m_lastSample = sample;
 		}
+
+		// If it's a writer node, solve "to"
+		if (conn->to->getType() == WriterNode::typeID() && !conn->to->m_solved) {
+			Value tosample = conn->to->sample(this);
+			conn->to->m_solved = true;
+			conn->to->m_lastSample = tosample;
+			conn->to->updateBuffer(tosample.value * tosample.velocity * float(tosample.gate));
+		}
+
 		conn->from->updateBuffer(sample.value * sample.velocity * float(sample.gate));
 
 		conn->to->in(conn->toSlot).data = sample;

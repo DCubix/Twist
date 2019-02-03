@@ -9,7 +9,7 @@ public:
 	ReaderNode(u32 slot = 0) : Node(), slot(slot) {}
 
 	Value sample(NodeGraph *graph) override {
-		return Value(graph->load(slot));
+		return graph->load(slot);
 	}
 
 	void save(JSON& json) override {
@@ -33,9 +33,9 @@ public:
 	}
 
 	Value sample(NodeGraph *graph) override {
-		float _in = in(0).value();
+		Value _in = in(0).data;
 		graph->store(slot, _in);
-		return Value(_in);
+		return _in;
 	}
 
 	void save(JSON& json) override {

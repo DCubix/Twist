@@ -36,18 +36,19 @@ Dependencies:
 ### Linux Build
 ```sh
 $ mkdir build && cd build
-$ cmake -G "Unix Makefiles" 
+$ cmake -G "Unix Makefiles"
 -DCMAKE_BUILD_TYPE=Release .
 $ make -j2
 ```
 
 ### Windows Build
 - Create a `build` folder in Twist's root dir and open CMake GUI.
-- Set the `source path`. 
+- Set the `source path`.
 - Set the `build path` to the `build` folder you just created.
 - Configure.
 - Set the generator to `Visual Studio {YOUR VERSION}` or to any other IDE you use.
 - Click Finish, wait for it to complete and then click Generate.
 - Open the generated project files in your IDE and build.
 
-***
+## License
+See [EULA.txt](EULA.txt)
