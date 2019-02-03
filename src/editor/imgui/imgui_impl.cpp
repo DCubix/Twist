@@ -8,8 +8,14 @@
 #include "../../glad/glad.h"
 
 // SDL
+
+#if defined(__MINGW32__) || defined(__MINGW64__)
 #include "SDL2/SDL.h"
 #include "SDL2/SDL_syswm.h"
+#else
+#include "SDL.h"
+#include "SDL_syswm.h"
+#endif
 
 #include <string>
 
