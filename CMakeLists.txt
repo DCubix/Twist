@@ -6,7 +6,7 @@ set(TWIST_NAME "${PROJECT_NAME}")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_EXTENSIONS ON)
 
 if (WIN32 OR MINGW)
 	add_definitions(-DWINDOWS)
@@ -67,6 +67,7 @@ target_link_libraries(${PROJECT_NAME}
 	rtmidi_static
 	ImGUI
 	twen
+	stdc++fs
 )
 
 if (CMAKE_DL_LIBS)

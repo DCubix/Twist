@@ -91,7 +91,7 @@ void TNodeGraph::removeNode(TNode *nd, bool canundo) {
 }
 
 Connection* TNodeGraph::connect(TNode *from, TNode *to, u32 slot, bool canundo) {
-	LogI("Editor Linking");
+	LogI("Editor Linking (", from->node->name(), " <-> ", to->node->name(), ")");
 	m_lock.lock();
 	Connection* conn = m_actualNodeGraph->connect(from->node, to->node, slot);
 	m_lock.unlock();

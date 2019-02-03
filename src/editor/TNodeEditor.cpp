@@ -6,6 +6,9 @@
 #include <cmath>
 #include <algorithm>
 
+#include <filesystem>
+namespace fs = std::filesystem;
+
 #include "TUndoRedo.h"
 
 #include "OsDialog.hpp"
@@ -216,11 +219,34 @@ void TNodeEditor::menuActionSave() {
 			);
 
 			if (filePath.has_value()) {
-				m_nodeGraph->save(filePath.value());
-				pushRecentFile(filePath.value());
+				fs::path fp = fs::u8path(filePath.value());
+				if (fp.extension().empty()) {
+					fp.replace_extension(".syn");
+				}
+				m_nodeGraph->save(fp.u8string());
+				pushRecentFile(fp.u8string());
 			}
 		} else {
 			m_nodeGraph->save(m_nodeGraph->m_fileName);
+		}
+	}
+}
+
+void TNodeEditor::menuActionSaveAs() {
+	if (m_nodeGraph) {
+		auto filePath = osd::Dialog::file(
+			osd::DialogAction::SaveFile,
+			".",
+			osd::Filters("Twist Synth:syn")
+		);
+
+		if (filePath.has_value()) {
+			fs::path fp = fs::u8path(filePath.value());
+			if (fp.extension().empty()) {
+				fp.replace_extension(".syn");
+			}
+			m_nodeGraph->save(fp.u8string());
+			pushRecentFile(fp.u8string());
 		}
 	}
 }
@@ -242,9 +268,7 @@ void TNodeEditor::menuActionExit() {
 		m_exit = true;
 	}
 
-	if (m_exit) {
-		saveRecentFiles();
-	}
+	saveRecentFiles();
 }
 
 void TNodeEditor::menuActionSnapAllToGrid() {
@@ -272,7 +296,7 @@ void TNodeEditor::menuActionSnapAllToGrid() {
 }
 
 void TNodeEditor::saveRecentFiles() {
-	std::ofstream fp(".recent", std::ios::out | std::ios::binary);
+	std::ofstream fp(".recent");
 	if (!fp.bad()) {
 		for (std::string line : m_recentFiles) {
 			fp << line << std::endl;
@@ -446,6 +470,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 					toDelete.push_back(node);
 					m_hoveredNode = nullptr;
 					m_activeNode = nullptr;
+					saveBackup();
 				}
 				if (ImGui::IsItemHovered()) {
 					ImGui::SetTooltip("Delete");
@@ -561,6 +586,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 				m_connection.active = false;
 				m_lock.lock();
 				graph->connect(m_connection.from, node, in);
+				saveBackup();
 				m_lock.unlock();
 			}
 		}
@@ -633,6 +659,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 					m_moveDeltas
 				);
 				m_nodesMoving = false;
+				saveBackup();
 			}
 		}
 
@@ -735,6 +762,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 					if (ImGui::MenuItem(type.title.c_str())) {
 						m_lock.lock();
 						graph->addNode(scene_pos.x, scene_pos.y, type.type, params);
+						saveBackup();
 						m_lock.unlock();
 					}
 				}
@@ -820,10 +848,12 @@ void TNodeEditor::draw(int w, int h) {
 			menuActionOpen();
 		} else if (ImGui::HotKey(CTRL, SDL_SCANCODE_S)) {
 			menuActionSave();
+		} else if (ImGui::HotKey(CTRL | SHIFT, SDL_SCANCODE_S)) {
+			menuActionSaveAs();
 		} else if (ImGui::HotKey(CTRL, SDL_SCANCODE_Z)) {
-			m_nodeGraph->undoRedo()->undo();
+			if (m_nodeGraph) m_nodeGraph->undoRedo()->undo();
 		} else if (ImGui::HotKey(CTRL, SDL_SCANCODE_Y)) {
-			m_nodeGraph->undoRedo()->redo();
+			if (m_nodeGraph) m_nodeGraph->undoRedo()->redo();
 		} else if (ImGui::HotKey(CTRL, SDL_SCANCODE_Q)) {
 			menuActionExit();
 		}
@@ -848,12 +878,6 @@ void TNodeEditor::draw(int w, int h) {
 			m_recIcon = new TTex(record_data, record_size);
 		}
 
-//		ImGui::Image(
-//			(ImTextureID)(ImGui::TwistTex->id()),
-//			ImVec2(16, 16)
-//		);
-//		ImGui::SameLine();
-
 		if (ImGui::BeginMenu("File")) {
 			if (ImGui::MenuItem("New", "Ctrl+N")) {
 				newGraph();
@@ -862,7 +886,7 @@ void TNodeEditor::draw(int w, int h) {
 			if (ImGui::MenuItem("Open", "Ctrl+O")) {
 				menuActionOpen();
 			}
-			if (ImGui::BeginMenu("Open Recent...", "Ctrl+O")) {
+			if (ImGui::BeginMenu("Open Recent...")) {
 				for (std::string file : m_recentFiles) {
 					std::string fname = file;
 					if (file.size() > 28) {
@@ -878,6 +902,9 @@ void TNodeEditor::draw(int w, int h) {
 			}
 			if (ImGui::MenuItem("Save", "Ctrl+S")) {
 				menuActionSave();
+			}
+			if (ImGui::MenuItem("Save As...", "Ctrl+Shift+S")) {
+				menuActionSaveAs();
 			}
 			ImGui::Separator();
 			if (ImGui::MenuItem("Exit", "Ctrl+Q")) {
@@ -901,6 +928,7 @@ void TNodeEditor::draw(int w, int h) {
 			bool sntgEnabled = m_nodeGraph != nullptr;
 			if (ImGui::MenuItem("Snap nodes to grid", nullptr, false, sntgEnabled)) {
 				menuActionSnapAllToGrid();
+				saveBackup();
 			}
 			ImGui::Separator();
 			if (ImGui::MenuItem("Sample Library") && m_nodeGraph) {
@@ -1152,9 +1180,9 @@ void TNodeEditor::draw(int w, int h) {
 					osd::Dialog::message(
 						osd::MessageLevel::Error,
 						osd::MessageButtons::Ok,
-						"Ivalid sample. It must have <= 10 seconds."
+						"Ivalid sample. It must have <= 15 seconds."
 					);
-				}
+				} else { saveBackup(); }
 			}
 		}
 		if (!items.empty()) {
@@ -1162,6 +1190,7 @@ void TNodeEditor::draw(int w, int h) {
 				m_nodeGraph->actualNodeGraph()->removeSample(items[selectedSample]);
 				LogI("Deleted sample: ", items[selectedSample]);
 				selectedSample = -1;
+				saveBackup();
 			}
 		}
 		if (ImGui::Button("Close", ImVec2(w, 18))) {
@@ -1197,6 +1226,12 @@ void TNodeEditor::reset() {
 	}
 	m_nodeGraph->actualNodeGraph()->reset();
 	m_lock.unlock();
+}
+
+void TNodeEditor::saveBackup() {
+//	if (m_nodeGraph) {
+//		m_nodeGraph->save("backup.syn");
+//	}
 }
 
 TNodeGraph* TNodeEditor::newGraph() {

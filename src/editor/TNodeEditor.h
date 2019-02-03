@@ -49,6 +49,8 @@ public:
 	void closeGraph();
 	void reset();
 
+	void saveBackup();
+
 	RtMidiIn* midiIn() { return m_MIDIin.get(); }
 	RtMidiOut* midiOut() { return m_MIDIout.get(); }
 
@@ -61,6 +63,7 @@ private:
 	void drawNodeGraph(TNodeGraph* graph);
 	void menuActionOpen(const std::string& fileName="");
 	void menuActionSave();
+	void menuActionSaveAs();
 	void menuActionSnapAllToGrid();
 	void saveRecentFiles();
 	void pushRecentFile(const std::string& str);
