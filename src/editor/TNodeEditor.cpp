@@ -700,13 +700,15 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 	}
 
 	// Scrolling
-	if (ImGui::IsWindowHovered() && !ImGui::IsAnyItemActive() && ImGui::IsMouseDragging(2, 0.0f)) {
+	bool panAction = ImGui::IsMouseDragging(2, 0.0f) ||
+					(ImGui::IsMouseDragging(1, 0.0f) && io.KeyCtrl);
+	if (ImGui::IsWindowHovered() && !ImGui::IsAnyItemActive() && panAction) {
 		graph->m_scrolling = graph->m_scrolling + ImGui::GetIO().MouseDelta;
 		graph->m_saved = false;
 	}
 
 	// Open context menu
-	if (!ImGui::IsAnyItemHovered() && ImGui::IsMouseHoveringWindow() && ImGui::IsMouseClicked(1)) {
+	if (!ImGui::IsAnyItemHovered() && ImGui::IsMouseHoveringWindow() && ImGui::IsMouseClicked(1) && !io.KeyCtrl) {
 		m_hoveredNode = nullptr;
 		openContext = true;
 	}
