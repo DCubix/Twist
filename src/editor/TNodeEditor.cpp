@@ -46,7 +46,7 @@
 #include "nodes/WriterNode.hpp"
 #include "nodes/ButtonNode.hpp"
 #include "nodes/SequencerNode.hpp"
-//#include "nodes/SamplerNode.hpp"
+#include "nodes/SamplerNode.hpp"
 
 #define NODE_SLOT_RADIUS(x) (4.0f * x)
 #define NODE_SLOT_RADIUS2(x) (5.0f * x)
@@ -152,7 +152,7 @@ TNodeEditor::TNodeEditor() {
 	m_guis[ValueNode::typeID()] = Value_gui;
 	m_guis[ButtonNode::typeID()] = Button_gui;
 	m_guis[SequencerNode::typeID()] = Sequencer_gui;
-//	m_guis[SamplerNode::typeID()] = Sampler_gui;
+	m_guis[SamplerNode::typeID()] = Sampler_gui;
 	//
 
 	NodeBuilder::registerType<ButtonNode>("Generators", TWEN_NODE_FAC {
@@ -386,16 +386,8 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 
 	m_hoveredNode = nullptr;
 
-	std::vector<TNode*> nodeList;
-	nodeList.reserve(graph->m_tnodes.size());
-	for (auto&& [k, v] : graph->m_tnodes) {
-		if (v.get() == nullptr) continue;
-		nodeList.push_back(v.get());
-	}
-
-	for (int node_id = 0; node_id < nodeList.size(); node_id++) {
-		TNode* node = nodeList[node_id];
-		Node* nodeR = node->node;
+	for (auto&& [nodeR, node_] : graph->m_tnodes) {
+		TNode *node = node_.get();
 		if (node == nullptr) continue;
 
 		if (m_snapToGridDisabled) {
@@ -408,7 +400,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 			node->gridPos.y = node->bounds.y;
 		}
 
-		ImGui::PushID(node_id);
+		ImGui::PushID(node);
 		ImVec2 node_rect_min = offset + ImVec2(node->gridPos.x, node->gridPos.y) * scl;
 
 		// Display node contents first
@@ -607,24 +599,24 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 			if (!m_nodesMoving) {
 				m_moving.clear();
 				m_moveDeltas.clear();
-				for (int j = 0; j < nodeList.size(); j++) {
-					TNode* nd = nodeList[j];
+				for (auto&& [n, tnd] : graph->m_tnodes) {
+					TNode* nd = tnd.get();
 					if (nd->selected) {
 						m_moving.push_back(nd);
-						m_moveDeltas[nodeList[j]] = TMoveCommand::Point{0, 0};
+						m_moveDeltas[nd] = TMoveCommand::Point{0, 0};
 					}
 				}
 				m_nodesMoving = true;
 			}
 
-			for (int j = 0; j < nodeList.size(); j++) {
-				TNode* nd = nodeList[j];
+			for (auto&& [n, tnd] : graph->m_tnodes) {
+				TNode* nd = tnd.get();
 				if (nd->selected) {
 					nd->bounds.x += io.MouseDelta.x;
 					nd->bounds.y += io.MouseDelta.y;
 					if (std::abs(io.MouseDelta.x) > 0.0f || std::abs(io.MouseDelta.y) > 0.0f) {
-						m_moveDeltas[nodeList[j]].x += io.MouseDelta.x;
-						m_moveDeltas[nodeList[j]].y += io.MouseDelta.y;
+						m_moveDeltas[nd].x += io.MouseDelta.x;
+						m_moveDeltas[nd].y += io.MouseDelta.y;
 					}
 
 					if (m_snapToGrid) {
@@ -760,6 +752,12 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 
 }
 
+static bool VectorOfStringGetter(void* data, int n, const char** out_text) {
+	const Vec<Str>* v = (Vec<Str>*)data;
+	*out_text = v->at(n).c_str();
+	return true;
+}
+
 void TNodeEditor::draw(int w, int h) {
 	auto style = &ImGui::GetStyle();
 	style->WindowRounding = 5.3f;
@@ -880,10 +878,6 @@ void TNodeEditor::draw(int w, int h) {
 				menuActionSave();
 			}
 			ImGui::Separator();
-//			if (ImGui::MenuItem("Samples") && m_nodeGraph) {
-//				m_editingSamples = true;
-//			}
-//			ImGui::Separator();
 			if (ImGui::MenuItem("Exit", "Ctrl+Q")) {
 				menuActionExit();
 			}
@@ -906,6 +900,11 @@ void TNodeEditor::draw(int w, int h) {
 			if (ImGui::MenuItem("Snap nodes to grid", nullptr, false, sntgEnabled)) {
 				menuActionSnapAllToGrid();
 			}
+			ImGui::Separator();
+			if (ImGui::MenuItem("Sample Library") && m_nodeGraph) {
+				m_editingSamples = true;
+			}
+
 			ImGui::EndMenu();
 		}
 		ImGui::SameLine();
@@ -949,6 +948,7 @@ void TNodeEditor::draw(int w, int h) {
 			);
 			if (playPressed) {
 				m_playing = !m_playing;
+				reset();
 			}
 		}
 
@@ -1079,6 +1079,7 @@ void TNodeEditor::draw(int w, int h) {
 			if (recClick && m_nodeGraph) {
 				m_recordingBufferPos = 0;
 				m_recording = !m_recording;
+				reset();
 				std::fill(m_recordingBuffer.begin(), m_recordingBuffer.end(), 0.0f);
 			}
 
@@ -1115,7 +1116,7 @@ void TNodeEditor::draw(int w, int h) {
 				sz.x,
 				m_recordingBuffer.data(),
 				m_recordingBuffer.size(),
-				m_recordingBufferPos, sz.y / 2
+				m_recordingBufferPos, sz.y
 			);
 		}
 		ImGui::EndChild();
@@ -1126,49 +1127,48 @@ void TNodeEditor::draw(int w, int h) {
 
 	ImGui::PopStyleVar();
 
-//	if (m_editingSamples)
-//		ImGui::OpenPopup("Sample Library");
-//	if (ImGui::BeginPopupModal("Sample Library", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-//		static int selectedSample = -1;
-//		auto items = m_nodeGraph->getSampleNames();
+	if (m_editingSamples)
+		ImGui::OpenPopup("Sample Library");
+	if (ImGui::BeginPopupModal("Sample Library", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+		static int selectedSample = -1;
+		auto items = m_nodeGraph->actualNodeGraph()->getSampleNames();
 
-//		ImGui::ListBox("##sampleLib", &selectedSample, items.data(), items.size(), 8);
-//		ImGui::SameLine();
+		ImGui::ListBox("##sampleLib", &selectedSample, VectorOfStringGetter, &items, items.size(), 8);
+		ImGui::SameLine();
 
-//		ImGui::BeginGroup();
-//		float w = ImGui::GetContentRegionAvailWidth();
-//		if (ImGui::Button("Load", ImVec2(w, 18))) {
-//			auto filePath = osd::Dialog::file(
-//				osd::DialogAction::OpenFile,
-//				".",
-//				osd::Filters("Audio Files:wav,ogg,aif,flac")
-//			);
+		ImGui::BeginGroup();
+		float w = ImGui::GetContentRegionAvailWidth();
+		if (ImGui::Button("Load", ImVec2(w, 18))) {
+			auto filePath = osd::Dialog::file(
+				osd::DialogAction::OpenFile,
+				".",
+				osd::Filters("Audio Files:wav,ogg,aif,flac")
+			);
 
-//			if (filePath.has_value()) {
-//				if (!m_nodeGraph->actualNodeGraph()->addSample(filePath.value())) {
-//					osd::Dialog::message(
-//						osd::MessageLevel::Error,
-//						osd::MessageButtons::Ok,
-//						"Ivalid sample. It must have <= 10 seconds."
-//					);
-//				}
-//			}
-//		}
-//		if (!items.empty()) {
-//			if (ImGui::Button("Delete", ImVec2(w, 18))) {
-//				u64 sid = m_nodeGraph->actualNodeGraph()->getSampleID(std::string(items[selectedSample]));
-//				m_nodeGraph->actualNodeGraph()->removeSample(sid);
-//				LogI("Deleted sample ", sid);
-//				selectedSample = -1;
-//			}
-//		}
-//		if (ImGui::Button("Close", ImVec2(w, 18))) {
-//			ImGui::CloseCurrentPopup();
-//			m_editingSamples = false;
-//		}
-//		ImGui::EndGroup();
-//		ImGui::EndPopup();
-//	}
+			if (filePath.has_value()) {
+				if (!m_nodeGraph->actualNodeGraph()->addSample(filePath.value())) {
+					osd::Dialog::message(
+						osd::MessageLevel::Error,
+						osd::MessageButtons::Ok,
+						"Ivalid sample. It must have <= 10 seconds."
+					);
+				}
+			}
+		}
+		if (!items.empty()) {
+			if (ImGui::Button("Delete", ImVec2(w, 18))) {
+				m_nodeGraph->actualNodeGraph()->removeSample(items[selectedSample]);
+				LogI("Deleted sample: ", items[selectedSample]);
+				selectedSample = -1;
+			}
+		}
+		if (ImGui::Button("Close", ImVec2(w, 18))) {
+			ImGui::CloseCurrentPopup();
+			m_editingSamples = false;
+		}
+		ImGui::EndGroup();
+		ImGui::EndPopup();
+	}
 
 }
 
@@ -1180,8 +1180,25 @@ void TNodeEditor::closeGraph() {
 	newGraph();
 }
 
+void TNodeEditor::reset() {
+	m_lock.lock();
+#define CastNode(T, v) (dynamic_cast<T*>(v))
+	for (auto&& [k, v] : m_nodeGraph->m_tnodes) {
+		auto type = k->getType();
+		if (type == SamplerNode::typeID()) {
+			CastNode(SamplerNode, k)->sampleData.reset();
+		} else if (type == ADSRNode::typeID()) {
+			CastNode(ADSRNode, k)->adsr().reset();
+		} else if (type == OscillatorNode::typeID()) {
+			CastNode(OscillatorNode, k)->reset();
+		}
+	}
+	m_nodeGraph->actualNodeGraph()->reset();
+	m_lock.unlock();
+}
+
 TNodeGraph* TNodeEditor::newGraph() {
-	TNodeGraph* graph = new TNodeGraph(new NodeGraph());
+	TNodeGraph* graph = new TNodeGraph(new NodeGraph(), 320, 240);
 
 	graph->m_name = "Untitled";
 	graph->m_editor = this;

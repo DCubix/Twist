@@ -47,6 +47,7 @@ public:
 	float output();
 
 	void closeGraph();
+	void reset();
 
 	RtMidiIn* midiIn() { return m_MIDIin.get(); }
 	RtMidiOut* midiOut() { return m_MIDIout.get(); }

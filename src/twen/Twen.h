@@ -18,7 +18,7 @@
 #include "nodes/RemapNode.hpp"
 #include "nodes/StorageNodes.hpp"
 #include "nodes/ValueNode.hpp"
-//#include "nodes/SamplerNode.hpp"
+#include "nodes/SamplerNode.hpp"
 
 namespace Twen {
 	inline void init() {
@@ -42,11 +42,11 @@ namespace Twen {
 			);
 		});
 
-//		NodeBuilder::registerType<SamplerNode>("Generators", TWEN_NODE_FAC {
-//			return new SamplerNode(
-//				GET(int, "id", 0)
-//			);
-//		});
+		NodeBuilder::registerType<SamplerNode>("Generators", TWEN_NODE_FAC {
+			return new SamplerNode(
+				GET(Str, "sample", "")
+			);
+		});
 
 		NodeBuilder::registerType<ChorusNode>("Effects", TWEN_NODE_FAC {
 			return new ChorusNode(

@@ -17,6 +17,10 @@ public:
 		return m_phase;
 	}
 
+	void reset() {
+		m_phase = 0.0f;
+	}
+
 private:
 	float m_phase, m_period;
 };
@@ -71,6 +75,10 @@ public:
 		Node::load(json);
 		frequency = json["frequency"];
 		waveForm = WaveForm(json["waveForm"].get<int>());
+	}
+
+	void reset() {
+		m_phase.reset();
 	}
 
 	float frequency;

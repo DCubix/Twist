@@ -253,15 +253,16 @@ bool LinkText(const char* text) {
 
 void AudioView(const char* id, float width, float* values, int length, int pos, float h) {
 	const int col = IM_COL32(0, 200, 100, 255);
+	const int coll = IM_COL32(0, 250, 170, 255);
 
 	int pos_r = int((float(pos) / length) * width);
 
 	const ImVec2 wp = ImGui::GetCursorScreenPos();
-	ImGui::InvisibleButton(id, ImVec2(width, h*2));
+	ImGui::InvisibleButton(id, ImVec2(width, h));
 
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
-	const ImVec2 rect_max = ImVec2(width, h*2) + wp;
+	const ImVec2 rect_max = ImVec2(width, h) + wp;
 
 	draw_list->AddRectFilled(
 		wp,
@@ -272,30 +273,37 @@ void AudioView(const char* id, float width, float* values, int length, int pos, 
 	draw_list->PushClipRect(wp, rect_max, true);
 
 	draw_list->AddLine(
-		ImVec2(0.0f, h) + wp,
-		ImVec2(width, h) + wp,
+		ImVec2(0.0f, h/2) + wp,
+		ImVec2(width, h/2) + wp,
 		IM_COL32(80,80,80,255)
 	);
 
 	if (values != nullptr) {
-		ImVec2 prev = ImVec2(0.0f, h) + wp;
-		for (int i = 0; i < width; i++) {
-			int j = int((float(i) / width) * length);
-			ImVec2 pos = ImVec2(i, values[j] * h + h) + wp;
-			draw_list->AddLine(prev, pos, col);
-			prev = pos;
+		const int samplesPerX = length / width;
+		const float h2 = h / 2;
+		for (int x = 0; x < width; x++) {
+			float maxval = -99999.0f;
+
+			for (int k = 0; k < samplesPerX; k++) {
+				float val = std::abs(values[x * samplesPerX + k]) * 0.999f;
+				maxval = std::max(maxval, val);
+			}
+
+			ImVec2 p0 = ImVec2(x, -maxval * h + h2) + wp;
+			ImVec2 p1 = ImVec2(x, maxval * h + h2) + wp;
+			draw_list->AddLine(p0, p1, col);
 		}
 	}
 
 	draw_list->AddLine(
 		ImVec2(pos_r, 0) + wp,
-		ImVec2(pos_r, h*2) + wp,
+		ImVec2(pos_r, h) + wp,
 		IM_COL32(200, 100, 100, 128),
 		2
 	);
 	draw_list->AddLine(
 		ImVec2(pos_r, 0) + wp,
-		ImVec2(pos_r, h*2) + wp,
+		ImVec2(pos_r, h) + wp,
 		IM_COL32(200, 100, 100, 255)
 	);
 

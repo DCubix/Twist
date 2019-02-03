@@ -7,16 +7,18 @@
 #include "TCommands.h"
 #include "TNodeEditor.h"
 
+#include "nodes/OutNode.hpp"
+
 #include "sndfile.hh"
 
-TNodeGraph::TNodeGraph(NodeGraph* ang) {
+TNodeGraph::TNodeGraph(NodeGraph* ang, int outX, int outY) {
 	m_actualNodeGraph = Ptr<NodeGraph>(std::move(ang));
 	m_name = "Untitled";
 	m_undoRedo = Ptr<TUndoRedo>(new TUndoRedo());
 
 	JSON json;
 	json["gain"] = 1.0f;
-	TNode *out = addNode(320, 240, "OutNode", json, false);
+	TNode *out = addNode(outX, outY, "OutNode", json, false);
 	out->closeable = false;
 }
 
@@ -177,16 +179,31 @@ void TNodeGraph::fromJSON(JSON json) {
 
 	m_undoRedo.reset(new TUndoRedo());
 
-	// Load the nodes
-	JSON nodes = json["nodes"];
-	Map<u32, TNode*> idnodeMap;
-	if (!nodes.is_array()) return;
-
 	TNode* outNode = m_tnodes.begin()->second.get();
 	outNode->bounds.x = json["outPos"][0];
 	outNode->bounds.y = json["outPos"][1];
 	outNode->gridPos.x = json["outPos"][0];
 	outNode->gridPos.y = json["outPos"][1];
+
+	// Load the samples
+	JSON samples = json["samples"];
+	if (samples.is_array()) {
+		for (u32 i = 0; i < samples.size(); i++) {
+			JSON jsample = samples[i];
+
+			Vec<float> data = jsample["data"];
+			Str sampleName = jsample["sampleName"];
+			float sampleRate = jsample["sampleRate"];
+
+			m_actualNodeGraph->addSample(sampleName, data, sampleRate);
+		}
+	}
+
+	// Load the nodes
+	JSON nodes = json["nodes"];
+	Map<u32, TNode*> idnodeMap;
+	if (!nodes.is_array()) return;
+
 	idnodeMap[0] = outNode;
 
 	u32 nodeID = 1;
@@ -234,7 +251,7 @@ void TNodeGraph::toJSON(JSON& json) {
 
 	u32 i = 0;
 	for (auto&& [k, v] : m_tnodes) {
-		if (k->typeName() == "OutNode") continue;
+		if (k->getType() == OutNode::typeID()) continue;
 
 		JSON node; k->save(node);
 		node["pos"] = { v->gridPos.x, v->gridPos.y };
@@ -258,14 +275,16 @@ void TNodeGraph::toJSON(JSON& json) {
 		connections[i++] = jconn;
 	}
 	json["connections"] = connections;
-}
 
-Vec<const char*> TNodeGraph::getSampleNames() {
-	Vec<const char*> sln;
-	for (auto& sle : m_actualNodeGraph->sampleLibrary()) {
-		char* title = new char[sle.second->name.size()];
-		strcpy(title, sle.second->name.c_str());
-		sln.push_back(title);
+	// Save samples
+	JSON samples = JSON::array();
+	for (auto&& [id, sample] : m_actualNodeGraph->sampleLibrary()) {
+		JSON jsample;
+		jsample["data"] = sample->data;
+		jsample["sampleSize"] = sample->data.size();
+		jsample["sampleName"] = id;
+		jsample["sampleRate"] = sample->sampleRate;
+		samples.push_back(jsample);
 	}
-	return sln;
+	json["samples"] = samples;
 }

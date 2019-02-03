@@ -5,10 +5,15 @@
 
 class Sample {
 public:
+	enum State {
+		Idle = 0,
+		Attack,
+		Decay
+	};
 
-	Sample() : m_frame(0), m_sampleRate(0.0f) { }
+	Sample() : m_frame(0), m_sampleRate(0.0f), m_state(Idle) { }
 	Sample(const Vec<float> data, float sr)
-		: m_sampleData(data), m_sampleRate(sr), m_frame(0)
+		: m_sampleData(data), m_sampleRate(sr), m_frame(0), m_state(Idle)
 	{ }
 	Sample(const Str& fileName);
 
@@ -21,10 +26,17 @@ public:
 
 	float sampleDirect(float sampleRate);
 
+	void gate(bool g);
+	float sample(float sampleRate, bool repeat = false);
+	void reset() { m_frame = 0; m_state = Idle; }
+
+	State state() const { return m_state; }
+
 protected:
 	Vec<float> m_sampleData;
 	float m_frame;
 	float m_sampleRate;
+	State m_state;
 };
 
 #endif // TWEN_SAMPLE_H

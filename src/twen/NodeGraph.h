@@ -35,10 +35,9 @@ public:
 	float load(u32 loc) const { return m_globalStorage[loc]; }
 
 	bool addSample(const Str& fileName);
-	void removeSample(u64 id);
-	u64 getSampleID(const Str& name);
-	RawSample* getSample(u64 id);
-	Map<u64, Ptr<RawSample>>& sampleLibrary() { return m_sampleLibrary; }
+	void removeSample(const Str& name);
+	RawSample* getSample(const Str& name);
+	Map<Str, Ptr<RawSample>>& sampleLibrary() { return m_sampleLibrary; }
 	Vec<Str> getSampleNames();
 
 	float bpm() const { return m_bpm; }
@@ -54,8 +53,10 @@ public:
 	float time();
 	float sample();
 
-private:
+	void reset();
+
 	void addSample(const Str& fname, const Vec<float>& data, float sr);
+private:
 
 	Node *m_outputNode;
 
@@ -69,8 +70,7 @@ private:
 
 	Arr<float, TWEN_GLOBAL_STORAGE_SIZE> m_globalStorage;
 
-	Vec<Str> m_sampleNames;
-	Map<u64, Ptr<RawSample>> m_sampleLibrary;
+	Map<Str, Ptr<RawSample>> m_sampleLibrary;
 
 };
 

@@ -37,3 +37,37 @@ float Sample::sampleDirect(float sampleRate) {
 
 	return out;
 }
+
+void Sample::gate(bool g) {
+	if (g) {
+		m_state = Attack;
+	} else if (m_state != Idle) {
+		m_state = Decay;
+	}
+}
+
+float Sample::sample(float sampleRate, bool repeat) {
+	const float frameStep = m_sampleRate / sampleRate;
+
+	float out = 0.0f;
+	switch (m_state) {
+		case Idle: break;
+		case Attack: {
+			if (m_frame < m_sampleData.size()) {
+				out = m_sampleData[u32(m_frame)];
+			}
+
+			m_frame += frameStep;
+			if (m_frame >= m_sampleData.size()) {
+				if (!repeat) m_state = Decay;
+				else m_frame = 0;
+			}
+		} break;
+		case Decay: {
+			m_frame = 0;
+			m_state = Idle;
+		} break;
+		default: break;
+	}
+	return out;
+}

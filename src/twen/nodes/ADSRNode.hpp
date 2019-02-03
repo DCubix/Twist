@@ -54,6 +54,8 @@ public:
 		r = json["r"];
 	}
 
+	ADSR& adsr() { return m_adsr; }
+
 	float a, d, s, r;
 
 private:

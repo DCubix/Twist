@@ -27,6 +27,7 @@ struct TNode {
 	}
 	ImVec2 size() const { return ImVec2(bounds.z, bounds.w); }
 
+	virtual ~TNode() {}
 };
 
 struct TConnection {
@@ -38,7 +39,7 @@ class TNodeEditor;
 class TNodeGraph {
 	friend class TNodeEditor;
 public:
-	TNodeGraph(NodeGraph* ang);
+	TNodeGraph(NodeGraph* ang, int outX, int outY);
 
 	TNode* addNode(int x, int y, const Str& type, JSON params, bool canundo=true);
 	void removeNode(TNode *nd, bool canundo=true);
@@ -64,7 +65,6 @@ public:
 	void toJSON(JSON& json);
 
 protected:
-	Vec<const char*> getSampleNames();
 	Ptr<NodeGraph> m_actualNodeGraph;
 
 	TNodeEditor* m_editor;

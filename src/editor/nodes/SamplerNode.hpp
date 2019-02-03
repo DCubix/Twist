@@ -10,15 +10,15 @@
 
 static void Sampler_gui(Node* node) {
 	SamplerNode *n = dynamic_cast<SamplerNode*>(node);
+	ImGui::PushID(n);
 
 	Vec<Str> samples = n->graph()->getSampleNames();
 
 	ImGui::PushItemWidth(90);
 
-	static int sel = 0;
 	if (ImGui::Combo(
 			"Sample",
-			&sel,
+			(int*) &n->sampleID,
 			[](void* vec, int idx, const char** out_text){
 				Vec<Str>* vector = reinterpret_cast<Vec<Str>*>(vec);
 				if (idx < 0 || idx >= vector->size()) return false;
@@ -26,25 +26,23 @@ static void Sampler_gui(Node* node) {
 				return true;
 			},
 			(void*)&samples,
-			samples.size())) {
-		n->sampleID = n->graph()->getSampleID(samples[sel]);
-		n->load();
-	}
-
-	if (!n->sampleData.valid() && !samples.empty()) {
-		n->sampleID = n->graph()->getSampleID(samples[n->sampleID]);
+			samples.size()))
+	{
+		n->sampleName = samples[n->sampleID];
 		n->load();
 	}
 
 	ImGui::AudioView(
 				"_sample",
-				120,
+				130,
 				n->sampleData.sampleData().data(),
 				n->sampleData.sampleData().size(),
 				n->sampleData.frame(),
-				25.0f
+				50.0f
 	);
 	ImGui::PopItemWidth();
+
+	ImGui::PopID();
 }
 
 #endif // TWIST_SAMPLER_HPP

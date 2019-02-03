@@ -177,15 +177,17 @@ float NodeGraph::sample() {
 	return s.value;
 }
 
-void NodeGraph::addSample(const Str& fname, const Vec<float>& data, float sr) {
-	u64 id = UID::getNew();
+void NodeGraph::reset() {
+	m_noteIndex = 0;
+	m_time = 0.0f;
+}
 
+void NodeGraph::addSample(const Str& fname, const Vec<float>& data, float sr) {
 	Ptr<RawSample> entry = Ptr<RawSample>(new RawSample());
 	entry->data = data;
 	entry->sampleRate = sr;
 	entry->name = fname;
-	m_sampleLibrary[id] = std::move(entry);
-	m_sampleNames.push_back(fname);
+	m_sampleLibrary[fname] = std::move(entry);
 }
 
 bool NodeGraph::addSample(const Str& fileName) {
@@ -225,37 +227,26 @@ bool NodeGraph::addSample(const Str& fileName) {
 	return true;
 }
 
-void NodeGraph::removeSample(u64 id) {
-	auto pos = m_sampleLibrary.find(id);
+void NodeGraph::removeSample(const Str& name) {
+	auto pos = m_sampleLibrary.find(name);
 	if (pos == m_sampleLibrary.end())
 		return;
-
-	Str name = m_sampleLibrary[id]->name;
-	auto npos = std::find(m_sampleNames.begin(), m_sampleNames.end(), name);
-	if (npos != m_sampleNames.end()) {
-		m_sampleNames.erase(npos);
-	}
-	m_sampleLibrary.erase(id);
+	m_sampleLibrary.erase(pos);
 }
 
-RawSample* NodeGraph::getSample(u64 id) {
+RawSample* NodeGraph::getSample(const Str& name) {
 	if (m_sampleLibrary.empty())
 		return nullptr;
-	auto pos = m_sampleLibrary.find(id);
+	auto pos = m_sampleLibrary.find(name);
 	if (pos == m_sampleLibrary.end())
 		return nullptr;
 	return pos->second.get();
 }
 
-u64 NodeGraph::getSampleID(const Str& name) {
-	for (auto& se : m_sampleLibrary) {
-		if (se.second->name == name) {
-			return se.first;
-		}
-	}
-	return 0;
-}
-
 Vec<Str> NodeGraph::getSampleNames() {
-	return m_sampleNames;
+	Vec<Str> sampleNames;
+	sampleNames.reserve(m_sampleLibrary.size());
+	for (auto&& [k, v] : m_sampleLibrary)
+		sampleNames.push_back(k);
+	return sampleNames;
 }
