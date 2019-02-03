@@ -38,15 +38,10 @@ except and only to the extent that such activity is expressly permitted by appli
 d) Rental.
 You may not rent, lease, or lend the SOFTWARE PRODUCT.
 
-e) Support Services.
-The Licensor may provide you with support services related to the SOFTWARE PRODUCT.
-Any supplemental software code provided to you as part of the Support Services shall be considered part of the SOFTWARE PRODUCT
-and subject to the terms and conditions of this EULA.
-
-f) Compliance with Applicable Laws.
+e) Compliance with Applicable Laws.
 You must comply with all applicable laws regarding use of the SOFTWARE PRODUCT.
 
-g) Source code.
+f) Source code.
 You may only compile and modify the source code of the SOFTWARE PRODUCT for your own personal purpose or to propose a contribution to the SOFTWARE PRODUCT.
 
 3. TERMINATION
