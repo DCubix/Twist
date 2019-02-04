@@ -25,12 +25,14 @@ public:
 	}
 
 	Value sample(NodeGraph *graph) override {
+		float amp = connected(0) ? in(0).velocity() : 1.0f;
 		bool gate = connected(0) ? in(0).gate() : true;
 		bool repeat = gate && !connected(0);
 		if (sampleData.valid()) {
 			sampleData.gate(gate);
 		}
-		return Value(sampleData.valid() ? sampleData.sample(graph->sampleRate(), repeat) : 0.0f);
+		float s = sampleData.valid() ? sampleData.sample(graph->sampleRate(), repeat) : 0.0f;
+		return Value(s * amp);
 	}
 
 	void save(JSON& json) override {

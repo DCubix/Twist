@@ -1,25 +1,31 @@
 #include "Sample.h"
 
 #include "Log.h"
-#include "sndfile.hh"
+#include "TAudio.h"
 
 Sample::Sample(const std::string& fileName) {
-	SndfileHandle snd = SndfileHandle(fileName);
+	TAudioFile snd(fileName);
 	int maxSecs = 15;
-	if (snd.samplerate() > 44100) {
+	if (snd.sampleRate() > 44100) {
 		maxSecs = 10;
 	}
-	if (snd.frames() < snd.samplerate() * maxSecs) {
-		m_sampleRate = snd.samplerate();
+	if (snd.frames() < snd.sampleRate() * maxSecs) {
+		m_sampleRate = snd.sampleRate();
 
 		std::vector<float> samplesRaw;
 		samplesRaw.resize(snd.frames() * snd.channels());
-		snd.readf(samplesRaw.data(), samplesRaw.size());
+		u32 interleavedFrames = snd.readf(samplesRaw.data(), samplesRaw.size());
 
-		m_sampleData.resize(snd.frames());
-		for (int i = 0; i < snd.frames(); i++) {
-			m_sampleData[i] = samplesRaw[0 + i * 2] * 0.5f;
-			m_sampleData[i] += samplesRaw[1 + i * 2] * 0.5f;
+		m_sampleData.resize(interleavedFrames / snd.channels());
+		std::fill(m_sampleData.begin(), m_sampleData.end(), 0.0f);
+
+		u32 s = 0;
+		for (int i = 0; i < interleavedFrames; i+=snd.channels()) {
+			for (int c = 0; c < snd.channels(); c++) {
+				m_sampleData[s] = samplesRaw[c + i * snd.channels()];
+			}
+			m_sampleData[s] /= snd.channels();
+			s++;
 		}
 		m_frame = 0;
 	}

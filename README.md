@@ -12,8 +12,8 @@ It is a 100% visual tool to help you create a broad variety of sounds, packed wi
 
 ## Main Features
 * Many useful nodes
-* Recording (OGG)
-* Sampling (WAV, OGG, AIFF and FLAC)
+* Recording (WAV)
+* Sampling (WAV, OGG, and FLAC)
 * Effects
 
 ## Building
@@ -23,15 +23,11 @@ Tools Needed:
 
 Dependencies:
 * Linux
-	* Debian-based: `sudo apt install libsdl2-dev libsdl2-2.0-0 libsndfile1-dev libsndfile1`
-	* Arch: `sudo pacman -S sdl2 libsndfile`
+	* Debian-based: `sudo apt install libsdl2-dev libsdl2-2.0-0`
+	* Arch: `sudo pacman -S sdl2`
 
 * Windows
 	* [SDL2](https://www.libsdl.org/download-2.0.php)
-	* [libsndfile](http://www.mega-nerd.com/libsndfile/#Download)
-
-> RtMidi is included as a Git submodule so do this before building:
-> `git submodule update --init --recursive`
 
 ### Linux Build
 ```sh

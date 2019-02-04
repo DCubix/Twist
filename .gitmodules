@@ -1,6 +1,1 @@
-[submodule "deps/rtmidi"]
-	path = deps/rtmidi
-	url = https://github.com/thestk/rtmidi
-[submodule "deps/libsndfile"]
-	path = deps/libsndfile
-	url = https://github.com/erikd/libsndfile/
+

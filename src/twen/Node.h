@@ -11,7 +11,7 @@
 									static TypeIndex typeID() { return Utils::getTypeIndex<x>(); } \
 									static Str prettyName() { return title; }
 
-#define TWEN_NODE_BUFFER_SIZE 128
+#define TWEN_NODE_BUFFER_SIZE 256
 
 class Node;
 struct Connection {

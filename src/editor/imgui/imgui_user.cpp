@@ -253,7 +253,7 @@ bool LinkText(const char* text) {
 
 void AudioView(const char* id, float width, float* values, int length, int pos, float h) {
 	const int col = IM_COL32(0, 200, 100, 255);
-	const int coll = IM_COL32(0, 250, 170, 255);
+	const int coll = IM_COL32(0, 255, 190, 255);
 
 	int pos_r = int((float(pos) / length) * width);
 
@@ -278,7 +278,7 @@ void AudioView(const char* id, float width, float* values, int length, int pos, 
 		IM_COL32(80,80,80,255)
 	);
 
-	if (values != nullptr) {
+	if (values != nullptr && length > 0) {
 		const int samplesPerX = length / width;
 		const float h2 = h / 2;
 		for (int x = 0; x < width; x++) {
@@ -291,7 +291,10 @@ void AudioView(const char* id, float width, float* values, int length, int pos, 
 
 			ImVec2 p0 = ImVec2(x, -maxval * h + h2) + wp;
 			ImVec2 p1 = ImVec2(x, maxval * h + h2) + wp;
+			ImVec2 hp0 = ImVec2(x, -maxval * 0.5f * h + h2) + wp;
+			ImVec2 hp1 = ImVec2(x, maxval * 0.5f * h + h2) + wp;
 			draw_list->AddLine(p0, p1, col);
+			draw_list->AddLine(hp0, hp1, coll);
 		}
 	}
 

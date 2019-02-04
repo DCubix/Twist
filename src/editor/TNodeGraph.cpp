@@ -94,18 +94,19 @@ Connection* TNodeGraph::connect(TNode *from, TNode *to, u32 slot, bool canundo) 
 	LogI("Editor Linking (", from->node->name(), " <-> ", to->node->name(), ")");
 	m_lock.lock();
 	Connection* conn = m_actualNodeGraph->connect(from->node, to->node, slot);
-	m_lock.unlock();
 
 	if (canundo) {
 		m_undoRedo->performedAction<TLinkCommand>(this, conn, from->node, to->node, slot);
 		LogI("Registered action: ", STR(TLinkCommand));
 	}
+	m_lock.unlock();
 
 	return conn;
 }
 
 void TNodeGraph::disconnect(Connection* conn, bool canundo) {
 	LogI("Editor link removing...");
+	m_lock.lock();
 	if (canundo) {
 		m_undoRedo->performedAction<TUnLinkCommand>(
 			this,
@@ -113,7 +114,7 @@ void TNodeGraph::disconnect(Connection* conn, bool canundo) {
 		);
 		LogI("Registered action: ", STR(TUnLinkCommand));
 	}
-	m_lock.lock();
+
 	m_actualNodeGraph->disconnect(conn);
 	m_lock.unlock();
 

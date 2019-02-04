@@ -12,7 +12,7 @@ namespace fs = std::filesystem;
 #include "TUndoRedo.h"
 
 #include "OsDialog.hpp"
-#include "sndfile.hh"
+#include "TAudio.h"
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui/imgui.h"
@@ -122,8 +122,8 @@ TNodeEditor::TNodeEditor() {
 	m_playIcon = nullptr;
 	m_stopIcon = nullptr;
 
-	m_recordingDuration = 1;
 	m_recordingBufferPos = 0;
+	m_recordingBuffer.reserve(48000 * 90);
 
 	// Load recent files
 	std::ifstream fp(".recent");
@@ -165,23 +165,6 @@ TNodeEditor::TNodeEditor() {
 	NodeBuilder::registerType<SequencerNode>("Generators", TWEN_NODE_FAC {
 		return new SequencerNode(json);
 	});
-
-	// Initialize MIDI
-//	try {
-//		m_MIDIin = std::unique_ptr<RtMidiIn>(new RtMidiIn(
-//		RtMidi::UNSPECIFIED, "Twist MIDI In"
-//		));
-//		m_MIDIin->openPort(0, "Twist - Main In");
-//		m_MIDIin->setCallback(&midiCallback, nullptr);
-//		m_MIDIin->ignoreTypes(false, false, false);
-
-//		m_MIDIout = std::unique_ptr<RtMidiOut>(new RtMidiOut(
-//			RtMidi::UNSPECIFIED, "Twist MIDI Out"
-//		));
-//		m_MIDIout->openPort(0, "Twist - Main Out");
-//	} catch (RtMidiError err) {
-//		LogE(err.getMessage());
-//	}
 
 }
 
@@ -401,7 +384,9 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 		}
 	}
 	if (nearestConn != nullptr && io.MouseReleased[0]) {
+		m_lock.lock();
 		graph->disconnect(nearestConn);
+		m_lock.unlock();
 		nearestConn = nullptr;
 	}
 
@@ -454,18 +439,21 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, vec2zero);
 			ImGui::PushID("NodeButtons");
 
-//			if (ImGui::Button("C", ImVec2(15, 15))) {
-//				int cx = int(node->bounds.x);
-//				int cy = int(node->bounds.y + node->bounds.w);
-//				JSON params; node->save(params);
-//				params["open"] = true;
-//				m_activeNode = graph->addNode(cx, cy, nodeR->typeName(), params, 0);
-//			}
-//			if (ImGui::IsItemHovered()) {
-//				ImGui::SetTooltip("Clone");
-//			}
-//			ImGui::SameLine();
 			if (node->closeable) {
+				if (ImGui::Button("C", ImVec2(15, 15))) {
+					m_lock.lock();
+					int cx = int(node->bounds.x);
+					int cy = int(node->bounds.y + node->bounds.w);
+					JSON params; nodeR->save(params);
+					params["open"] = true;
+					m_activeNode = graph->addNode(cx, cy, nodeR->typeName(), params, 0);
+					m_activeNode->node->load(params);
+					m_lock.unlock();
+				}
+				if (ImGui::IsItemHovered()) {
+					ImGui::SetTooltip("Clone");
+				}
+				ImGui::SameLine();
 				if (ImGui::Button("X", ImVec2(15, 15))) {
 					toDelete.push_back(node);
 					m_hoveredNode = nullptr;
@@ -1081,40 +1069,38 @@ void TNodeEditor::draw(int w, int h) {
 	flags |= ImGuiWindowFlags_NoCollapse;
 
 	if (ImGui::Begin("Recording", nullptr, flags)) {
-		if (ImGui::BeginChild("##rec_buttons", ImVec2(180, -1), true, flags)) {
-			float w = ImGui::GetWindowContentRegionMax().x;
-			ImGui::PushItemWidth(100);
-			if (!m_recording) {
-				if (ImGui::DragFloat("Duration", &m_recordingDuration, 0.1f, 0.1f, 60.0f)) {
-					m_recordingBuffer.resize(
-						u32(m_nodeGraph->actualNodeGraph()->sampleRate() * m_recordingDuration)
-					);
-				}
-			} else {
-				u32 dsecs = u32(m_recordingDuration) % 60;
-				u32 dmins = u32(m_recordingDuration) / 60;
-				u32 dmillis = u32(m_recordingDuration * 1000.0f) % 1000;
-
+		if (ImGui::BeginChild("##rec_buttons", ImVec2(100, -1), true, flags)) {
+			ImGui::PushItemWidth(70);
+			if (m_recording) {
 				float secRaw = (float(m_recordingBufferPos) / m_nodeGraph->actualNodeGraph()->sampleRate()) * 1000.0f;
 				u32 secsRaw = u32(secRaw / 1000.0f);
 				u32 secs = secsRaw % 60;
 				u32 mins = secsRaw / 60;
 				u32 millis = u32(secRaw) % 1000;
 				ImGui::Text("Recorded: ");
-				ImGui::Text("%02d:%02d:%02d/%02d:%02d:%02d", mins, secs, millis, dmins, dsecs, dmillis);
+				ImGui::Text("%02d:%02d:%02d", mins, secs, millis);
 			}
 
-			bool recClick = ImGui::Button(m_recording ? "Stop" : "Record", ImVec2(-1, 22));
+			bool recClick = ImGui::Button(m_recording ? "Stop" : "Record", ImVec2(-1, 20));
 
 			if (recClick && m_nodeGraph) {
-				m_recordingBufferPos = 0;
 				m_recording = !m_recording;
+				if (!m_recording) {
+					m_recordingBuffer = Vec<float>(
+								m_recordingBuffer.begin(),
+								m_recordingBuffer.begin() + m_recordingBufferPos
+					);
+				} else {
+					const u32 maxSamples = m_nodeGraph->actualNodeGraph()->sampleRate() * MAX_SAMPLES_SECONDS;
+					m_recordingBuffer.resize(maxSamples);
+					std::fill(m_recordingBuffer.begin(), m_recordingBuffer.end(), 0.0f);
+				}
+				m_recordingBufferPos = 0;
 				reset();
-				std::fill(m_recordingBuffer.begin(), m_recordingBuffer.end(), 0.0f);
 			}
 
 			if (!m_recordingBuffer.empty() && !m_playing && !m_recording) {
-				if (ImGui::Button("Save", ImVec2(-1, 22))) {
+				if (ImGui::Button("Save", ImVec2(-1, 20))) {
 					auto filePath = osd::Dialog::file(
 						osd::DialogAction::SaveFile,
 						".",
@@ -1123,10 +1109,9 @@ void TNodeEditor::draw(int w, int h) {
 
 					if (filePath.has_value()) {
 						const u32 sr = u32(m_nodeGraph->actualNodeGraph()->sampleRate());
-						int fmt = SF_FORMAT_WAV | SF_FORMAT_PCM_16;
-						SndfileHandle snd = SndfileHandle(filePath.value(), SFM_WRITE, fmt, 1, sr);
+						TAudioFile snd(filePath.value(), true, sr);
 						snd.writef(m_recordingBuffer.data(), m_recordingBuffer.size());
-						m_recordingBuffer.clear();
+						std::fill(m_recordingBuffer.begin(), m_recordingBuffer.end(), 0.0f);
 					}
 				}
 			}
@@ -1247,17 +1232,14 @@ TNodeGraph* TNodeEditor::newGraph() {
 float TNodeEditor::output() {
 	float sample = 0.0f;
 	if ((m_playing || m_recording) && m_nodeGraph) {
-		TMessageBus::process();
+//		TMessageBus::process();
 		sample = m_nodeGraph->actualNodeGraph()->sample();
 	}
 
 	if (m_recording) {
-		if (m_recordingBuffer.empty()) {
-			m_recordingBuffer.resize(u32(m_recordingDuration * m_nodeGraph->actualNodeGraph()->sampleRate()));
-			std::fill(m_recordingBuffer.begin(), m_recordingBuffer.end(), 0.0f);
-		}
+		const u32 maxSamples = m_nodeGraph->actualNodeGraph()->sampleRate() * MAX_SAMPLES_SECONDS;
 		m_recordingBuffer[m_recordingBufferPos] = sample;
-		if (m_recordingBufferPos++ >= m_recordingBuffer.size()) {
+		if (m_recordingBufferPos++ >= maxSamples) {
 			m_recordingBufferPos = 0;
 			m_recording = false;
 		}
@@ -1266,14 +1248,14 @@ float TNodeEditor::output() {
 	return sample;
 }
 
-void midiCallback(double dt, std::vector<uint8_t>* message, void* userData) {
-	unsigned int nBytes = message->size();
-	if (nBytes > 3) return;
+//void midiCallback(double dt, std::vector<uint8_t>* message, void* userData) {
+//	unsigned int nBytes = message->size();
+//	if (nBytes > 3) return;
 
-	TRawMidiMessage rawMsg;
-	for (int i = 0; i < nBytes; i++)
-		rawMsg[i] = (*message)[i];
+//	TRawMidiMessage rawMsg;
+//	for (int i = 0; i < nBytes; i++)
+//		rawMsg[i] = (*message)[i];
 
-	TMidiMessage msg(rawMsg);
-	TMessageBus::broadcast(msg.channel, msg.command, msg.param0, msg.param1);
-}
+//	TMidiMessage msg(rawMsg);
+//	TMessageBus::broadcast(msg.channel, msg.command, msg.param0, msg.param1);
+//}

@@ -115,7 +115,8 @@ static void Sequencer_gui(Node* node) {
 	static const char* NOTES[] = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
 
 	const u32 col = IM_COL32(0, 200, 100, 255);
-	const u32 colSel = IM_COL32(0, 250, 170, 255);
+	const u32 colT = IM_COL32(0, 200, 100, 80);
+	const u32 colSel = IM_COL32(250, 20, 20, 180);
 	const u32 border = IM_COL32(0, 0, 0, 255);
 	const u32 borderLight = IM_COL32(100, 100, 100, 255);
 	const u32 borderLightAlpha = IM_COL32(100, 100, 100, 128);
@@ -197,11 +198,19 @@ static void Sequencer_gui(Node* node) {
 	for (u32 i = 0; i < TWIST_SEQUENCER_SIZE; i++) {
 		if (!n->notes[i].active) continue;
 
-		float h = height * n->notes[i].vel;
+		ImRect nrf;
+		nrf.Min = ImVec2(i * slotWidth, 0) + wp;
+		nrf.Max = ImVec2(i * slotWidth + slotWidth, height) + wp;
+		draw_list->AddRectFilled(
+			nrf.Min, nrf.Max,
+			colT
+		);
+
+		float h = (height * (1.0f - n->notes[i].vel));
 
 		ImRect nr;
 		nr.Min = ImVec2(i * slotWidth, h) + wp;
-		nr.Max = ImVec2(i * slotWidth + slotWidth, height - h) + wp;
+		nr.Max = ImVec2(i * slotWidth + slotWidth, height) + wp;
 		draw_list->AddRectFilled(
 			nr.Min, nr.Max,
 			col
@@ -214,11 +223,12 @@ static void Sequencer_gui(Node* node) {
 
 	if (sel >= 0) {
 		ImRect nr;
-		nr.Min = ImVec2(sel * slotWidth, 0) + wp;
-		nr.Max = ImVec2(sel * slotWidth + slotWidth, height) + wp;
+		nr.Min = ImVec2(sel * slotWidth + 2, 2) + wp;
+		nr.Max = ImVec2(sel * slotWidth + slotWidth - 2, height - 2) + wp;
 		draw_list->AddRect(
 			nr.Min, nr.Max,
-			colSel
+			colSel,
+			0.0f, 0, 3.0f
 		);
 	}
 

@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <fstream>
 
-#include "sndfile.hh"
+#include "TAudio.h"
 #include "nodes/StorageNodes.hpp"
 
 #include "Node.h"
@@ -149,7 +149,8 @@ float NodeGraph::sample() {
 		}
 
 		// If it's a writer node, solve "to"
-		if (conn->to->getType() == WriterNode::typeID() && !conn->to->m_solved) {
+		if ((conn->to->getType() == WriterNode::typeID() || conn->to->getType() == OutNode::typeID()) &&
+			!conn->to->m_solved) {
 			Value tosample = conn->to->sample(this);
 			conn->to->m_solved = true;
 			conn->to->m_lastSample = tosample;
@@ -208,22 +209,25 @@ bool NodeGraph::addSample(const Str& fileName) {
 	float sr = 1;
 	std::vector<float> sampleData;
 
-	SndfileHandle snd = SndfileHandle(fileName);
+	TAudioFile snd(fileName);
 	int maxSecs = 15;
-	if (snd.samplerate() > 44100) {
+	if (snd.sampleRate() > 44100) {
 		maxSecs = 10;
 	}
-	if (snd.frames() < snd.samplerate() * maxSecs) {
-		sr = snd.samplerate();
+	if (snd.frames() < snd.sampleRate() * maxSecs) {
+		sr = snd.sampleRate();
 
 		std::vector<float> samplesRaw;
 		samplesRaw.resize(snd.frames() * snd.channels());
-		snd.readf(samplesRaw.data(), samplesRaw.size());
 
-		sampleData.resize(snd.frames());
-		for (int i = 0; i < snd.frames(); i++) {
-			sampleData[i] = samplesRaw[0 + i * 2] * 0.5f;
-			sampleData[i] += samplesRaw[1 + i * 2] * 0.5f;
+		u32 interleavedFrames = snd.readf(&samplesRaw[0], samplesRaw.size());
+
+		sampleData.resize(interleavedFrames);
+		std::fill(sampleData.begin(), sampleData.end(), 0.0f);
+
+		u32 s = 0;
+		for (int i = 0; i < interleavedFrames; i++) {
+			sampleData[i] = samplesRaw[i * snd.channels()];
 		}
 	}
 

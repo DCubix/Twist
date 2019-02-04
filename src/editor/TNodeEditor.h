@@ -13,7 +13,7 @@
 #include <memory>
 #include <mutex>
 
-#include "TMidi.h"
+//#include "TMidi.h"
 #include "TCommands.h"
 #include "TNodeGraph.h"
 #include "TTex.h"
@@ -30,9 +30,10 @@
 
 #include "imgui.h"
 
-#define MAX_RECENT_FILES 6
+#define MAX_RECENT_FILES 8
+#define MAX_SAMPLES_SECONDS 90
 
-void midiCallback(double dt, std::vector<uint8_t>* message, void* userData);
+//void midiCallback(double dt, std::vector<uint8_t>* message, void* userData);
 
 class TNodeEditor {
 public:
@@ -51,8 +52,8 @@ public:
 
 	void saveBackup();
 
-	RtMidiIn* midiIn() { return m_MIDIin.get(); }
-	RtMidiOut* midiOut() { return m_MIDIout.get(); }
+//	RtMidiIn* midiIn() { return m_MIDIin.get(); }
+//	RtMidiOut* midiOut() { return m_MIDIout.get(); }
 
 	float sampleRate;
 
@@ -88,15 +89,14 @@ private:
 	bool m_playing = false, m_exit = false, m_recording = false;
 
 	Vec<float> m_recordingBuffer;
-	float m_recordingDuration;
 	u32 m_recordingBufferPos;
 
 	Ptr<TNodeGraph> m_nodeGraph;
 
 	Vec<Str> m_recentFiles;
 
-	Ptr<RtMidiIn> m_MIDIin;
-	Ptr<RtMidiOut> m_MIDIout;
+//	Ptr<RtMidiIn> m_MIDIin;
+//	Ptr<RtMidiOut> m_MIDIout;
 
 	TTex *m_playIcon, *m_stopIcon, *m_recIcon;
 
