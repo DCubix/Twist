@@ -19,7 +19,7 @@ add_definitions(-DJACK_HAS_PORT_RENAME)
 add_definitions(-DTWIST_NAME="${TWIST_NAME}")
 add_definitions(-DTWIST_VERSION="${TWIST_VERSION}")
 
-find_package(SDL2 REQUIRED)
+find_package(SDL2 CONFIG REQUIRED)
 
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/editor/imgui")
 add_subdirectory("${CMAKE_SOURCE_DIR}/deps/osdialog")
@@ -27,8 +27,6 @@ add_subdirectory("${CMAKE_SOURCE_DIR}/src/taudio")
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/twen")
 
 include_directories(
-	${SDL2_INCLUDE_DIRS}
-	"deps/libsndfile/src"
 	"deps/osdialog"
 	"src/"
 )
@@ -54,7 +52,7 @@ endif()
 
 add_executable(${PROJECT_NAME} ${SRC})
 target_link_libraries(${PROJECT_NAME}
-	${SDL2_LIBRARIES}
+	SDL2
 	osdialog
 	ImGUI
 	taudio

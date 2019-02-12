@@ -3,6 +3,10 @@
 
 #include "../TTex.h"
 
+#ifndef UINT32
+#define UINT32 unsigned int
+#endif
+
 typedef int ImGuiTabBarFlags;
 typedef int ImGuiTabItemFlags;
 

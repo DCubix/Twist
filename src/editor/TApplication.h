@@ -1,7 +1,7 @@
 #ifndef T_APPLICATION_H
 #define T_APPLICATION_H
 
-#if defined(__MINGW32__) || defined(__MINGW64__)
+#if !__has_include("SDL.h")
 #include "SDL2/SDL.h"
 #include "SDL2/SDL_audio.h"
 #else
