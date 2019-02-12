@@ -1108,8 +1108,13 @@ void TNodeEditor::draw(int w, int h) {
 					);
 
 					if (filePath.has_value()) {
+						fs::path fp = fs::u8path(filePath.value());
+						if (fp.extension().empty()) {
+							fp.replace_extension(".wav");
+						}
+
 						const u32 sr = u32(m_nodeGraph->actualNodeGraph()->sampleRate());
-						TAudioFile snd(filePath.value(), true, sr);
+						TAudioFile snd(fp.u8string(), true, sr);
 						snd.writef(m_recordingBuffer.data(), m_recordingBuffer.size());
 						std::fill(m_recordingBuffer.begin(), m_recordingBuffer.end(), 0.0f);
 					}
