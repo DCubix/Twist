@@ -9,13 +9,17 @@
 
 #include "sndfile.hh"
 
+#ifdef WINDOWS
+#include <windows.h>
+#endif
+
 static void audioCallback(void* app, Uint8* stream, int length);
 
 class App : public TApplication {
 public:
-	App()
+	App(const std::string& fileName="")
 	{
-		m_editor = new TNodeEditor();
+		m_editor = new TNodeEditor(fileName);
 		init(audioCallback, m_editor);
 		m_editor->sampleRate = spec().freq;
 	}
@@ -61,9 +65,9 @@ static void audioCallback(void* ud, Uint8* stream, int length) {
 	}
 }
 
-int main() {
+int main(int argc, char** argv) {
 	srand(u32(time(nullptr)));
-	
+
 	Twen::init();
 
 #if 0
@@ -71,7 +75,7 @@ int main() {
 	Arr<float, 44100> sine;
 
 	Ptr<NodeGraph> graph = Ptr<NodeGraph>(new NodeGraph());
-	
+
 	u64 out = graph->create<OutNode>();
 	u64 osc = graph->create<OscillatorNode>(44100.0f, Oscillator::Sine, 220.0f, 1.0f);
 	u64 osc2 = graph->create<OscillatorNode>(44100.0f, Oscillator::Sine, 2.0f, 40.0f);
@@ -95,7 +99,10 @@ int main() {
 	snd.writef(sine.data(), sine.size());
 #endif
 
-	App* app = new App();
+	App* app = new App(argc > 1 ? std::string(argv[1]) : "");
+#ifdef WINDOWS
+	FreeConsole();
+#endif
 	app->start();
 	delete app;
 

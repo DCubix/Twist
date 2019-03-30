@@ -9,6 +9,7 @@ using namespace ImGui;
 
 #include <algorithm>
 #include <cstdint>
+#include <cmath>
 
 #define BLOCK_COUNT 30
 #define BLOCK_HEIGHT 4

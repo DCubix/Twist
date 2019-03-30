@@ -37,7 +37,7 @@
 
 class TNodeEditor {
 public:
-	TNodeEditor();
+	TNodeEditor(const std::string& fileName = "");
 	~TNodeEditor();
 
 	void draw(int w, int h);
@@ -86,7 +86,8 @@ private:
 
 	ImVec2 m_mainWindowSize, m_selectionStart, m_selectionEnd;
 
-	bool m_playing = false, m_exit = false, m_recording = false;
+	bool m_playing = false, m_exit = false, m_recording = false,
+		m_showRecordingWindow = false, m_sequencerEditor = false;
 
 	Vec<float> m_recordingBuffer;
 	u32 m_recordingBufferPos;

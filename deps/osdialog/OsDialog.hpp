@@ -52,7 +52,7 @@ namespace osd {
 			const std::string& defaultPath,
 			const Filters& filters
 		) {
-			
+
 			char* fileName = osdialog_file(
 				(osdialog_file_action)action,
 				defaultPath.c_str(),

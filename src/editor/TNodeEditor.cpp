@@ -106,7 +106,7 @@ inline static float GetSquaredDistanceToBezierCurve(const ImVec2& point,const Im
 	return minSquaredDistance;
 }
 
-TNodeEditor::TNodeEditor() {
+TNodeEditor::TNodeEditor(const std::string& fileName) {
 	m_connection.from = nullptr;
 	m_connection.active = false;
 
@@ -166,6 +166,8 @@ TNodeEditor::TNodeEditor() {
 		return new SequencerNode(json);
 	});
 
+	if (fileName.empty()) newGraph();
+	else menuActionOpen(fileName);
 }
 
 TNodeEditor::~TNodeEditor() {
@@ -504,6 +506,9 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 				if (!io.KeyCtrl) graph->unselectAll();
 				node->selected = true;
 				m_activeNode = node;
+				if (node->node->getType() == SequencerNode::typeID()) {
+					m_sequencerEditor = true;
+				}
 			} else if (io.KeyCtrl) {
 				node->selected = false;
 				if (node == m_activeNode) {
@@ -521,15 +526,6 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 		ImU32 node_bg_color = m_hoveredNode == node || node->selected ? IM_COL32(75, 75, 75, 255) : IM_COL32(60, 60, 60, 255);
 		draw_list->AddRectFilled(node_rect_min, node_rect_max, node_bg_color, NODE_ROUNDING(scl));
 
-//		ImGui::DrawAudioView(
-//			node_rect_min.x, node_rect_min.y,
-//			node_rect_max.x - node_rect_min.x,
-//			nodeR->buffer().data(),
-//			TWEN_NODE_BUFFER_SIZE,
-//			nodeTitleBarBgHeight,
-//			NODE_ROUNDING(scl),
-//			node->open ? ImDrawCornerFlags_Top : ImDrawCornerFlags_All
-//		);
 		draw_list->AddRectFilled(
 			node_rect_min,
 			ImVec2(node_rect_max.x, node_rect_min.y + nodeTitleBarBgHeight),
@@ -658,7 +654,7 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 	/// Selecting nodes
 	if (!m_nodesMoving && ImGui::IsMouseClicked(0) &&
 		!m_connection.active && !ImGui::IsAnyItemActive() &&
-		!ImGui::IsAnyItemHovered())
+		!ImGui::IsAnyItemHovered() && isMouseHoveringWindow)
 	{
 		if (!io.KeyCtrl) graph->unselectAll();
 		m_selectionStart = io.MousePos;
@@ -695,11 +691,11 @@ void TNodeEditor::drawNodeGraph(TNodeGraph* graph) {
 
 		for (auto&& [k, v] : graph->m_tnodes) {
 			TNode* node = v.get();
-			draw_list->AddRect(
-				node->selectionBounds.Min,
-				node->selectionBounds.Max,
-				IM_COL32(255, 0, 0, 150)
-			);
+			// draw_list->AddRect(
+			// 	node->selectionBounds.Min,
+			// 	node->selectionBounds.Max,
+			// 	IM_COL32(255, 0, 0, 150)
+			// );
 
 			ImRect nbounds = node->selectionBounds;
 
@@ -826,7 +822,7 @@ void TNodeEditor::draw(int w, int h) {
 
 	bool showAbout = false;
 
-	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4.0f, 12.0f));
+	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4.0f, 4.0f));
 	float menuHeight = 0.0f;
 	if (ImGui::BeginMainMenuBar()) {
 		/// Shortcut handling
@@ -919,8 +915,12 @@ void TNodeEditor::draw(int w, int h) {
 				saveBackup();
 			}
 			ImGui::Separator();
-			if (ImGui::MenuItem("Sample Library") && m_nodeGraph) {
+			if (ImGui::MenuItem("Sample Library", nullptr, false, m_nodeGraph.get() != nullptr)) {
 				m_editingSamples = true;
+			}
+
+			if (ImGui::MenuItem("Recording", nullptr, false, m_nodeGraph.get() != nullptr)) {
+				m_showRecordingWindow = true;
 			}
 
 			ImGui::EndMenu();
@@ -941,9 +941,10 @@ void TNodeEditor::draw(int w, int h) {
 			}
 			ImGui::EndMenu();
 		}
+		menuHeight = ImGui::GetWindowSize().y;
 
 		if (m_nodeGraph) {
-			ImGui::SameLine();
+			ImGui::SameLine(0, 12);
 
 			ImGui::PushItemWidth(80);
 			float bpm = m_nodeGraph->actualNodeGraph()->bpm();
@@ -962,15 +963,13 @@ void TNodeEditor::draw(int w, int h) {
 			ImGui::SameLine();
 			bool playPressed = ImGui::ImageButton(
 				m_playing ? (ImTextureID)(m_stopIcon->id()) : (ImTextureID)(m_playIcon->id()),
-				ImVec2(22, 22)
+				ImVec2(22, menuHeight)
 			);
 			if (playPressed) {
 				m_playing = !m_playing;
 				reset();
 			}
 		}
-
-		menuHeight = ImGui::GetWindowSize().y;
 		ImGui::EndMainMenuBar();
 	}
 	ImGui::PopStyleVar();
@@ -1016,9 +1015,7 @@ void TNodeEditor::draw(int w, int h) {
 		ImGui::EndPopup();
 	}
 
-	const float recordingAreaHeight = 120;
-
-	ImGui::SetNextWindowSize(ImVec2(w, h - menuHeight - recordingAreaHeight), 0);
+	ImGui::SetNextWindowSize(ImVec2(w, h - menuHeight), 0);
 	ImGui::SetNextWindowPos(ImVec2(0, menuHeight), 0);
 	ImGui::SetNextWindowBgAlpha(1.0f);
 
@@ -1061,27 +1058,25 @@ void TNodeEditor::draw(int w, int h) {
 	ImGui::End();
 	ImGui::PopStyleVar();
 
-	ImGui::SetNextWindowSize(ImVec2(w, recordingAreaHeight), 0);
-	ImGui::SetNextWindowPos(ImVec2(0, h - recordingAreaHeight), 0);
-	ImGui::SetNextWindowBgAlpha(1.0f);
-
 	flags &= ~ImGuiWindowFlags_NoTitleBar;
 	flags |= ImGuiWindowFlags_NoCollapse;
 
-	if (ImGui::Begin("Recording", nullptr, flags)) {
-		if (ImGui::BeginChild("##rec_buttons", ImVec2(100, -1), true, flags)) {
-			ImGui::PushItemWidth(70);
+	if (m_showRecordingWindow) {
+		if (!ImGui::Begin("Recording", &m_showRecordingWindow, ImGuiWindowFlags_AlwaysAutoResize)) {
+			ImGui::End();
+		} else {
+			ImGui::PushItemWidth(50);
+			bool recClick = ImGui::Button(m_recording ? "Stop" : "Record", ImVec2(50, 20));
 			if (m_recording) {
+				ImGui::SameLine();
 				float secRaw = (float(m_recordingBufferPos) / m_nodeGraph->actualNodeGraph()->sampleRate()) * 1000.0f;
 				u32 secsRaw = u32(secRaw / 1000.0f);
 				u32 secs = secsRaw % 60;
 				u32 mins = secsRaw / 60;
 				u32 millis = u32(secRaw) % 1000;
-				ImGui::Text("Recorded: ");
+				ImGui::Text("Recorded: "); ImGui::SameLine();
 				ImGui::Text("%02d:%02d:%02d", mins, secs, millis);
 			}
-
-			bool recClick = ImGui::Button(m_recording ? "Stop" : "Record", ImVec2(-1, 20));
 
 			if (recClick && m_nodeGraph) {
 				m_recording = !m_recording;
@@ -1100,7 +1095,8 @@ void TNodeEditor::draw(int w, int h) {
 			}
 
 			if (!m_recordingBuffer.empty() && !m_playing && !m_recording) {
-				if (ImGui::Button("Save", ImVec2(-1, 20))) {
+				ImGui::SameLine();
+				if (ImGui::Button("Save", ImVec2(50, 20))) {
 					auto filePath = osd::Dialog::file(
 						osd::DialogAction::SaveFile,
 						".",
@@ -1120,76 +1116,97 @@ void TNodeEditor::draw(int w, int h) {
 					}
 				}
 			}
-
 			ImGui::PopItemWidth();
+			///
+
+			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(1, 1));
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+
+			if (ImGui::BeginChild("##rec_buf", ImVec2(250, 70), false, flags)) {
+				ImVec2 sz = ImGui::GetContentRegionAvail();
+				ImGui::AudioView(
+					"##audio_view_rec_buf",
+					sz.x,
+					m_recordingBuffer.data(),
+					m_recordingBuffer.size(),
+					m_recordingBufferPos, sz.y
+				);
+			}
+			ImGui::EndChild();
+
+			ImGui::PopStyleVar(2);
+			ImGui::End();
 		}
-		ImGui::EndChild();
-		ImGui::SameLine();
-
-		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(1, 1));
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-
-		ImVec2 sz = ImGui::GetContentRegionAvail();
-		if (ImGui::BeginChild("##rec_buf", ImVec2(sz.x, -1), true, flags)) {
-			ImGui::AudioView(
-				"##audio_view_rec_buf",
-				sz.x,
-				m_recordingBuffer.data(),
-				m_recordingBuffer.size(),
-				m_recordingBufferPos, sz.y
-			);
-		}
-		ImGui::EndChild();
-
-		ImGui::PopStyleVar(2);
 	}
-	ImGui::End();
 
 	ImGui::PopStyleVar();
 
-	if (m_editingSamples)
-		ImGui::OpenPopup("Sample Library");
-	if (ImGui::BeginPopupModal("Sample Library", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-		static int selectedSample = -1;
-		auto items = m_nodeGraph->actualNodeGraph()->getSampleNames();
+	if (m_editingSamples) {
+		if (!ImGui::Begin("Sample Library", &m_editingSamples, ImGuiWindowFlags_AlwaysAutoResize)) {
+			ImGui::End();
+		} else {
+			static int selectedSample = -1;
+			auto items = m_nodeGraph->actualNodeGraph()->getSampleNames();
 
-		ImGui::ListBox("##sampleLib", &selectedSample, VectorOfStringGetter, &items, items.size(), 8);
-		ImGui::SameLine();
+			ImGui::ListBox("##sampleLib", &selectedSample, VectorOfStringGetter, &items, items.size(), 6);
+			ImGui::SameLine();
 
-		ImGui::BeginGroup();
-		float w = ImGui::GetContentRegionAvailWidth();
-		if (ImGui::Button("Load", ImVec2(w, 18))) {
-			auto filePath = osd::Dialog::file(
-				osd::DialogAction::OpenFile,
-				".",
-				osd::Filters("Audio Files:wav,ogg,aif,flac")
-			);
+			ImGui::BeginGroup();
+			float w = ImGui::GetContentRegionAvailWidth();
+			if (ImGui::Button("Load", ImVec2(w, 18))) {
+				auto filePath = osd::Dialog::file(
+					osd::DialogAction::OpenFile,
+					".",
+					osd::Filters("Audio Files:wav,ogg,flac")
+				);
 
-			if (filePath.has_value()) {
-				if (!m_nodeGraph->actualNodeGraph()->addSample(filePath.value())) {
-					osd::Dialog::message(
-						osd::MessageLevel::Error,
-						osd::MessageButtons::Ok,
-						"Ivalid sample. It must have <= 15 seconds."
-					);
-				} else { saveBackup(); }
+				if (filePath.has_value()) {
+					if (!m_nodeGraph->actualNodeGraph()->addSample(filePath.value())) {
+						osd::Dialog::message(
+							osd::MessageLevel::Error,
+							osd::MessageButtons::Ok,
+							"Ivalid sample. It must be <= 15 seconds."
+						);
+					} else { saveBackup(); }
+				}
 			}
-		}
-		if (!items.empty()) {
-			if (ImGui::Button("Delete", ImVec2(w, 18))) {
-				m_nodeGraph->actualNodeGraph()->removeSample(items[selectedSample]);
-				LogI("Deleted sample: ", items[selectedSample]);
-				selectedSample = -1;
-				saveBackup();
+			if (!items.empty()) {
+				if (ImGui::Button("Del.", ImVec2(w, 18))) {
+					m_nodeGraph->actualNodeGraph()->removeSample(items[selectedSample]);
+					LogI("Deleted sample: ", items[selectedSample]);
+					selectedSample = -1;
+					saveBackup();
+				}
 			}
+			ImGui::EndGroup();
+			ImGui::End();
 		}
-		if (ImGui::Button("Close", ImVec2(w, 18))) {
-			ImGui::CloseCurrentPopup();
-			m_editingSamples = false;
-		}
-		ImGui::EndGroup();
-		ImGui::EndPopup();
 	}
+
+	// if (m_sequencerEditor) {
+	// 	if (!ImGui::Begin("Sequencer Editor", &m_sequencerEditor, ImGuiWindowFlags_AlwaysAutoResize)) {
+	// 		ImGui::End();
+	// 	} else {
+	// 		const float width = 300.0f;
+	// 		const float height = 16.0f;
+	// 		const float slotWidth = width / TWIST_SEQUENCER_SIZE;
+	// 		static const char* NOTES[] = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
+
+	// 		const u32 col = IM_COL32(0, 200, 100, 255);
+	// 		const u32 colT = IM_COL32(0, 200, 100, 80);
+	// 		const u32 colSel = IM_COL32(250, 20, 20, 180);
+	// 		const u32 border = IM_COL32(0, 0, 0, 255);
+	// 		const u32 borderLight = IM_COL32(100, 100, 100, 255);
+	// 		const u32 borderLightAlpha = IM_COL32(100, 100, 100, 128);
+	// 		const u32 cursor = IM_COL32(200, 100, 0, 128);
+
+	// 		i32 &sel = n->sel;
+
+	// 		SequencerNode *n = dynamic_cast<SequencerNode*>(m_activeNode->node);
+
+	// 		ImGui::End();
+	// 	}
+	// }
 
 }
 

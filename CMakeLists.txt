@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.7)
-project(Twist VERSION 3.0 LANGUAGES C CXX)
+	cmake_minimum_required(VERSION 3.7)
+project(Twist VERSION 1.0 LANGUAGES C CXX)
 
 set(TWIST_VERSION ${PROJECT_VERSION})
 set(TWIST_NAME "${PROJECT_NAME}")
@@ -11,6 +11,12 @@ set(CMAKE_CXX_EXTENSIONS ON)
 if (WIN32 OR MINGW)
 	add_definitions(-DWINDOWS)
 	add_definitions(-DSDL_MAIN_HANDLED)
+endif()
+
+if (MINGW OR UNIX)
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc")
+	set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -static-libstdc++ -static-libgcc")
+	set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -static-libstdc++ -static-libgcc")
 endif()
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
@@ -53,6 +59,7 @@ endif()
 add_executable(${PROJECT_NAME} ${SRC})
 target_link_libraries(${PROJECT_NAME}
 	SDL2
+	SDL2main
 	osdialog
 	ImGUI
 	taudio

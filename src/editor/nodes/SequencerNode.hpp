@@ -206,10 +206,10 @@ static void Sequencer_gui(Node* node) {
 			colT
 		);
 
-		float h = (height * (1.0f - n->notes[i].vel));
+		// float h = (height * (1.0f - n->notes[i].vel));
 
 		ImRect nr;
-		nr.Min = ImVec2(i * slotWidth, h) + wp;
+		nr.Min = ImVec2(i * slotWidth, 0.0f) + wp;
 		nr.Max = ImVec2(i * slotWidth + slotWidth, height) + wp;
 		draw_list->AddRectFilled(
 			nr.Min, nr.Max,
@@ -228,7 +228,7 @@ static void Sequencer_gui(Node* node) {
 		draw_list->AddRect(
 			nr.Min, nr.Max,
 			colSel,
-			0.0f, 0, 3.0f
+			0.0f, 0, 2.0f
 		);
 	}
 
