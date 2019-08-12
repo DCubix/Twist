@@ -20,7 +20,7 @@ public:
 		float sr = graph->sampleRate();
 		m_adsr.attack(a * sr);
 		m_adsr.decay(d * sr);
-		m_adsr.sustain(s * sr);
+		m_adsr.sustain(s);
 		m_adsr.release(r * sr);
 
 		if (in(0).gate()) {

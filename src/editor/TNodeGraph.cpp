@@ -9,8 +9,6 @@
 
 #include "nodes/OutNode.hpp"
 
-#include "sndfile.hh"
-
 TNodeGraph::TNodeGraph(NodeGraph* ang, int outX, int outY) {
 	m_actualNodeGraph = Ptr<NodeGraph>(std::move(ang));
 	m_name = "Untitled";

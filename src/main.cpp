@@ -7,8 +7,6 @@
 #include "editor/TApplication.h"
 #include "editor/TNodeEditor.h"
 
-#include "sndfile.hh"
-
 #ifdef WINDOWS
 #include <windows.h>
 #endif
