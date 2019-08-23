@@ -19,8 +19,7 @@ NodeGraph::NodeGraph()
 }
 
 float NodeGraph::time() {
-	const float delay = (60000.0f / m_bpm) / 1000.0f;
-	return Utils::remap(m_time, 0.0f, delay, 0.0f, 1.0f);
+	return m_time / delay();
 }
 
 Node* NodeGraph::add(Node *node) {
@@ -154,6 +153,7 @@ float NodeGraph::sample() {
 			Value tosample = conn->to->sample(this);
 			conn->to->m_solved = true;
 			conn->to->m_lastSample = tosample;
+
 			conn->to->updateBuffer(tosample.value * tosample.velocity * float(tosample.gate));
 		}
 
@@ -174,17 +174,16 @@ float NodeGraph::sample() {
 	//
 
 	const float step = (1.0f / m_sampleRate) * 4.0f;
-	const float delay = (60000.0f / m_bpm) / 1000.0f;
 
 	m_time += step;
-	if (m_time >= delay) {
+	if (m_time >= delay()) {
 		m_noteIndex++;
 		m_noteIndex %= (m_bars * 4);
 		m_time = 0.0f;
 	}
 
-	Value s = m_outputNode != nullptr ? m_outputNode->sample(this) : Value();
-	return s.value;
+	Value smp = m_outputNode != nullptr ? m_outputNode->sample(this) : Value();
+	return smp.value;
 }
 
 void NodeGraph::reset() {

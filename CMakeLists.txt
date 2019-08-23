@@ -1,4 +1,4 @@
-	cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.11)
 project(Twist VERSION 1.0 LANGUAGES C CXX)
 
 set(TWIST_VERSION ${PROJECT_VERSION})
@@ -27,6 +27,10 @@ add_definitions(-DTWIST_VERSION="${TWIST_VERSION}")
 
 find_package(SDL2 CONFIG REQUIRED)
 
+set(BUILD_SHARED_LIBS CACHE BOOL OFF)
+set(BUILD_TESTING CACHE BOOL OFF)
+
+add_subdirectory("${CMAKE_SOURCE_DIR}/deps/rtmidi")
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/editor/imgui")
 add_subdirectory("${CMAKE_SOURCE_DIR}/deps/osdialog")
 add_subdirectory("${CMAKE_SOURCE_DIR}/src/taudio")
@@ -34,6 +38,7 @@ add_subdirectory("${CMAKE_SOURCE_DIR}/src/twen")
 
 include_directories(
 	"deps/osdialog"
+	"deps/rtmidi"
 	"src/"
 )
 
@@ -61,6 +66,7 @@ target_link_libraries(${PROJECT_NAME}
 	SDL2
 	SDL2main
 	osdialog
+	rtmidi
 	ImGUI
 	taudio
 	twen

@@ -2,6 +2,7 @@
 #define TWEN_ARP_NODE_H
 
 #include <iostream>
+#include <cmath>
 #include "../NodeGraph.h"
 
 class ArpNode : public Node {
@@ -30,12 +31,13 @@ public:
 		DirectionCount
 	};
 
-	ArpNode(Note note, Chord chord, Direction dir, u32 oct)
+	inline ArpNode(Note note, Chord chord, Direction dir, u32 oct)
 		: Node(), note(note), chord(chord), direction(dir), oct(oct)
-	{}
+	{
+		addInput("In");
+	}
 
-	int index(float ntime, int n) {
-		int rn = (int(Utils::lerp(0, n, ntime)) % n);
+	inline int index(int rn, int n) {
 		if (prevRN != rn) {
 			gate = false;
 			prevRN = rn;
@@ -43,13 +45,16 @@ public:
 			gate = true;
 		}
 
+		int i = rn % n;
+
 		switch (direction) {
-			case Up: return rn;
-			case Down: return n - 1 - rn;
+			case Up: return i;
+			case Down: return n - 1 - i;
 			case UpDown: {
-				float cy = Utils::cyclef(ntime * 2.0f);
-				float nm = Utils::remap(cy * (n * 2), 0, n*2, 0, n);
-				return int(nm);
+				if (n < 2) return i;
+				int j = rn % ((n - 1) * 2);
+				if (j <= n - 1) return j;
+				else return (n - 1) - (j - (n - 1));
 			};
 			case Random: {
 				if (prevN != rn) {
@@ -58,16 +63,17 @@ public:
 				}
 				return randN;
 			};
-			default: return rn;
+			default: return i;
 		}
 	}
 
-	Value sample(NodeGraph *graph) override {
-		float ntime = graph->time();
-
+	inline Value sample(NodeGraph *graph) override {
 		int noteIn = note;
+		if (midi) {
+			noteIn = int(in(0).value());
+		}
 
-#define INDEX(n) index(ntime, n)
+#define INDEX(n) index(graph->index(), n)
 		int nt = 0;
 		switch (chord) {
 			case Major: {
@@ -122,25 +128,28 @@ public:
 		return Value(value, 1.0f, gate);
 	}
 
-	void save(JSON& json) override {
+	inline void save(JSON& json) override {
 		Node::save(json);
 		json["note"] = int(note);
 		json["chord"] = int(chord);
-		json["direction"] = int(chord);
+		json["direction"] = int(direction);
 		json["oct"] = oct;
+		json["midi"] = midi;
 	}
 
-	void load(JSON json) override {
+	inline void load(JSON json) override {
 		Node::load(json);
 		note = Note(json["note"].get<int>());
 		chord = Chord(json["chord"].get<int>());
 		direction = Direction(json["direction"].get<int>());
 		oct = json["oct"].get<u32>();
+		midi = json["midi"].get<bool>();
 	}
 
 	Note note;
 	Chord chord;
 	Direction direction;
+	bool midi{ false };
 	u32 oct;
 
 private:

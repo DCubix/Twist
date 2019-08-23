@@ -6,13 +6,13 @@
 class OutNode : public Node {
 	TWEN_NODE(OutNode, "Output")
 public:
-	OutNode() : Node() {
+	inline OutNode() : Node() {
 		addInput("In");
 		m_signalDC = 0.0f;
-		m_envelope = 100.0f;
+		m_envelope = 500.0f;
 	}
 
-	Value sample(NodeGraph *graph) override {
+	inline Value sample(NodeGraph *graph) override {
 		// Compressor
 		// from https://github.com/manpat/voi-synth/blob/master/src/context.rs#L182
 		// (thanks manpat!)
@@ -35,15 +35,15 @@ public:
 		}
 		m_envelope = std::max(m_envelope, 1.0f);
 
-		return Value(std::min(std::max(input * 0.6f / m_envelope, -1.0f), 1.0f));
+		return Value(std::min(std::max((input * 0.5f / m_envelope), -1.0f), 1.0f));
 	}
 
-	void save(JSON& json) override {
+	inline void save(JSON& json) override {
 		Node::save(json);
 		json["gain"] = gain;
 	}
 
-	void load(JSON json) override {
+	inline void load(JSON json) override {
 		Node::load(json);
 		gain = json["gain"];
 	}

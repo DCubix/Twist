@@ -8,7 +8,7 @@
 class ChorusNode : public Node {
 	TWEN_NODE(ChorusNode, "Chorus")
 public:
-	ChorusNode(float rate=0, float depth=0, float delay=0)
+	inline ChorusNode(float rate=0, float depth=0, float delay=0)
 		: Node(), rate(rate), depth(depth), delay(delay)
 	{
 		m_lfo = Oscillator(44100.0f);
@@ -21,7 +21,7 @@ public:
 		addInput("In"); // Input
 	}
 
-	Value sample(NodeGraph *graph) override {
+	inline Value sample(NodeGraph *graph) override {
 		m_lfo.sampleRate(graph->sampleRate());
 		m_wv.sampleRate(graph->sampleRate());
 
@@ -32,14 +32,14 @@ public:
 		return Value(((_out + in(0).value()) * 0.5f));
 	}
 
-	void save(JSON& json) override {
+	inline void save(JSON& json) override {
 		Node::save(json);
 		json["rate"] = rate;
 		json["depth"] = depth;
 		json["delay"] = delay;
 	}
 
-	void load(JSON json) override {
+	inline void load(JSON json) override {
 		Node::load(json);
 		rate = json["rate"];
 		depth = json["depth"];

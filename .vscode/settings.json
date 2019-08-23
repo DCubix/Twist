@@ -53,7 +53,12 @@
 		"cinttypes": "cpp",
 		"typeindex": "cpp",
 		"typeinfo": "cpp",
-		"valarray": "cpp"
+		"valarray": "cpp",
+		"algorithm": "cpp",
+		"xlocmes": "cpp",
+		"xlocmon": "cpp",
+		"xlocnum": "cpp",
+		"xloctime": "cpp"
 	},
 	"C_Cpp.configurationWarnings": "Disabled"
 }

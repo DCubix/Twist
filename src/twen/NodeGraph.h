@@ -51,6 +51,8 @@ public:
 	float sampleRate() const { return m_sampleRate; }
 
 	float time();
+	float delay() const { return (60000.0f / m_bpm) / 1000.0f; }
+
 	float sample();
 
 	void reset();

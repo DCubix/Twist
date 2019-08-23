@@ -74,17 +74,14 @@ file(GLOB SRC
 	"*.cpp"
 	"nodes/*.hpp"
 	"intern/*.h"
+	"intern/*.c"
 	"intern/*.cpp"
 	"intern/*.hpp"
 	"intern/termcolor/*.hpp"
 )
 
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/intern/sndfilter")
-
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SRC})
-
 add_library(${PROJECT_NAME} STATIC ${SRC})
-target_link_libraries(${PROJECT_NAME} PUBLIC sndfilter taudio)
+target_link_libraries(${PROJECT_NAME} PUBLIC taudio)
 target_include_directories(${PROJECT_NAME} PUBLIC
 	${CMAKE_CURRENT_SOURCE_DIR}/
 )

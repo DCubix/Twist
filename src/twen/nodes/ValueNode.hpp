@@ -6,18 +6,18 @@
 class ValueNode : public Node {
 	TWEN_NODE(ValueNode, "Value")
 public:
-	ValueNode(float v) : Node(), value(v) {}
+	inline ValueNode(float v) : Node(), value(v) {}
 
-	Value sample(NodeGraph *graph) override {
+	inline Value sample(NodeGraph *graph) override {
 		return Value(value);
 	}
 
-	void save(JSON& json) override {
+	inline void save(JSON& json) override {
 		Node::save(json);
 		json["value"] = value;
 	}
 
-	void load(JSON json) override {
+	inline void load(JSON json) override {
 		Node::load(json);
 		value = json["value"];
 	}

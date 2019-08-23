@@ -6,21 +6,21 @@
 class NoteNode : public Node {
 	TWEN_NODE(NoteNode, "Note")
 public:
-	NoteNode(Note note, u32 oct=0)
+	inline NoteNode(Note note, u32 oct=0)
 		: Node(), note(note), oct(oct)
 	{}
 
-	Value sample(NodeGraph *graph) override {
+	inline Value sample(NodeGraph *graph) override {
 		return Value(Utils::noteFrequency(u32(note) % 12, oct));
 	}
 
-	void save(JSON& json) override {
+	inline void save(JSON& json) override {
 		Node::save(json);
 		json["note"] = int(note);
 		json["oct"] = oct;
 	}
 
-	void load(JSON json) override {
+	inline void load(JSON json) override {
 		Node::load(json);
 		note = Note(json["note"].get<int>());
 		oct = json["oct"];

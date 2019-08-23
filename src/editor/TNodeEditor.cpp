@@ -50,6 +50,7 @@ namespace fs = std::filesystem;
 #include "nodes/ButtonNode.hpp"
 #include "nodes/SequencerNode.hpp"
 #include "nodes/SamplerNode.hpp"
+#include "nodes/MIDINode.hpp"
 
 #define NODE_SLOT_RADIUS(x) (4.0f * x)
 #define NODE_SLOT_RADIUS2(x) (5.0f * x)
@@ -156,10 +157,13 @@ TNodeEditor::TNodeEditor(const std::string& fileName) {
 	m_guis[ButtonNode::typeID()] = Button_gui;
 	m_guis[SequencerNode::typeID()] = Sequencer_gui;
 	m_guis[SamplerNode::typeID()] = Sampler_gui;
+	m_guis[MIDINode::typeID()] = MIDI_gui;
 	//
 
-	NodeBuilder::registerType<ButtonNode>("Generators", TWEN_NODE_FAC {
-		return new ButtonNode();
+	NodeBuilder::registerType<MIDINode>("General", TWEN_NODE_FAC {
+		MIDINode* n = new MIDINode(json);
+		TMessageBus::subscribe(n);
+		return n;
 	});
 
 	NodeBuilder::registerType<SequencerNode>("Generators", TWEN_NODE_FAC {
@@ -168,6 +172,19 @@ TNodeEditor::TNodeEditor(const std::string& fileName) {
 
 	if (fileName.empty()) newGraph();
 	else menuActionOpen(fileName);
+
+	// Setup MIDI
+	// try {
+	// 	m_MIDIin = std::unique_ptr<RtMidiIn>(new RtMidiIn(
+	// 		RtMidi::UNSPECIFIED, "Twist MIDI In"
+	// 	));
+	// 	m_MIDIin->openPort(0, "Twist - Main In");
+	// 	m_MIDIin->setCallback(&midiCallback, nullptr);
+	// 	m_MIDIin->ignoreTypes(false, false, false);
+	// } catch (RtMidiError &e) {
+	// 	LogE(e.what());
+	// }
+
 }
 
 TNodeEditor::~TNodeEditor() {
@@ -1253,8 +1270,9 @@ TNodeGraph* TNodeEditor::newGraph() {
 
 float TNodeEditor::output() {
 	float sample = 0.0f;
+
 	if ((m_playing || m_recording) && m_nodeGraph) {
-//		TMessageBus::process();
+		TMessageBus::process();
 		sample = m_nodeGraph->actualNodeGraph()->sample();
 	}
 
@@ -1270,14 +1288,14 @@ float TNodeEditor::output() {
 	return sample;
 }
 
-//void midiCallback(double dt, std::vector<uint8_t>* message, void* userData) {
-//	unsigned int nBytes = message->size();
-//	if (nBytes > 3) return;
+void midiCallback(double dt, std::vector<uint8_t>* message, void* userData) {
+	unsigned int nBytes = message->size();
+	if (nBytes > 3) return;
 
-//	TRawMidiMessage rawMsg;
-//	for (int i = 0; i < nBytes; i++)
-//		rawMsg[i] = (*message)[i];
+	TRawMidiMessage rawMsg;
+	for (int i = 0; i < nBytes; i++)
+		rawMsg[i] = (*message)[i];
 
-//	TMidiMessage msg(rawMsg);
-//	TMessageBus::broadcast(msg.channel, msg.command, msg.param0, msg.param1);
-//}
+	TMidiMessage msg(rawMsg);
+	TMessageBus::broadcast(msg.channel, msg.command, msg.param0, msg.param1);
+}

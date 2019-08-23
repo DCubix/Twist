@@ -36,14 +36,14 @@ public:
 		Noise
 	};
 
-	OscillatorNode(float freq = 220, WaveForm wf = WaveForm::Sine)
+	inline OscillatorNode(float freq = 220, WaveForm wf = WaveForm::Sine)
 		: Node(), frequency(freq), waveForm(wf), m_lastNoise(0.0f), m_phase(Phase(PI2))
 	{
 		addInput("Mod"); // Frequency Modulator
 		addInput("Freq"); // Frequency
 	}
 
-	Value sample(NodeGraph *graph) override {
+	inline Value sample(NodeGraph *graph) override {
 		float freqMod = connected(0) ? in(0).value() : 0.0f;
 		float freqVal = connected(1) ? in(1).value() : frequency;
 		float freq = m_phase.advance(freqVal, graph->sampleRate()) + freqMod;
@@ -55,29 +55,25 @@ public:
 			case Square: return Value((std::sin(freq) > 0.0f ? 1.0f : -1.0f) * amp);
 			case Saw: return Value((std::fmod(nfreq, 1.0f) * 2.0f - 1.0f) * amp);
 			case Triangle: return Value((std::asin(std::cos(freq)) / 1.5708f) * amp);
-			case Noise:
-				float dt = std::fmod(freq, frequency);
-				if (dt <= PI) {
-					m_lastNoise = (float(rand() % RAND_MAX) / float(RAND_MAX)) * 2.0f - 1.0f;
-				}
-				return Value((m_lastNoise * 0.5f) * amp);
+			default:
+				float noise = (float(rand() % RAND_MAX) / float(RAND_MAX)) * 2.0f - 1.0f;
+				return Value((noise * 0.5f) * amp);
 		}
-		return Value();
 	}
 
-	void save(JSON& json) override {
+	inline void save(JSON& json) override {
 		Node::save(json);
 		json["frequency"] = frequency;
 		json["waveForm"] = int(waveForm);
 	}
 
-	void load(JSON json) override {
+	inline void load(JSON json) override {
 		Node::load(json);
 		frequency = json["frequency"];
 		waveForm = WaveForm(json["waveForm"].get<int>());
 	}
 
-	void reset() {
+	inline void reset() {
 		m_phase.reset();
 	}
 

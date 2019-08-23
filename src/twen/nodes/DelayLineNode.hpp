@@ -7,24 +7,24 @@
 class DelayLineNode : public Node {
 	TWEN_NODE(DelayLineNode, "Delay Line")
 public:
-	DelayLineNode(float fb=0, float dl=0)
+	inline DelayLineNode(float fb=0, float dl=0)
 		: Node(), m_wv(WaveGuide(44100.0f)), feedBack(fb), delay(dl)
 	{
 		addInput("In"); // Input
 	}
 
-	Value sample(NodeGraph *graph) override {
+	inline Value sample(NodeGraph *graph) override {
 		m_wv.sampleRate(graph->sampleRate());
 		return Value(m_wv.sample(in(0).value(), feedBack, delay));
 	}
 
-	void save(JSON& json) override {
+	inline void save(JSON& json) override {
 		Node::save(json);
 		json["feedBack"] = feedBack;
 		json["delay"] = delay;
 	}
 
-	void load(JSON json) override {
+	inline void load(JSON json) override {
 		Node::load(json);
 		feedBack = json["feedBack"];
 		delay = json["delay"];

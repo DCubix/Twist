@@ -15,14 +15,14 @@ public:
 		OpCount
 	};
 
-	MathNode(MathOp op, float a=0, float b=0)
+	inline MathNode(MathOp op, float a=0, float b=0)
 		: Node(), op(op), a(a), b(b)
 	{
 		addInput("A"); // A
 		addInput("B"); // B
 	}
 
-	Value sample(NodeGraph *graph) override {
+	inline Value sample(NodeGraph *graph) override {
 		float _a = connected(0) ? in(0).value() : a;
 		float _b = connected(1) ? in(1).value() : b;
 		float _out = 0.0f;
@@ -38,13 +38,13 @@ public:
 		return Value(_out);
 	}
 
-	void save(JSON& json) override {
+	inline void save(JSON& json) override {
 		Node::save(json);
 		json["op"] = int(op);
 		json["values"] = { a, b };
 	}
 
-	void load(JSON json) override {
+	inline void load(JSON json) override {
 		Node::load(json);
 		op = MathOp(json["op"].get<int>());
 		a = json["values"][0];

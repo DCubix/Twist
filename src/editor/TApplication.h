@@ -1,12 +1,12 @@
 #ifndef T_APPLICATION_H
 #define T_APPLICATION_H
 
-#if !__has_include("SDL.h")
-#include "SDL2/SDL.h"
-#include "SDL2/SDL_audio.h"
-#else
+#if __has_include("SDL.h")
 #include "SDL.h"
 #include "SDL_audio.h"
+#else
+#include "SDL2/SDL.h"
+#include "SDL2/SDL_audio.h"
 #endif
 
 #include "../imgui/imgui.h"

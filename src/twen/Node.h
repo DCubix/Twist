@@ -5,6 +5,7 @@
 #include "intern/Vector.h"
 
 #include <initializer_list>
+#include <vector>
 
 #define STR(x) #x
 #define TWEN_NODE(x, title) public: static Str type() { return STR(x); } \

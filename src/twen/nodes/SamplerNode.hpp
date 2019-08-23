@@ -8,14 +8,14 @@
 class SamplerNode : public Node {
 	TWEN_NODE(SamplerNode, "Sampler")
 public:
-	SamplerNode(const Str& sampleName="")
+	inline SamplerNode(const Str& sampleName="")
 		: Node(), sampleName(sampleName), sampleID(0)
 	{
 		addInput("Gate");
 		sampleData.invalidate();
 	}
 
-	void load() {
+	inline void load() {
 		RawSample* sle = graph()->getSample(sampleName);
 		if (sle != nullptr) {
 			LogI("Loaded sample: ", sle->name);
@@ -24,7 +24,7 @@ public:
 		}
 	}
 
-	Value sample(NodeGraph *graph) override {
+	inline Value sample(NodeGraph *graph) override {
 		float amp = connected(0) ? in(0).velocity() : 1.0f;
 		bool gate = connected(0) ? in(0).gate() : true;
 		bool repeat = gate && !connected(0);
@@ -35,12 +35,12 @@ public:
 		return Value(s * amp);
 	}
 
-	void save(JSON& json) override {
+	inline void save(JSON& json) override {
 		Node::save(json);
 		json["sample"] = sampleName;
 	}
 
-	void load(JSON json) override {
+	inline void load(JSON json) override {
 		Node::load(json);
 		sampleName = json["sample"];
 		auto samples = graph()->getSampleNames();

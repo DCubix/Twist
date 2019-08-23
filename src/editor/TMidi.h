@@ -1,7 +1,6 @@
 #ifndef T_MIDI_H
 #define T_MIDI_H
 
-#if 0
 #include <cstdint>
 #include <array>
 #include <vector>
@@ -62,6 +61,5 @@ private:
 	static TMidiMessageQueue messageQueue;
 	static TMidiMessageSubscriberList subscribers;
 };
-#endif
 
 #endif // T_MIDI_H

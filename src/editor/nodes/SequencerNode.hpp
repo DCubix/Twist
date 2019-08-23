@@ -20,17 +20,17 @@ struct SNote {
 class SequencerNode : public Node {
 	TWEN_NODE(SequencerNode, "Sequencer")
 public:
-	SequencerNode()
+	inline SequencerNode()
 		: Node()
 	{}
 
-	SequencerNode(JSON param)
+	inline SequencerNode(JSON param)
 		: Node()
 	{
 		load(param);
 	}
 
-	Value sample(NodeGraph *graph) override {
+	inline Value sample(NodeGraph *graph) override {
 		idx = graph->index() % TWIST_SEQUENCER_SIZE;
 
 		u32 outNote = 0;
@@ -53,7 +53,7 @@ public:
 		return Value(value, vel, m_gate);
 	}
 
-	void save(JSON& json) override {
+	inline void save(JSON& json) override {
 		Node::save(json);
 		JSON notes = JSON::array();
 		for (u32 i = 0; i < TWIST_SEQUENCER_SIZE; i++) {
@@ -69,7 +69,7 @@ public:
 		json["notes"] = notes;
 	}
 
-	void load(JSON json) override {
+	inline void load(JSON json) override {
 		Node::load(json);
 		if (!json["notes"].is_array()) return;
 

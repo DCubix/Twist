@@ -7,7 +7,7 @@
 class ADSRNode : public Node {
 	TWEN_NODE(ADSRNode, "ADSR")
 public:
-	ADSRNode(float a=0, float d=0, float s=0, float r=0)
+	inline ADSRNode(float a=0, float d=0, float s=0, float r=0)
 		: Node(), a(a), d(d), s(s), r(r)
 	{
 		addInput("Gate"); // Gate
@@ -16,7 +16,7 @@ public:
 		m_trigger = false;
 	}
 
-	Value sample(NodeGraph *graph) override {
+	inline Value sample(NodeGraph *graph) override {
 		float sr = graph->sampleRate();
 		m_adsr.attack(a * sr);
 		m_adsr.decay(d * sr);
@@ -35,10 +35,10 @@ public:
 			}
 		}
 
-		return m_adsr.sample();
+		return Value(m_adsr.sample());
 	}
 
-	void save(JSON& json) override {
+	inline void save(JSON& json) override {
 		Node::save(json);
 		json["a"] = a;
 		json["d"] = d;
@@ -46,7 +46,7 @@ public:
 		json["r"] = r;
 	}
 
-	void load(JSON json) override {
+	inline void load(JSON json) override {
 		Node::load(json);
 		a = json["a"];
 		d = json["d"];
@@ -54,7 +54,7 @@ public:
 		r = json["r"];
 	}
 
-	ADSR& adsr() { return m_adsr; }
+	inline ADSR& adsr() { return m_adsr; }
 
 	float a, d, s, r;
 

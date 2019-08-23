@@ -56,7 +56,7 @@ namespace Utils {
 	float lerp(float a, float b, float t);
 	float remap(float value, float from1, float to1, float from2, float to2);
 	float cyclef(float f);
-	
+
 	template <typename T>
 	static TypeIndex getTypeIndex() {
 		return std::type_index(typeid(T));

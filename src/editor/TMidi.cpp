@@ -1,6 +1,5 @@
 #include "TMidi.h"
 
-#if 0
 #include <stdio.h>
 #include <cassert>
 
@@ -68,5 +67,3 @@ void TMessageBus::process() {
 		messageQueue.erase(messageQueue.begin());
 	}
 }
-
-#endif

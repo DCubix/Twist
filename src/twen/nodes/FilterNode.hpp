@@ -11,14 +11,14 @@ public:
 		HighPass
 	};
 
-	FilterNode(float co=20, Filter filter=Filter::LowPass)
+	inline FilterNode(float co=20, Filter filter=Filter::LowPass)
 		: Node(), cutOff(co), filter(filter)
 	{
 		addInput("In"); // Input
 		addInput("CutOff"); // Cutoff
 	}
 
-	Value sample(NodeGraph *graph) override {
+	inline Value sample(NodeGraph *graph) override {
 		float co = connected(1) ? in(1).value() : cutOff;
 		float _co = std::min(std::max(co, 20.0f), 20000.0f);
 		float _in = in(0).value();
@@ -46,13 +46,13 @@ public:
 		return Value(_out);
 	}
 
-	void save(JSON& json) override {
+	inline void save(JSON& json) override {
 		Node::save(json);
 		json["cutOff"] = cutOff;
 		json["filter"] = int(filter);
 	}
 
-	void load(JSON json) override {
+	inline void load(JSON json) override {
 		Node::load(json);
 		cutOff = json["cutOff"];
 		filter = Filter(json["filter"].get<int>());

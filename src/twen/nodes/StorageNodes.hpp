@@ -6,18 +6,18 @@
 class ReaderNode : public Node {
 	TWEN_NODE(ReaderNode, "Reader")
 public:
-	ReaderNode(u32 slot = 0) : Node(), slot(slot) {}
+	inline ReaderNode(u32 slot = 0) : Node(), slot(slot) {}
 
-	Value sample(NodeGraph *graph) override {
+	inline Value sample(NodeGraph *graph) override {
 		return graph->load(slot);
 	}
 
-	void save(JSON& json) override {
+	inline void save(JSON& json) override {
 		Node::save(json);
 		json["slot"] = slot;
 	}
 
-	void load(JSON json) override {
+	inline void load(JSON json) override {
 		Node::load(json);
 		slot = json["slot"];
 	}
@@ -28,22 +28,22 @@ public:
 class WriterNode : public Node {
 	TWEN_NODE(WriterNode, "Writer")
 public:
-	WriterNode(u32 slot = 0) : Node(), slot(slot) {
+	inline WriterNode(u32 slot = 0) : Node(), slot(slot) {
 		addInput("In", 0.0f);
 	}
 
-	Value sample(NodeGraph *graph) override {
+	inline Value sample(NodeGraph *graph) override {
 		Value _in = in(0).data;
 		graph->store(slot, _in);
 		return _in;
 	}
 
-	void save(JSON& json) override {
+	inline void save(JSON& json) override {
 		Node::save(json);
 		json["slot"] = slot;
 	}
 
-	void load(JSON json) override {
+	inline void load(JSON json) override {
 		Node::load(json);
 		slot = json["slot"];
 	}

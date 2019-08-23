@@ -105,30 +105,30 @@ void TApplication::sync() {
 		input(e);
 
 		/// Keyboard Input
-//		static const int KEYS[] = {
-//			SDLK_q, SDLK_2, SDLK_w, SDLK_3, SDLK_e, SDLK_r, SDLK_5, SDLK_t, SDLK_6, SDLK_y, SDLK_7, SDLK_u, SDLK_i,
-//			SDLK_z, SDLK_s, SDLK_x, SDLK_d, SDLK_c, SDLK_v, SDLK_g, SDLK_b, SDLK_h, SDLK_n, SDLK_j, SDLK_m, SDLK_COMMA
-//		};
-//		static const int NOTES[] = {
-//			36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
-//			24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36
-//		};
-//		switch (e.type) {
-//			case SDL_KEYDOWN: {
-//				for (int i = 0; i < IM_ARRAYSIZE(KEYS); i++) {
-//					if (e.key.keysym.sym == KEYS[i] && e.key.repeat == 0) {
-//						TMessageBus::broadcast(0xF, TMidiCommand::NoteOn, NOTES[i], 127);
-//					}
-//				}
-//			} break;
-//			case SDL_KEYUP: {
-//				for (int i = 0; i < IM_ARRAYSIZE(KEYS); i++) {
-//					if (e.key.keysym.sym == KEYS[i] && e.key.repeat == 0) {
-//						TMessageBus::broadcast(0xF, TMidiCommand::NoteOff, NOTES[i], 0);
-//					}
-//				}
-//			} break;
-//		}
+		static const int KEYS[] = {
+			SDLK_q, SDLK_2, SDLK_w, SDLK_3, SDLK_e, SDLK_r, SDLK_5, SDLK_t, SDLK_6, SDLK_y, SDLK_7, SDLK_u, SDLK_i,
+			SDLK_z, SDLK_s, SDLK_x, SDLK_d, SDLK_c, SDLK_v, SDLK_g, SDLK_b, SDLK_h, SDLK_n, SDLK_j, SDLK_m, SDLK_COMMA
+		};
+		static const int NOTES[] = {
+			36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
+			24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36
+		};
+		switch (e.type) {
+			case SDL_KEYDOWN: {
+				for (int i = 0; i < IM_ARRAYSIZE(KEYS); i++) {
+					if (e.key.keysym.sym == KEYS[i] && e.key.repeat == 0) {
+						TMessageBus::broadcast(0xF, TMidiCommand::NoteOn, NOTES[i], 127);
+					}
+				}
+			} break;
+			case SDL_KEYUP: {
+				for (int i = 0; i < IM_ARRAYSIZE(KEYS); i++) {
+					if (e.key.keysym.sym == KEYS[i] && e.key.repeat == 0) {
+						TMessageBus::broadcast(0xF, TMidiCommand::NoteOff, NOTES[i], 0);
+					}
+				}
+			} break;
+		}
 
 		ImGuiSystem::ProcessEvent(&e);
 	}
