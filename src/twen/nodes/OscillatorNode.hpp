@@ -57,7 +57,7 @@ public:
 			case Triangle: return Value((std::asin(std::cos(freq)) / 1.5708f) * amp);
 			default:
 				float noise = (float(rand() % RAND_MAX) / float(RAND_MAX)) * 2.0f - 1.0f;
-				return Value((noise * 0.5f) * amp);
+				return Value(noise * amp);
 		}
 	}
 

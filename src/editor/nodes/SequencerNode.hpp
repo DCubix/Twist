@@ -22,15 +22,21 @@ class SequencerNode : public Node {
 public:
 	inline SequencerNode()
 		: Node()
-	{}
+	{
+		addInput("Base");
+	}
 
 	inline SequencerNode(JSON param)
-		: Node()
+		: SequencerNode()
 	{
 		load(param);
 	}
 
 	inline Value sample(NodeGraph *graph) override {
+		int baseNote = connected(0) ? int(in(0).value()) : 0;
+		bool baseGate = connected(0) ? in(0).gate() : true;
+		float baseVel = connected(0) ? in(0).velocity() : 1.0f;
+
 		idx = graph->index() % TWIST_SEQUENCER_SIZE;
 
 		u32 outNote = 0;
@@ -38,10 +44,10 @@ public:
 
 		SNote curr = notes[idx];
 		if (curr.active) {
-			outNote = u32(curr.note) + (12 * curr.octave);
+			outNote = u32(curr.note) + (12 * curr.octave) + baseNote;
 			value = Utils::noteFrequency(outNote);
-			vel = curr.vel;
-			m_gate = true;
+			vel = curr.vel * baseVel;
+			m_gate = baseGate;
 		} else {
 			m_gate = false;
 		}

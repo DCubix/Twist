@@ -69,8 +69,10 @@ public:
 
 	inline Value sample(NodeGraph *graph) override {
 		int noteIn = note;
-		if (midi) {
-			noteIn = int(in(0).value());
+		bool baseGate = true;
+		if (connected(0)) {
+			noteIn = note + int(in(0).value());
+			baseGate = in(0).gate();
 		}
 
 #define INDEX(n) index(graph->index(), n)
@@ -125,7 +127,7 @@ public:
 
 		u32 outNote = u32(nt) + (12 * oct);
 		float value = Utils::noteFrequency(outNote);
-		return Value(value, 1.0f, gate);
+		return Value(value, 1.0f, gate && baseGate);
 	}
 
 	inline void save(JSON& json) override {
@@ -134,7 +136,6 @@ public:
 		json["chord"] = int(chord);
 		json["direction"] = int(direction);
 		json["oct"] = oct;
-		json["midi"] = midi;
 	}
 
 	inline void load(JSON json) override {
@@ -143,13 +144,11 @@ public:
 		chord = Chord(json["chord"].get<int>());
 		direction = Direction(json["direction"].get<int>());
 		oct = json["oct"].get<u32>();
-		midi = json["midi"].get<bool>();
 	}
 
 	Note note;
 	Chord chord;
 	Direction direction;
-	bool midi{ false };
 	u32 oct;
 
 private:

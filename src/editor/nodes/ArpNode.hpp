@@ -15,11 +15,8 @@ static void Arp_gui(Node* node) {
 	static const char* DIRS[] = { "Up", "Down", "Up+Down", "Random" };
 
 	ImGui::PushItemWidth(60);
-	ImGui::Checkbox("Note Input", &n->midi);
-	if (!n->midi) {
-		ImGui::Combo("Note", (int*)&n->note, NOTES, 12); ImGui::SameLine();
-		ImGui::DragInt("Oct.", (int*)&n->oct, 0.1f, 0, 8);
-	}
+	ImGui::Combo("Note", (int*)&n->note, NOTES, 12); ImGui::SameLine();
+	ImGui::DragInt("Oct.", (int*)&n->oct, 0.1f, 0, 8);
 	ImGui::Combo("Chord", (int*)&n->chord, CHORDS, 11); ImGui::SameLine();
 	ImGui::Combo("Dir.", (int*)&n->direction, DIRS, 4);
 	ImGui::PopItemWidth();
