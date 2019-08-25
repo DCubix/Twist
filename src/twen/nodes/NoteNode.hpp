@@ -11,7 +11,7 @@ public:
 	{}
 
 	inline Value sample(NodeGraph *graph) override {
-		return Value(Utils::noteFrequency(u32(note) % 12, oct));
+		return Value(u32(note) + (12 * oct));
 	}
 
 	inline void save(JSON& json) override {
@@ -28,6 +28,28 @@ public:
 
 	Note note;
 	u32 oct;
+};
+
+class HertzNode : public Node {
+	TWEN_NODE(HertzNode, "Hertz")
+public:
+	inline HertzNode()
+		: Node()
+	{
+		addInput("Note");
+	}
+
+	inline Value sample(NodeGraph *graph) override {
+		return Value(Utils::noteFrequency(in(0).value()));
+	}
+
+	inline void save(JSON& json) override {
+		Node::save(json);
+	}
+
+	inline void load(JSON json) override {
+		Node::load(json);
+	}
 };
 
 #endif // TWEN_NOTE_NODE_H

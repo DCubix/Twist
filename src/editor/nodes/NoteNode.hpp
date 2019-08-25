@@ -17,4 +17,8 @@ static void Note_gui(Node* node) {
 	ImGui::PopItemWidth();
 }
 
+static void Hertz_gui(Node* node) {
+	// HertzNode*n = dynamic_cast<HertzNode*>(node);
+}
+
 #endif // TWIST_NOTE_HPP

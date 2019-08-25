@@ -89,6 +89,10 @@ namespace Twen {
 			);
 		});
 
+		NodeBuilder::registerType<HertzNode>("General", TWEN_NODE_FAC {
+			return new HertzNode();
+		});
+
 		NodeBuilder::registerType<OscillatorNode>("Generators", TWEN_NODE_FAC {
 			return new OscillatorNode(
 				GET(float, "freq", 220.0f),

@@ -158,6 +158,7 @@ TNodeEditor::TNodeEditor(const std::string& fileName) {
 	m_guis[SequencerNode::typeID()] = Sequencer_gui;
 	m_guis[SamplerNode::typeID()] = Sampler_gui;
 	m_guis[MIDINode::typeID()] = MIDI_gui;
+	m_guis[HertzNode::typeID()] = Hertz_gui;
 	//
 
 	NodeBuilder::registerType<MIDINode>("General", TWEN_NODE_FAC {

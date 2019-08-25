@@ -34,7 +34,7 @@ public:
 	inline ArpNode(Note note, Chord chord, Direction dir, u32 oct)
 		: Node(), note(note), chord(chord), direction(dir), oct(oct)
 	{
-		addInput("In");
+		addInput("Base");
 	}
 
 	inline int index(int rn, int n) {
@@ -126,8 +126,7 @@ public:
 		}
 
 		u32 outNote = u32(nt) + (12 * oct);
-		float value = Utils::noteFrequency(outNote);
-		return Value(value, 1.0f, gate && baseGate);
+		return Value(outNote, 1.0f, gate && baseGate);
 	}
 
 	inline void save(JSON& json) override {
