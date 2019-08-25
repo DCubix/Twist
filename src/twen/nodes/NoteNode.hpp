@@ -8,10 +8,13 @@ class NoteNode : public Node {
 public:
 	inline NoteNode(Note note, u32 oct=0)
 		: Node(), note(note), oct(oct)
-	{}
+	{
+		addInput("Base");
+	}
 
 	inline Value sample(NodeGraph *graph) override {
-		return Value(u32(note) + (12 * oct));
+		int base = connected(0) ? int(in(0).value()) : 0;
+		return Value(u32(note) + (12 * oct) + base);
 	}
 
 	inline void save(JSON& json) override {

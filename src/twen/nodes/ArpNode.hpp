@@ -72,7 +72,7 @@ public:
 		bool baseGate = true;
 		if (connected(0)) {
 			noteIn = note + int(in(0).value());
-			baseGate = in(0).gate();
+			// baseGate = in(0).gate();
 		}
 
 #define INDEX(n) index(graph->index(), n)

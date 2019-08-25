@@ -283,15 +283,14 @@ void AudioView(const char* id, float width, float* values, int length, int pos, 
 		const int samplesPerX = length / width;
 		const float h2 = h / 2;
 		for (int x = 0; x < width; x++) {
-			float maxval = 0.0f;
+			float maxval = -99999.0f;
 
 			for (int k = 0; k < samplesPerX; k++) {
-				float value = (values[x * samplesPerX + k]) * 0.999f;
-				maxval += value;
+				float val = std::abs(values[x * samplesPerX + k]) * 0.999f;
+				maxval = std::max(maxval, val);
 			}
-			maxval /= samplesPerX;
 
-			ImVec2 p0 = ImVec2(x, h2) + wp;
+			ImVec2 p0 = ImVec2(x, -maxval * h + h2) + wp;
 			ImVec2 p1 = ImVec2(x, maxval * h + h2) + wp;
 			draw_list->AddLine(p0, p1, col);
 		}

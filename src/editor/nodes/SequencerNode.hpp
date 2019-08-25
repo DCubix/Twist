@@ -47,7 +47,8 @@ public:
 			outNote = u32(curr.note) + (12 * curr.octave) + baseNote;
 			value = Utils::noteFrequency(outNote);
 			vel = curr.vel * baseVel;
-			m_gate = baseGate;
+			// m_gate = baseGate;
+			m_gate = true;
 		} else {
 			m_gate = false;
 		}
