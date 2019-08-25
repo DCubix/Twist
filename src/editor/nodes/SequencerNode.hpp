@@ -45,7 +45,7 @@ public:
 		SNote curr = notes[idx];
 		if (curr.active) {
 			outNote = u32(curr.note) + (12 * curr.octave) + baseNote;
-			value = Utils::noteFrequency(outNote);
+			value = outNote;
 			vel = curr.vel * baseVel;
 			// m_gate = baseGate;
 			m_gate = true;
