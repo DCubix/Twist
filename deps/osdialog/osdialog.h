@@ -4,9 +4,7 @@
 extern "C" {
 #endif
 
-
 #include <stdint.h>
-
 
 #ifndef OSDIALOG_MALLOC
 	#define OSDIALOG_MALLOC malloc
@@ -20,11 +18,11 @@ extern "C" {
 	#define OSDIALOG_STRDUP strdup
 #endif
 
-
 typedef enum {
-	OSDIALOG_INFO,
+	OSDIALOG_INFO = 0,
 	OSDIALOG_WARNING,
 	OSDIALOG_ERROR,
+	OSDIALOG_QUESTION
 } osdialog_message_level;
 
 typedef enum {
@@ -36,7 +34,7 @@ typedef enum {
 /** Launches a message box
 Returns 1 if the "OK" or "Yes" button was pressed
 */
-int osdialog_message(osdialog_message_level level, osdialog_message_buttons buttons, const char *message);
+int osdialog_message(osdialog_message_level level, osdialog_message_buttons buttons, const char *message, const char *title);
 
 
 typedef enum {

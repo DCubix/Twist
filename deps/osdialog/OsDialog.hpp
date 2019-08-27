@@ -71,12 +71,14 @@ namespace osd {
 		static bool message(
 			MessageLevel level,
 			MessageButtons buttons,
-			const std::string& msg
+			const std::string& msg,
+			const std::string& title = ""
 		) {
 			return osdialog_message(
 				(osdialog_message_level)level,
 				(osdialog_message_buttons)buttons,
-				msg.c_str()
+				msg.c_str(),
+				title.c_str()
 			) == 1 ? true : false;
 		}
 

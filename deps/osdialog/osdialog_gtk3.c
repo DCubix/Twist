@@ -4,17 +4,19 @@
 #include <stdio.h>
 #include <gtk/gtk.h>
 
-int osdialog_message(osdialog_message_level level, osdialog_message_buttons buttons, const char *message) {
+int osdialog_message(osdialog_message_level level, osdialog_message_buttons buttons, const char *message, const char *title) {
 	// assert(gtk_init_check(NULL, NULL));
 	gtk_init(NULL, NULL);
 
-	const gchar* title;
+
+	const gchar* gtitle = title;
 	GtkMessageType messageType;
 	switch (level) {
 		default:
-		case OSDIALOG_INFO: messageType = GTK_MESSAGE_INFO; title = "Info"; break;
-		case OSDIALOG_WARNING: messageType = GTK_MESSAGE_WARNING; title = "Warning"; break;
-		case OSDIALOG_ERROR: messageType = GTK_MESSAGE_ERROR; title = "Error"; break;
+		case OSDIALOG_INFO: messageType = GTK_MESSAGE_INFO; break;
+		case OSDIALOG_WARNING: messageType = GTK_MESSAGE_WARNING; break;
+		case OSDIALOG_ERROR: messageType = GTK_MESSAGE_ERROR; break;
+		case OSDIALOG_QUESTION: messageType = GTK_MESSAGE_QUESTION; break;
 	}
 
 	GtkButtonsType buttonsType;
@@ -25,13 +27,14 @@ int osdialog_message(osdialog_message_level level, osdialog_message_buttons butt
 		case OSDIALOG_YES_NO: buttonsType = GTK_BUTTONS_YES_NO; break;
 	}
 
-	GtkWidget *dialog = gtk_message_dialog_new (NULL,
-		0,
+	GtkWidget *dialog = gtk_message_dialog_new(NULL,
+		GTK_DIALOG_MODAL,
 		messageType,
 		buttonsType,
-		"%s", message);
+		"%s", message
+	);
 
-	gtk_window_set_title(GTK_WINDOW(dialog), title);
+	gtk_window_set_title(GTK_WINDOW(dialog), gtitle);
 	gtk_window_set_position(GTK_WINDOW(dialog), GTK_WIN_POS_CENTER_ALWAYS);
 	gtk_window_set_keep_above(GTK_WINDOW(dialog), TRUE);
 
@@ -49,7 +52,6 @@ int osdialog_message(osdialog_message_level level, osdialog_message_buttons butt
 			return 0;
 	}
 }
-
 
 char *osdialog_file(osdialog_file_action action, const char *path, const char *filename, osdialog_filters *filters) {
 	// assert(gtk_init_check(NULL, NULL));

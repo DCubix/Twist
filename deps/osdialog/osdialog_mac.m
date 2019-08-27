@@ -3,7 +3,7 @@
 #include <Availability.h>
 
 
-int osdialog_message(osdialog_message_level level, osdialog_message_buttons buttons, const char *message) {
+int osdialog_message(osdialog_message_level level, osdialog_message_buttons buttons, const char *message, const char *title) {
 	NSAlert *alert = [[NSAlert alloc] init];
 
 	switch (level) {

@@ -6,7 +6,7 @@
 #include <shlobj.h>
 
 
-int osdialog_message(osdialog_message_level level, osdialog_message_buttons buttons, const char *message) {
+int osdialog_message(osdialog_message_level level, osdialog_message_buttons buttons, const char *message, const char *title) {
 	UINT type = 0;
 	switch (level) {
 		default:
@@ -22,7 +22,7 @@ int osdialog_message(osdialog_message_level level, osdialog_message_buttons butt
 		case OSDIALOG_YES_NO: type |= MB_YESNO; break;
 	}
 
-	int result = MessageBox(NULL, message, "", type);
+	int result = MessageBox(NULL, message, title, type);
 	switch (result) {
 		case IDOK:
 		case IDYES:
